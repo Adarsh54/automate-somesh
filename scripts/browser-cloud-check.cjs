@@ -49,7 +49,7 @@ const assert=require('node:assert/strict');
  assert.equal(await page.locator('#production [data-field="title"]').inputValue(),'Imported browser film');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1')).production.title),'Imported browser film');
  await page.locator('#cloud-logout').click();
- await page.getByRole('link',{name:'Sign in / Create account'}).waitFor();
+ await page.getByRole('link',{name:'Log in',exact:true}).waitFor();
  assert.equal(await page.locator('#cloud-save').count(),0);
  user={id:'alice',email:'alice@example.test'};await page.reload();
  await page.locator('#cloud-list').click();

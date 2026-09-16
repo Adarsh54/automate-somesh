@@ -1108,3 +1108,22 @@ footer span:first-child {
 .cloud-project-list { display:grid; width:100%; gap:8px; }
 .cloud-project-list button { text-align:left; display:flex; justify-content:space-between; gap:12px; }
 @media(max-width:600px) { .account-panel .button-row { width:100%; } .cloud-project-list button { flex-direction:column; } }
+
+/* Account entry */
+.welcome-page {width:100%;min-height:100vh;margin:0;padding:42px clamp(24px,6vw,100px);background:#f4f6f2;display:flex;flex-direction:column;}
+.welcome-brand {display:inline-flex;align-items:center;gap:12px;width:fit-content;text-decoration:none;font:800 25px Manrope,sans-serif;color:#203f36;}
+.welcome-brand span {display:grid;place-items:center;width:39px;height:39px;border-radius:10px;background:#244a3c;color:#d8efa6;font-size:28px;}
+.welcome-layout {width:100%;max-width:1160px;margin:auto;display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(40px,8vw,130px);align-items:center;padding:70px 0;}
+.welcome-intro h1 {font:800 clamp(42px,5.5vw,76px)/1.08 Manrope,sans-serif;letter-spacing:-3px;margin:22px 0;color:#234439;}
+.welcome-intro>p:not(.eyebrow) {font-size:18px;line-height:1.7;color:#64716a;max-width:440px;}
+.welcome-steps {display:flex;flex-direction:column;gap:17px;margin-top:38px;font-size:14px;color:#476255;}
+.welcome-card {padding:clamp(25px,4vw,48px);background:#fff;border:1px solid #dce4dc;border-radius:20px;box-shadow:0 16px 60px #203f3608;}
+.welcome-card h2 {font:800 clamp(24px,2.5vw,32px)/1.2 Manrope,sans-serif;margin:16px 0;letter-spacing:-.8px;}
+.welcome-card p {color:#67736c;line-height:1.65;margin-bottom:26px;}
+.welcome-action {display:block;width:100%;text-align:center;text-decoration:none;padding:14px 18px;border-radius:8px;font-weight:700;margin-top:12px;}
+.welcome-login {border:1px solid #d5dedb;background:white;}
+.welcome-divider {display:flex;align-items:center;gap:16px;color:#849088;font-size:13px;margin:22px 0;}
+.welcome-divider:before,.welcome-divider:after {content:'';height:1px;flex:1;background:#e2e7e2;}
+.welcome-card .welcome-footnote {font-size:12px;margin:18px 0 0;text-align:center;}
+.welcome-footer {font-size:10px;letter-spacing:1.5px;color:#758178;border:0;padding:0;margin:0;}
+@media(max-width:760px){.welcome-page{padding:25px 22px;}.welcome-layout{grid-template-columns:1fr;gap:28px;padding:34px 0;max-width:480px;}.welcome-intro h1{font-size:44px;letter-spacing:-2px;}.welcome-intro>p:not(.eyebrow){font-size:16px;}.welcome-steps{display:none;}.welcome-card{padding:26px;}.welcome-footer{line-height:1.7;}}

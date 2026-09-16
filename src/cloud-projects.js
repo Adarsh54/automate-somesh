@@ -7,7 +7,7 @@ export async function sessionInfo() {
     const response=await fetch("/api/auth?action=me",{signal:AbortSignal.timeout(10000)});
     if(!response.ok) throw new Error();
     return await response.json();
-  } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. Your local workspace is still available."};}
+  } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. You can still continue as a guest."};}
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false;
@@ -22,9 +22,9 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   };
   async function request(url, options) {
     const response=await fetch(url,{...options,signal:AbortSignal.timeout(15000)});
-    if(response.status===401) throw new Error("Your session expired. Sign in again; your draft is kept on this device.");
+    if(response.status===401) throw new Error("Your session expired. Sign in again; your edits are kept.");
     if(response.status===409) throw new Error("This project changed in another tab or device. Save a copy to keep your edits, or reopen the cloud version.");
-    if(!response.ok) throw new Error("Could not reach your projects. Your draft is kept on this device; please retry.");
+    if(!response.ok) throw new Error("Could not reach your projects. Your edits are kept; please retry.");
     return response.json();
   }
   const report=text=>{status=text;update();};
@@ -41,19 +41,19 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   }
   function view() {
     if(!account.user) return account.configured
-      ? '<section class="panel account-panel"><div><strong>Keep your projects across devices</strong><p>Sign in to save private cue sheets. Save audio and video privately with your projects.</p></div><a class="primary" href="/api/auth?action=login">Sign in / Create account</a></section>'
+      ? '<section class="panel account-panel"><div><strong>You’re working as a guest</strong><p>Sign up to save your projects and media.</p></div><div class="button-row"><a href="/api/auth?action=login">Log in</a><a class="primary" href="/api/auth?action=signup">Sign up</a></div></section>'
       : account.error?`<p class="notice">${esc(account.error)}</p>`:"";
-    return `<section class="panel account-panel"><div><strong>${esc(account.user.email)}</strong><p id="cloud-status" role="status">${esc(status || (active ? "Cloud project · edits are saved locally until you click Save." : "New workspace · save to add it to your account."))}</p></div><div class="button-row">
+    return `<section class="panel account-panel"><div><strong>${esc(account.user.email)}</strong><p id="cloud-status" role="status">${esc(status || (active ? "Click Save project to keep your latest changes." : "New workspace · save to add it to your account."))}</p></div><div class="button-row">
     <button class="primary" id="cloud-save" ${busy?"disabled":""}>Save project</button>
     <button id="cloud-copy" ${busy?"disabled":""}>Save a copy</button>
     <button id="cloud-list" ${busy?"disabled":""}>My projects</button>
     <button id="cloud-restore" ${busy?"disabled":""}>Restore media</button>
     <button id="cloud-new" ${busy?"disabled":""}>New project</button>
-    <button id="cloud-import" ${busy?"disabled":""}>Import browser project</button>
+    <button id="cloud-import" ${busy?"disabled":""}>Import guest project</button>
     <button id="cloud-logout" ${busy?"disabled":""}>Sign out</button></div>
     ${projects.length?`<div class="cloud-project-list">${projects.map(p=>`<button data-cloud-open="${esc(p.id)}" ${busy?"disabled":""}>${esc(p.title)} <small>${esc(new Date(p.updated_at).toLocaleString())}</small></button>`).join("")}</div>`:""}</section>`;
   }
-  const confirmSwitch=()=>!dirty || confirm("Your current draft is kept on this device. Save it to your account first if you want to keep working on it later. Switch projects?");
+  const confirmSwitch=()=>!dirty || confirm("Save your latest changes to your account before switching projects. Switch anyway?");
   function bind() {
     const el=document.querySelector("#cloud-workspace");if(!el || !account.user)return;
     el.querySelector("#cloud-save").onclick=()=>run(()=>save());
@@ -63,15 +63,15 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
     el.querySelector("#cloud-new").onclick=()=>{if(confirmSwitch()){stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);location.reload();}};
     el.querySelector("#cloud-import").onclick=()=>run(async()=>{
       const legacy=localStorage.getItem("cuebook-v1");
-      if(!legacy) {status="No browser-saved project exists on this site's address.";return;}
+      if(!legacy) {status="No guest project is available to import.";return;}
       if(!confirmSwitch())return;
       // Import only on explicit action; never assign an anonymous project to an account automatically.
       const data=JSON.parse(legacy);migrateCueDetails(data);
       const {project}=await request("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:crypto.randomUUID(),revision:0,data})});
       replace({...project,data});
     });
-    el.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});location.reload();});
+    el.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuebook-guest");}catch{}location.reload();});
     el.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{if(confirmSwitch())replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {view,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved cloud changes · draft kept on this device.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {view,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }

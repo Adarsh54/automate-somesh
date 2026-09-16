@@ -55,3 +55,15 @@ test("expired sessions refresh securely; outages retain cookies, terminal failur
   await assert.rejects(authenticate(req,outage,client({authenticated:false,retryable:true})),{status:503});
   assert.equal(outage.headers["Set-Cookie"],undefined);
 });
+test('login and signup open their respective WorkOS forms with a sealed PKCE flow',async()=>{
+  for(const [action,screen] of [['login','sign-in'],['signup','sign-up']]) {
+    const res=response();await auth({method:'GET',url:'/api/auth?action='+action,headers:{}},res);
+    assert.equal(res.statusCode,303);
+    const target=new URL(res.headers.Location);
+    assert.equal(target.hostname,'api.workos.com');
+    assert.equal(target.searchParams.get('screen_hint'),screen);
+    assert.equal(target.searchParams.get('code_challenge_method'),'S256');
+    assert.ok(target.searchParams.get('code_challenge'));
+    assert.match(res.headers['Set-Cookie'][0],/cuebook-auth-flow=.*HttpOnly/);
+  }
+});

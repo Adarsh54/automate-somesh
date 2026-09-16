@@ -13,9 +13,9 @@ export default async function handler(req,res) {
       return reply(res,200,{configured:true,user:session?{id:session.user.id,email:session.user.email,firstName:session.user.firstName}:null});
     }
     settings();
-    if(action==="login") {
+    if(action==="login" || action==="signup") {
       if(!allowMethod(req,res,"GET")) return;
-      const flow=await workos().userManagement.getAuthorizationUrlWithPKCE({provider:"authkit",redirectUri:settings().origin+"/api/auth?action=callback"});
+      const flow=await workos().userManagement.getAuthorizationUrlWithPKCE({provider:"authkit",screenHint:action==="signup"?"sign-up":"sign-in",redirectUri:settings().origin+"/api/auth?action=callback"});
       setCookie(res,"cuebook-auth-flow",await sealFlow({state:flow.state,codeVerifier:flow.codeVerifier}),600);
       return redirect(res,flow.url);
     }

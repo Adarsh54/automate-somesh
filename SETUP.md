@@ -42,7 +42,8 @@ If service credentials are missing, accounts remain disabled and the existing br
 
 ## Account behavior
 
-- `GET /api/auth?action=login`: redirect to WorkOS, PKCE verifier and state in an encrypted, short-lived HTTP-only cookie.
+- `GET /api/auth?action=login`: open the WorkOS login page, with PKCE verifier and state in an encrypted, short-lived HTTP-only cookie.
+- `GET /api/auth?action=signup`: open the WorkOS signup page with the same protected callback flow.
 - `GET /api/auth?action=callback`: validate state, exchange code, upsert Neon user profile, set encrypted session cookie.
 - `GET /api/auth?action=me`: return only the current user's ID/email/name, never tokens.
 - `POST /api/auth?action=logout`: require matching Origin, revoke WorkOS session, clear cookie.
@@ -74,3 +75,7 @@ Downloads require an owner check and return a GET-only signed URL scoped to one 
 Per-file application limit: 2 GiB; actual capacity depends on the Vercel plan (the current Hobby store shows 1 GB included storage and 10 GB transfer). The existing browser decoder duration limit still applies. Failed saves retain the local draft; completed uploads are reused on retry. Removing a file from a project removes its reference, not the stored object, so other saved copies remain intact. Orphan cleanup and a permanent-delete UI are not yet implemented; manage unneeded objects in the private Blob dashboard. An interrupted upload before finalization may leave an unused object/reservation.
 
 `scripts/browser-media-check.cjs` tests audio/video save, upload failure, reload/decoding and copy reuse with a mock Blob transport against the Vite dev server. `npm test` also tests real Postgres media ownership and signed-download authorization. A real production login/upload/download round trip is required before calling the hosted integration fully verified.
+
+## Guest entry
+
+First-time signed-out visitors choose Continue as guest, Log in, or Sign up. WorkOS hosts the actual login/signup, verification and password reset forms; Cuebook never handles passwords. Guest selection is remembered in sessionStorage for the tab and grants no access to account APIs. Guest drafts remain separate from account drafts and can be explicitly imported after login using Import guest project. Signing out clears the guest-entry preference and returns to the welcome screen.

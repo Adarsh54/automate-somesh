@@ -97,7 +97,7 @@ export class Workflow {
       this.files.set(movie ? "movie" : track.id, file);
       if (!restoring) this.save();
       this.notify(
-        `${file.name} decoded locally. ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
+        `${file.name} is ready. ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
         false,
       );
       return movie ? this.movie : track;
@@ -145,7 +145,7 @@ export class Workflow {
       // on deploy, but an already-open tab must still be able to start analysis.
       this.worker = new AnalysisWorker();
     } catch {
-      return fail("The browser could not start audio analysis. Try again in a current Chrome window; if it persists, reload and reattach your media.");
+      return fail("Audio analysis could not start. Try again, or reload and restore your media.");
     }
     const worker = this.worker;
     this.render();
@@ -156,7 +156,7 @@ export class Workflow {
     };
     this.worker.addEventListener("messageerror", () => {
       if (this.worker !== worker) return;
-      fail("The browser could not read the analysis result. Retry or use a shorter audio export.");
+      fail("The analysis result could not be read. Retry or use a shorter audio export.");
     });
     this.worker.onmessage = ({ data }) => {
       if (this.worker !== worker) return;
@@ -251,7 +251,7 @@ export class Workflow {
             }
           : { threshold: Number(s.matchThreshold) },
     }); } catch {
-      fail("The browser could not send the audio for analysis. Try a shorter audio export or reload and reattach your media.");
+      fail("Audio analysis could not start. Try a shorter audio export or reload and reattach your media.");
     }
   }
 }
