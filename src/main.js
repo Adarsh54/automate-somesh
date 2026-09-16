@@ -1,4 +1,5 @@
 import "./style.css";
+import {bindSidebar,sidebarIcon,sidebarToggle} from "./sidebar.js";
 import {
   usages,
   time,
@@ -137,7 +138,7 @@ function render() {
         ).length,
     ).length;
   $("#app").innerHTML =
-    `<aside><a class="brand" href="#"><span class="mark">▥</span> cuebook</a><div class="project-label">MUSIC WORKSPACE</div><nav>${[
+    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuebook"><span class="mark" aria-hidden="true">▥</span><span class="brand-word">cuebook</span></a>${sidebarToggle}</div><div class="project-label">MUSIC WORKSPACE</div><nav id="sidebar-nav" aria-label="Workspace navigation">${[
       ["library", "01", "Find your cues"],
       ["cues", "02", "Timings & usage"],
       ["production", "03", "Production details"],
@@ -145,19 +146,20 @@ function render() {
     ]
       .map(
         ([key, n, label]) =>
-          `<button class="nav ${tab === key ? "active" : ""}" data-tab="${key}"><span>${n}</span>${label}</button>`,
+          `<button class="nav ${tab === key ? "active" : ""}" data-tab="${key}" aria-label="${label}" title="${label}" ${tab===key?'aria-current="page"':''}>${sidebarIcon(key)}<span class="nav-label"><span class="nav-step">${n}</span>${label}</span></button>`,
       )
       .join(
         "",
       )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
+  bindSidebar();
   document.querySelectorAll("details").forEach((el) => {
     if (openDetails.has(el.querySelector("summary")?.textContent))
       el.open = true;
   });
   if (workflow.busy)
     document.querySelectorAll("button,input,select").forEach((el) => {
-      if (el.id !== "cancel-analysis") el.disabled = true;
+      if (el.id !== "cancel-analysis" && el.id !== "sidebar-toggle") el.disabled = true;
     });
 }
 function library() {
