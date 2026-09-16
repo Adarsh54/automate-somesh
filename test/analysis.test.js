@@ -44,10 +44,10 @@ test("automatic silence detection retains quiet music and fades but splits silen
   const x = new Float32Array(sr * 12);
   for (let i = 0; i < x.length; i++) {
     const t = i / sr;
-    const db = t >= 1 && t < 3 ? -72
-      : t >= 3 && t < 5 ? -72 - 3 * (t - 3)
-      : (t >= 6 && t < 8) || (t >= 9 && t < 11) ? -74
-      : t >= 8 && t < 9 ? -90 : null;
+    const db = t >= 1 && t < 3 ? -62
+      : t >= 3 && t < 5 ? -62 - 3 * (t - 3)
+      : (t >= 6 && t < 8) || (t >= 9 && t < 11) ? -64
+      : t >= 8 && t < 9 ? -75 : null;
     if (db !== null)
       x[i] = Math.SQRT2 * 10 ** (db / 20) * Math.sin(2 * Math.PI * 200 * t);
   }
