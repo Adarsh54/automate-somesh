@@ -6,40 +6,43 @@
   font-synthesis: none;
   font-size: 14px;
   color-scheme: light;
-  --bg: #fcfcfd;
-  --sidebar: #f5f5f8;
+  --bg: #fcfcfc;
+  --sidebar: #f5f5f5;
   --surface: #fff;
-  --raised: #f4f4f7;
-  --hover: #ededf2;
-  --line: #e5e5eb;
-  --strong-line: #d2d2dc;
-  --text: #25252d;
-  --muted: #686875;
-  --accent: #635bce;
-  --accent-hover: #554cbc;
-  --tint: #eeecfa;
+  --raised: #f3f5f3;
+  --hover: #e9ede9;
+  --line: #e3e7e3;
+  --strong-line: #ccd3cc;
+  --text: #202520;
+  --muted: #626b62;
+  --accent: #16783b;
+  --accent-hover: #105e2d;
+  --tint: #e8f5eb;
+  --action: #1ed760;
+  --action-hover: #3be477;
+  --action-text: #07150b;
   --success: #39775d;
   --warning: #946626;
   --warning-bg: #fcf6e9;
   --danger: #b04b58;
-  --shadow: 0 16px 60px #20203012;
+  --shadow: 0 16px 60px #10201812;
   background: var(--bg);
   color: var(--text);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #141416;
-  --sidebar: #101012;
-  --surface: #19191c;
-  --raised: #202024;
-  --hover: #29292f;
-  --line: #2b2b31;
-  --strong-line: #41414b;
-  --text: #eeeef0;
-  --muted: #a1a1ad;
-  --accent: #aaa2ff;
-  --accent-hover: #c0baff;
-  --tint: #282538;
+  --bg: #121212;
+  --sidebar: #080808;
+  --surface: #181818;
+  --raised: #202020;
+  --hover: #282828;
+  --line: #2b2b2b;
+  --strong-line: #424242;
+  --text: #f5f5f5;
+  --muted: #a7a7a7;
+  --accent: #1ed760;
+  --accent-hover: #3be477;
+  --tint: #17271c;
   --success: #89c8a8;
   --warning: #dfbb7c;
   --warning-bg: #29251d;
@@ -64,8 +67,8 @@ h1,h2,h3 { font-weight: 550; }
 h1 { font-size: 32px; letter-spacing: -1.25px; margin: 10px 0; line-height: 1.2; }
 h2 { font-size: 17px; letter-spacing: -.4px; }
 h3 { font-size: 14px; }
-.primary { background: #6860d6; border-color: #7971df; color: #fff; box-shadow: 0 1px 3px #0001, inset 0 1px #ffffff12; }
-.primary:hover { background: #5951c3; border-color: #8b84e8; }
+.primary { background: var(--action); border-color: var(--action); color: var(--action-text); box-shadow: 0 1px 3px #0001, inset 0 1px #ffffff12; }
+.primary:hover { background: var(--action-hover); border-color: var(--action-hover); }
 .text { border: 0; background: transparent; padding: 3px; font-size: 12px; }
 .danger { color: var(--danger); }
 .muted { color: var(--muted); font-size: 12px; }
@@ -79,7 +82,7 @@ h3 { font-size: 14px; }
 aside { position: fixed; inset: 0 auto 0 0; width: 224px; padding: 24px 14px 20px; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--line); overflow-y: auto; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .brand, .welcome-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 650; font-size: 19px; letter-spacing: -.7px; }
-.mark { display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: 29px; height: 29px; border-radius: 8px; background: #6860d6; color: #fff; flex-shrink: 0; transform: rotate(-5deg); }
+.mark { display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: 29px; height: 29px; border-radius: 8px; background: var(--action); color: var(--action-text); flex-shrink: 0; transform: rotate(-5deg); }
 .mark i { width: 2px; border-radius: 2px; background: currentColor; height: 12px; }
 .mark i:nth-child(2) { height: 19px; }
 .mark i:nth-child(3) { height: 15px; }
