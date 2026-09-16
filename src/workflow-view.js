@@ -59,7 +59,7 @@ export function workflowView(state, workflow, { esc, field, select }) {
             ["0.32", "Sensitive · more review needed"],
           ],
         )}</div>${workflow.movie ? `<video id="movie-preview" controls preload="metadata" src="${workflow.movie.url}"></video>` : ""}<p class="muted">Experimental: same recording at original speed/pitch works best. Masking, edits and short excerpts may be missed; repetitive recordings can create false matches. Up to 16 matching segments per reference; no external catalog search. Review detections before export.</p></details></div>`
-      : '<p class="muted">Next, Cuebook reads the duration and timing metadata, then asks for your reference cues. No production form to fill out first.</p>'
+      : '<p class="muted">Next, Cuestamp reads the duration and timing metadata, then asks for your reference cues. No production form to fill out first.</p>'
   }`
       : `<h2>1. Add ${mode === "offset" ? "music-only exports" : "cue audio"}</h2>${upload}<p class="muted">${mode === "offset" ? "Each file’s duration is read automatically. Add its film-start timecode below; the full film duration remains unknown." : "Add the recordings you want to report. Enter film in/out in the next step; cue duration is calculated from those timings."}</p>
   <details class="disclosure"><summary>Timing grid: ${esc(rates[p.rate].label)} · ${state.movieMetadata||state.rateEdited?'project setting':'assumed; edit if needed'}</summary><div id="workflow-settings">${rateField}</div><p class="muted">This is the shared project timecode grid${state.movieMetadata ? " (also used by saved movie placements)" : ""}. Audio alone does not establish a film frame rate.</p></details>

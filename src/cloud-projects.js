@@ -66,7 +66,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
     el.querySelector("#cloud-restore").onclick=()=>run(()=>media?.restore(report));
     el.querySelector("#cloud-new").onclick=()=>{if(confirmSwitch()){stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);location.reload();}};
     el.querySelector("#cloud-import").onclick=()=>run(async()=>{
-      const legacy=localStorage.getItem("cuebook-v1");
+      const legacy=localStorage.getItem("cuestamp-v1");
       if(!legacy) {status="No guest project is available to import.";return;}
       if(!confirmSwitch())return;
       // Import only on explicit action; never assign an anonymous project to an account automatically.
@@ -74,7 +74,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
       const {project}=await request("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:crypto.randomUUID(),revision:0,data})});
       replace({...project,data});
     });
-    document.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuebook-guest");}catch{}location.reload();});
+    document.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuestamp-guest");}catch{}location.reload();});
     el.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{if(confirmSwitch())replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
   return {view,header,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};

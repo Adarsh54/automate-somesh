@@ -35,9 +35,9 @@ function wav(duration, amplitude) {
   await page.route('**/assets/analysis.worker-*.js', route => {
     missingRequests++; return route.fulfill({ status: 404, contentType: 'text/html', body: 'Not found' });
   });
-  await page.goto(process.env.CUEBOOK_URL || 'http://127.0.0.1:5174/automate-somesh/');
+  await page.goto(process.env.CUESTAMP_URL || 'http://127.0.0.1:5174/cuestamp/');
   const ready = () => page.waitForFunction(() => !document.querySelector('#cancel-analysis'), null, {timeout:10000});
-  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('cuebook-v1')));
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('cuestamp-v1')));
   await page.locator('[data-mode="offset"]').click();
   for (const [name, seconds, volume] of [['quiet', 2, .01], ['silent', 1, 0], ['short', .2, .5], ['loud', 2, .5]]) {
     console.log('Checking source:', name);

@@ -16,13 +16,13 @@ export default async function handler(req,res) {
     if(action==="login" || action==="signup") {
       if(!allowMethod(req,res,"GET")) return;
       const flow=await workos().userManagement.getAuthorizationUrlWithPKCE({provider:"authkit",screenHint:action==="signup"?"sign-up":"sign-in",redirectUri:settings().origin+"/api/auth?action=callback"});
-      setCookie(res,"cuebook-auth-flow",await sealFlow({state:flow.state,codeVerifier:flow.codeVerifier}),600);
+      setCookie(res,"cuestamp-auth-flow",await sealFlow({state:flow.state,codeVerifier:flow.codeVerifier}),600);
       return redirect(res,flow.url);
     }
     if(action==="callback") {
       if(!allowMethod(req,res,"GET")) return;
-      const flow=await openFlow(cookie(req,"cuebook-auth-flow"));
-      setCookie(res,"cuebook-auth-flow","",0);
+      const flow=await openFlow(cookie(req,"cuestamp-auth-flow"));
+      setCookie(res,"cuestamp-auth-flow","",0);
       if(!equalState(flow.state,url.searchParams.get("state")) || !flow.codeVerifier || !url.searchParams.get("code"))
         return redirect(res,settings().origin+"/?authError=1");
       try {
@@ -31,7 +31,7 @@ export default async function handler(req,res) {
           session:{sealSession:true,cookiePassword:settings().secret},
         });
         await upsertUser(result.user);
-        setCookie(res,"cuebook-session",result.sealedSession,60*60*24*7);
+        setCookie(res,"cuestamp-session",result.sealedSession,60*60*24*7);
         return redirect(res,settings().origin+"/");
       } catch { return redirect(res,settings().origin+"/?authError=1"); }
     }
@@ -41,7 +41,7 @@ export default async function handler(req,res) {
       const session=await authenticate(req,res);
       // Revoke provider session, not just the browser cookie.
       if(session) await workos().userManagement.revokeSession({sessionId:session.sessionId});
-      setCookie(res,"cuebook-session","",0);
+      setCookie(res,"cuestamp-session","",0);
       return reply(res,200,{ok:true});
     }
     return reply(res,404,{error:"NOT_FOUND"});

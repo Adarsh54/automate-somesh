@@ -1,10 +1,10 @@
 // Run with PLAYWRIGHT_MODULE pointing to a Playwright installation.
-// Fixtures: python scripts/generate-fixtures.py /tmp/cuebook-fixtures /path/to/ffmpeg
+// Fixtures: python scripts/generate-fixtures.py /tmp/cuestamp-fixtures /path/to/ffmpeg
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
-const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
+const root = process.env.FIXTURES || "/tmp/cuestamp-fixtures";
+const url = process.env.CUESTAMP_URL || "http://127.0.0.1:5173/cuestamp/";
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   const page = await browser.newPage({
@@ -25,7 +25,7 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
     await control.dispatchEvent("change");
   }
   async function saved() {
-    return page.evaluate(() => JSON.parse(localStorage.getItem("cuebook-v1")));
+    return page.evaluate(() => JSON.parse(localStorage.getItem("cuestamp-v1")));
   }
   async function ready() {
     await page.waitForFunction(
@@ -49,7 +49,7 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
       `${root}/unmatched.wav`,
     ]);
   await page.waitForFunction(
-    () => JSON.parse(localStorage.getItem("cuebook-v1")).tracks.length === 3,
+    () => JSON.parse(localStorage.getItem("cuestamp-v1")).tracks.length === 3,
   );
   await ready();
   const decoded = Date.now();
@@ -90,7 +90,7 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   assert.equal((await saved()).cues.length, 5);
   await page.locator('.nav[data-tab="cues"]').click();
   await page.screenshot({
-    path: "/tmp/cuebook-movie-results.png",
+    path: "/tmp/cuestamp-movie-results.png",
     fullPage: true,
   });
   await page.locator("#confirm-detections").click();
@@ -126,8 +126,8 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   );
   const download = page.waitForEvent("download");
   await page.locator("#export").click();
-  await (await download).saveAs("/tmp/cuebook-matching.xlsx");
-  assert.ok(fs.statSync("/tmp/cuebook-matching.xlsx").size > 50000);
+  await (await download).saveAs("/tmp/cuestamp-matching.xlsx");
+  assert.ok(fs.statSync("/tmp/cuestamp-matching.xlsx").size > 50000);
   // Separate browser state for music-only offset and manual workflows.
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -199,7 +199,7 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.nav[data-tab="library"]').click();
   await page.screenshot({
-    path: "/tmp/cuebook-workflows-mobile.png",
+    path: "/tmp/cuestamp-workflows-mobile.png",
     fullPage: true,
   });
   assert.equal(

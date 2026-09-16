@@ -1,6 +1,6 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
-const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
+const root = process.env.FIXTURES || "/tmp/cuestamp-fixtures";
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true }),
     page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
@@ -8,10 +8,10 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("dialog", (d) => d.accept());
   await page.goto(
-    process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/",
+    process.env.CUESTAMP_URL || "http://127.0.0.1:5173/cuestamp/",
   );
   const saved = () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem("cuebook-v1")));
+    page.evaluate(() => JSON.parse(localStorage.getItem("cuestamp-v1")));
   const ready = () =>
     page.waitForFunction(() => !document.querySelector("#cancel-analysis"));
   async function fill(selector, value) {
@@ -26,7 +26,7 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   assert.equal(await page.locator('[data-field="rate"]').count(), 0);
   assert.equal(await page.locator('[data-field="startTimecode"]').count(), 0);
   assert.equal(await page.locator("[data-upload]").count(), 0);
-  await page.screenshot({ path: "/tmp/cuebook-ux-start.png", fullPage: true });
+  await page.screenshot({ path: "/tmp/cuestamp-ux-start.png", fullPage: true });
   await page.locator("#movie-upload").setInputFiles(`${root}/movie.mp4`);
   await ready();
   let s = await saved();
@@ -95,13 +95,13 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   s = await saved();
   assert.equal(s.movieOffset, "00:59:55:00");
   assert.equal(s.movieOverrides.duration, "00:08:00");
-  await page.screenshot({ path: "/tmp/cuebook-ux-movie.png", fullPage: true });
+  await page.screenshot({ path: "/tmp/cuestamp-ux-movie.png", fullPage: true });
   await page.locator('[data-mode="offset"]').click();
   await page
     .locator("[data-upload]")
     .setInputFiles([`${root}/cue-a.wav`, `${root}/cue-b.wav`]);
   await page.waitForFunction(
-    () => JSON.parse(localStorage.getItem("cuebook-v1")).tracks.length === 2,
+    () => JSON.parse(localStorage.getItem("cuestamp-v1")).tracks.length === 2,
   );
   await ready();
   assert.equal(
@@ -110,7 +110,7 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   );
   assert.equal(await page.locator('[data-field="duration"]').count(), 0);
   assert.equal(await page.locator('[data-field="startTimecode"]').count(), 0);
-  await page.screenshot({ path: "/tmp/cuebook-ux-offset.png", fullPage: true });
+  await page.screenshot({ path: "/tmp/cuestamp-ux-offset.png", fullPage: true });
   const offsets = await page.locator("[data-track-offset] input").all();
   for (const [i, el] of offsets.entries()) {
     await el.fill(i ? "01:01:00:00" : "01:00:00:00");
@@ -146,7 +146,7 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   );
   const download = page.waitForEvent("download");
   await page.locator("#export").click();
-  await (await download).saveAs("/tmp/cuebook-unknown-production.xlsx");
+  await (await download).saveAs("/tmp/cuestamp-unknown-production.xlsx");
   await page.locator('.nav[data-tab="library"]').click();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
