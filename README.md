@@ -4,15 +4,15 @@ A Vite cue sheet workspace with a small Vercel Functions API. Live: https://cues
 
 ## Run
 
-Use Node.js 22.12+ (or 24): `npm ci`, then `npm run dev`. Open the printed local URL. `npm test` checks timing and credit validation; `npm run build` creates `dist/`.
+Use Node.js 22.12+ (or 24): `npm ci`, configure the development services in [SETUP.md](SETUP.md), then run `npm run dev:api` and `npm run dev`. Open the printed local URL. `npm test` checks timing and credit validation; `npm run build` creates `dist/`.
 
 ## Hosting
 
 Vercel uses the checked-in `vercel.json`: install with `npm ci`, run tests and the Vite build, then serve `dist/`. Connect this GitHub repository with `master` as the production branch for automatic deployments; other branches produce previews.
 
-The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/cuestamp/` explicitly so that address remains usable.
+The default asset base is `/`. The GitHub Pages workflow publishes a redirect to Cuestamp; processing requires the Vercel backend.
 
-Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Analysis remains in the browser; signed-in users can save audio/video to private Vercel Blob.
+Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Audio processing runs in Vercel Functions for both guests and signed-in users. Originals and temporary PCM use private Vercel Blob.
 
 ## Backend API
 
@@ -21,19 +21,19 @@ Local drafts remain in browser localStorage, scoped to the site's origin. Moving
 - Request fields: `production`, `mode`, `tracks`, `cues`, `sharedCueDetails`, and optional `movieOffset`, `movieMetadata`, `movieOverrides`. See `src/api-client.js` for the minimal payload and `server/services/validate-project.js` for the schema.
 - `api/`: thin Vercel HTTP entry points. `server/`: parsing/schema validation and services. `src/domain/review.js`: platform-independent business rules shared with the frontend.
 - Health and validation are public, stateless endpoints. Saved-project routes require WorkOS authentication and enforce ownership on every query. Media routes authorize direct uploads to private Vercel Blob and short-lived downloads.
-- Vercel enables server validation before export via `VITE_API_ENABLED=true` in the build command. Local/Pages builds remain browser-only unless enabled explicitly. If the server check fails, export shows a retryable error and retains edits.
-- Local full-stack development: run `npm run dev:api` and, in another terminal, `VITE_API_ENABLED=true npm run dev`. Vite proxies `/api` to port 3001. The anonymous workspace needs no credentials; accounts and cloud media require development credentials.
-- Each function has a 10-second maximum duration. No application request-body logging or persistent caches are used. WorkOS authentication and Neon project storage are implemented separately; distributed rate limiting and background processing remain future work.
+- Vercel enables server validation before export via `VITE_API_ENABLED=true` in the build command. This flag controls export validation; audio processing always requires the backend. If the server check fails, export shows a retryable error and retains edits.
+- Local full-stack development: run `npm run dev:api` and, in another terminal, `VITE_API_ENABLED=true npm run dev`. Vite proxies `/api` to port 3001. Guest processing also requires configured development Neon, Blob and session credentials.
+- Analysis has a 300-second function limit (Fluid Compute); other routes remain at 10 seconds. Decoding runs once per file, matching once per reference. Neon enforces daily request quotas and a single active processing lease per browser session.
 
 ## Workflow
 
-1. **Movie matching (experimental):** upload the finished movie and actual cue recordings used in it. The app decodes the movie's primary audio track, searches for supplied recordings and proposes each matching region's film in/out timecodes. Repeated uses and trimmed excerpts are supported within the limits below. No external catalog is involved; media is uploaded only when saving to an account.
+1. **Movie matching (experimental):** upload the finished movie and actual cue recordings used in it. The app decodes the movie's primary audio track, searches for supplied recordings and proposes each matching region's film in/out timecodes. Repeated uses and trimmed excerpts are supported within the limits below. No external catalog is involved; media is uploaded privately before processing, including for guests.
 2. **Audio with offset:** upload music-only audio exports, set each file's starting film timecode and detect regions separated by silence. This detects sound/silence in a known music-only input, not music versus dialogue. Quiet tails/noise depend on the threshold; short internal gaps can be merged.
 3. **Manual:** enter film timecodes directly or mark in/out during cue playback. Marks add that audio file's film-start offset.
 
 All workflows share production metadata, cue titles, usage, composer/publisher credits, PRO/IPI/shares, review and BMI XLSX export. The main Find your cues page starts with the full composer/publisher form. The four sidebar steps are Find your cues, Timings & usage, Production details, and Review & export. It provides common provenance and writer/publisher credits before or after detection. New cues inherit these values live. Each cue can override provenance or the entire credit list independently and reset either group to shared. Titles, timings and usage remain cue-specific. Existing saved cue values migrate conservatively as overrides; no legacy edits are overwritten. Provenance is optional and never inferred ownership. Unchanged, uniquely matched source segments keep overrides and IDs on rerun (including after clearing results); changed or ambiguous segments require review. Validation and BMI credit rows use effective shared/overridden values; Frame timings also records effective provenance. Text edits save on input without rebuilding the focused form. Each role's shares must total 100%. Automatic results need review before export; one confirmation action is available after reviewing the list. Cue titles can be edited separately for each detected region.
 
-Metadata, credits and placements persist in localStorage. Anonymous media needs reattachment after reload. Saved account media is restored from private Blob storage and decoded locally. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. When configured, WorkOS accounts can explicitly save private projects in Neon. Anonymous workspaces remain local. See [account setup](SETUP.md). On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
+Metadata, credits and placements persist in localStorage. Anonymous media needs reattachment after reload. Saved account media is restored from private Blob storage and processed on the server. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. When configured, WorkOS accounts can explicitly save private projects in Neon. Guest cue-sheet drafts remain local; their media is temporarily uploaded for analysis. See [account setup](SETUP.md). On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
 
 ## Timecodes
 
@@ -63,42 +63,36 @@ Export requires a production title, valid cue timings/usages, complete contribut
 
 ## Analysis implementation and limits
 
-- `src/media.js`: Mediabunny demuxing and browser audio decoding. Audio is streamed in chunks and reduced to mono at 2 kHz using time-bin averaging. Full-rate movie PCM is not retained. Uses the primary audio track; video frames are not analyzed.
+- `server/audio-processing.js`: native FFmpeg/ffprobe decode from a short-lived Blob URL to mono 2 kHz PCM. Full-rate PCM is not retained; timestamps and channel averaging preserve relative placement.
 - `src/analysis.js`: mean-normalized waveform cross-correlation using FFTs, then local correlation to trace matching regions. Handles gain changes and polarity inversion. At most 16 two-second anchors per reference and 100 candidate alignments bound long-reference work. Excerpts must overlap a usable anchor; references over about 32 seconds are searched more sparsely.
-- `src/analysis.worker.js`: cancellable worker for matching and silence detection. Progress describes actual decoding or current reference/anchor work. Cancellation keeps previous results.
+- `src/backend-analysis.js`: private uploads and sequential server requests. `server/analysis-thread.js` runs the matching algorithm in a terminable Node worker. Cancellation stops the browser run and keeps prior cues; a server request already running may finish within its time limit.
 - `src/timecode.js`: frame arithmetic, drop/non-drop parsing, offsets and export clock conversion.
-- `src/metadata.js` / `src/project.js`: bounded QuickTime timecode reading, rate inference/fallback, path-specific effective production values, per-file overrides and draft validation. QuickTime format source: https://developer.apple.com/documentation/quicktime-file-format/timecode_sample_description . Frame metrics: https://mediabunny.dev/guide/reading-media-files . Creation timestamps and unrelated metadata are never used as film origins.
+- `src/metadata.js` / `src/project.js`: bounded QuickTime timecode reading, rate inference/fallback, path-specific effective production values, per-file overrides and draft validation. QuickTime format source: https://developer.apple.com/documentation/quicktime-file-format/timecode_sample_description . Creation timestamps and unrelated metadata are never used as film origins.
 
 Use the same recording at original speed/pitch with reasonably audible music. Heavy masking, different mixes, EQ, retiming, short fragments, edits or stereo cancellation may cause missed/fragmented matches. Repetitive tones and similar recordings can produce false candidates. Similarity is a correlation measurement, **not a probability**. This is real signal analysis but does not guarantee every occurrence; review against the movie and correct when needed.
 
-Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes. Memory/work grow with movie length and reference count; use a desktop for larger projects.
+Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; The server decoder supports WebM/Opus and other allowed media formats; browser codec support still affects playback. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes. Uploads depend on network speed. Very complex files can hit the processing timeout; use a shorter export if requested.
 
 ## Verification
 
 `npm test` covers silence, repeated/trimmed matches under additive noise, unrelated audio rejection, timecodes, pre-roll, fractional rates, drop-frame transitions and credit/placement validation.
 
-Generate deterministic non-copyrighted integration media using Python and ffmpeg:
+Generate deterministic non-copyrighted integration media and test native processing:
 
 ```sh
 python scripts/generate-fixtures.py /tmp/cuestamp-fixtures /path/to/ffmpeg
-PLAYWRIGHT_MODULE=/path/to/playwright node scripts/browser-check.cjs
-PLAYWRIGHT_MODULE=/path/to/playwright node scripts/metadata-browser-check.cjs
+node scripts/backend-audio-check.mjs
+PLAYWRIGHT_MODULE=/path/to/playwright node scripts/browser-backend-check.cjs
 ```
 
-`CUESTAMP_URL` targets another deployment; `FIXTURES` overrides the fixture folder. Chrome runs in an isolated test profile. The script exercises actual 10-minute MP4/AAC decoding, repeated uses, a trimmed excerpt, a no-match reference, all three workflows, offsets, credits/review/export, persistence, mobile layout and browser errors. Generated media/workbooks stay outside the repository.
+`FIXTURES` overrides the fixture folder. The native check uses a local range-capable HTTP server and real FFmpeg binaries; it checks a ten-minute movie, five repeated/trimmed placements, unrelated audio rejection, silence boundaries, variable frame rate and embedded timecode. The browser check uses mocked upload/API transport to verify integration, retry and cancellation without cloud credentials. Older browser scripts predate the server migration and need a configured backend or adapted fixtures.
 
-Metadata/UX verification additionally covers actual 24/25 fps and drop-frame embedded-timecode MOVs, variable-rate MP4, inferred summaries, no upfront duplicate timing fields, independent offsets, switching paths, file replacement/restored overrides, and draft XLSX with genuinely unknown show duration. Unit tests exercise inference, provenance isolation, pre-roll, invalid timing and unknown bounds.
-
-Local measurement on September 15, 2026: three references (8s, 5s, 6s) against a 10-minute synthetic MP4 found all five expected placements and no match for the unrelated reference. Signal processing took approximately **1.5 seconds**; upload/decode/analyze flow took **2.4 seconds**. This is a synthetic baseline on this machine, not a guarantee for arbitrary movies/hardware. Boundaries passed a 0.2-second tolerance. The downloaded workbook was separately parsed to verify clock times, durations, totals, shares and the Frame timings sheet.
+Temporary processing assets expire after 24 hours. A daily authenticated Vercel cron deletes expired originals and PCM. Saved account originals have separate ownership records and are retained. Saving currently uploads a separate permanent copy; restoring it downloads for playback and uploads a temporary analysis copy.
 
 ## GitHub Pages
 
-Vite is configured for `/cuestamp/`. `.github/workflows/pages.yml` builds, tests and deploys the static output on pushes to `master` or manual dispatch.
-
-The repository is public with the owner’s explicit authorization, and Pages uses GitHub Actions as the build source. Site URL: https://adarsh54.github.io/cuestamp/
-
-Vercel serves the frontend and API publicly. GitHub Pages remains a static, browser-only build. On Vercel, validation processes submitted cue-sheet details without saving them or logging request bodies; media never leaves the browser.
+The legacy Pages address redirects to https://cuestamp.com/. A static Pages build cannot run the processing API.
 
 ## Dependency notices
 
-Mediabunny is MPL-2.0; unmodified source/license: https://github.com/Vanilagy/mediabunny (version in lockfile). JSZip is used under MIT: https://github.com/Stuk/jszip. Their npm packages contain license files. The matching algorithm uses no external catalog data.
+Server FFmpeg binaries come from `ffmpeg-static` (GPL-3.0-or-later); ffprobe binaries come from `ffprobe-static`. Packages include their license notices. JSZip is used under MIT: https://github.com/Stuk/jszip. Their npm packages contain license files. The matching algorithm uses no external catalog data.

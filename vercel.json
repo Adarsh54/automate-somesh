@@ -5,8 +5,19 @@
   "buildCommand": "npm test && VITE_API_ENABLED=true npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/*.js": {
+    "api/analysis.js": {
+      "maxDuration": 300,
+      "includeFiles": "{server/analysis-thread.js,src/analysis.js,node_modules/ffmpeg-static/ffmpeg,node_modules/ffprobe-static/bin/linux/x64/ffprobe}",
+      "excludeFiles": "node_modules/ffprobe-static/bin/{darwin,win32,linux/ia32,linux/arm64}/**"
+    },
+    "api/{auth,health,media,projects,validate}.js": {
       "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/analysis",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }

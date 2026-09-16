@@ -1,8 +1,7 @@
 import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
-import { decodeMedia } from "./media.js";
+import { decodeMedia, BackendAnalysis } from "./backend-analysis.js";
 import { toFrames, atOffset, rates } from "./timecode.js";
 import { applyMovieMetadata } from "./project.js";
-import AnalysisWorker from "./analysis.worker.js?worker&inline";
 
 export class Workflow {
   constructor({ state, save, render, notify }) {
@@ -37,8 +36,8 @@ export class Workflow {
     try {
       const decoded = await decodeMedia(
         file,
-        (percent) => {
-          this.progress = `Decoding ${file.name} · ${percent}%`;
+        (text) => {
+          this.progress = text;
           const el = document.querySelector("#analysis-progress");
           if (el) el.textContent = this.progress;
         },
@@ -90,7 +89,7 @@ export class Workflow {
         if (this.urls.has(track.id))
           URL.revokeObjectURL(this.urls.get(track.id));
         this.urls.set(track.id, url);
-        this.audio.set(track.id, decoded.samples);
+        this.audio.set(track.id, decoded.assetId);
         track.duration = decoded.duration;
       }
       if (!movie && !restoring && this.state.media) delete this.state.media.tracks[track.id];
@@ -141,23 +140,13 @@ export class Workflow {
       this.notify(`${detail} Existing cues were kept.`);
     };
     try {
-      // Keep the worker with this app version: Pages removes old hashed assets
-      // on deploy, but an already-open tab must still be able to start analysis.
-      this.worker = new AnalysisWorker();
+      // Keep cancellation and stale-result guards around each server analysis run.
+      this.worker = new BackendAnalysis();
     } catch {
       return fail("Audio analysis could not start. Try again, or reload and restore your media.");
     }
     const worker = this.worker;
     this.render();
-    this.worker.onerror = (event) => {
-      if (this.worker !== worker) return;
-      event.preventDefault();
-      fail("Audio analysis stopped unexpectedly. Retry; if it happens again, try a shorter audio export or reload and reattach your media.");
-    };
-    this.worker.addEventListener("messageerror", () => {
-      if (this.worker !== worker) return;
-      fail("The analysis result could not be read. Retry or use a shorter audio export.");
-    });
     this.worker.onmessage = ({ data }) => {
       if (this.worker !== worker) return;
       if (data.type === "progress") {
@@ -172,7 +161,7 @@ export class Workflow {
       this.progress = "";
       if (data.type === "error")
         return this.notify(
-          "The audio could not be analyzed. Try a shorter audio export or reattach the source files and retry. Existing cues were kept.",
+          `${data.message || "The audio could not be analyzed. Please retry."} Existing cues were kept.`,
         );
       const cues = [];
       for (const result of data.results) {
@@ -233,14 +222,14 @@ export class Workflow {
         `${cues.length} ${mode === "movie" ? "matching placements" : "sound regions"} detected in ${data.elapsed.toFixed(1)}s of analysis. Review the results and add usage/credits before export.`,
       );
     };
-    // Structured cloning leaves low-rate PCM cached for re-analysis and previews.
+    // Send only owned asset IDs; audio decoding and matching run in Vercel.
     try { this.worker.postMessage({
       mode,
-      movie: this.movie?.samples,
+      movie: this.movie?.assetId,
       tracks: s.tracks.map((t) => ({
         id: t.id,
         title: t.title,
-        samples: this.audio.get(t.id),
+        assetId: this.audio.get(t.id),
       })),
       options:
         mode === "offset"

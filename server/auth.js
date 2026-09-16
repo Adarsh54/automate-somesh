@@ -45,7 +45,7 @@ export async function authenticate(req,res,client = workos) {
   return {user:result.user,sessionId:result.sessionId};
 }
 export function apiError(res,error) {
-  const status=[400,401,403,404,409,413,415,503].includes(error.status)?error.status:500;
+  const status=[400,401,403,404,409,413,415,429,503].includes(error.status)?error.status:500;
   res.setHeader("Cache-Control","no-store");
   return res.status(status).json({error:status===500?"INTERNAL_ERROR":error.message});
 }
