@@ -75,7 +75,7 @@ try {
 delete state.thresholdDb;
 const savedGap = Number(state.silenceGap);
 state.silenceGap = state.silenceGap != null && state.silenceGap !== "" && Number.isFinite(savedGap)
-  ? Math.round(Math.min(30, Math.max(0, savedGap)) * 20) / 20
+  ? Math.round(Math.min(10, Math.max(0, savedGap)) * 20) / 20
   : 0.35;
 const workflow = new Workflow({
   state,
