@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test",
     "dev:api": "node --env-file-if-exists=.env.local --watch server/dev.js",
-    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs"
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

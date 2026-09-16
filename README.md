@@ -65,13 +65,15 @@ Export requires a production title, valid cue timings/usages, complete contribut
 
 - `src/media.js`: Mediabunny demuxing and browser audio decoding. Audio is streamed in chunks and reduced to mono at 2 kHz using time-bin averaging. Full-rate movie PCM is not retained. Uses the primary audio track; video frames are not analyzed.
 - `src/analysis.js`: mean-normalized waveform cross-correlation using FFTs, then local correlation to trace matching regions. Handles gain changes and polarity inversion. At most 16 two-second anchors per reference and 100 candidate alignments bound long-reference work. Excerpts must overlap a usable anchor; references over about 32 seconds are searched more sparsely.
-- `src/analysis.worker.js`: cancellable worker for matching and silence detection. Progress describes actual decoding or current reference/anchor work. Cancellation keeps previous results.
+- `src/analysis.worker.js`: cancellable worker for matching and silence detection. Movie-matching FFTs use the Float64 WebAssembly kernel in `wasm/fft.c`, with JavaScript fallback if Wasm cannot load. Browser media decoding remains local. Progress describes actual decoding or current reference/anchor work. Cancellation keeps previous results.
 - `src/timecode.js`: frame arithmetic, drop/non-drop parsing, offsets and export clock conversion.
 - `src/metadata.js` / `src/project.js`: bounded QuickTime timecode reading, rate inference/fallback, path-specific effective production values, per-file overrides and draft validation. QuickTime format source: https://developer.apple.com/documentation/quicktime-file-format/timecode_sample_description . Frame metrics: https://mediabunny.dev/guide/reading-media-files . Creation timestamps and unrelated metadata are never used as film origins.
 
 Use the same recording at original speed/pitch with reasonably audible music. Heavy masking, different mixes, EQ, retiming, short fragments, edits or stereo cancellation may cause missed/fragmented matches. Repetitive tones and similar recordings can produce false candidates. Similarity is a correlation measurement, **not a probability**. This is real signal analysis but does not guarantee every occurrence; review against the movie and correct when needed.
 
 Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes. Memory/work grow with movie length and reference count; use a desktop for larger projects.
+
+See [Wasm build and benchmark notes](wasm/README.md) for reproducible compilation, parity checks and the measured speedup. Wasm accelerates matching; it does not replace the frontend or require media uploads.
 
 ## Verification
 

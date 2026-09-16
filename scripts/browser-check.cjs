@@ -14,6 +14,14 @@ const url = process.env.CUESTAMP_URL || "http://127.0.0.1:5173/cuestamp/";
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("dialog", (dialog) => dialog.accept());
+  await page.addInitScript(() => {
+    sessionStorage.setItem("cuestamp-guest", "yes");
+    window.__analysisEngines=[];
+    const NativeWorker=window.Worker;
+    window.Worker=class extends NativeWorker {
+      constructor(...args){super(...args);this.addEventListener('message',({data})=>{if(data.type==='done' && data.engine)window.__analysisEngines.push(data.engine);});}
+    };
+  });
   await page.goto(url);
   async function fill(selector, value) {
     const control = page.locator(selector).last();
@@ -55,6 +63,7 @@ const url = process.env.CUESTAMP_URL || "http://127.0.0.1:5173/cuestamp/";
   const decoded = Date.now();
   await page.locator("#analyze").click();
   await ready();
+  assert.ok((await page.evaluate(()=>window.__analysisEngines)).includes("wasm"), "Real worker must execute the Wasm engine");
   let state = await saved();
   console.log(
     "MOVIE",
