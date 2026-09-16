@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
  const b=await chromium.launch({channel:'chrome',headless:true});const p=await b.newPage({viewport:{width:1440,height:1100}});
  const errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
  await p.goto(process.env.CUEBOOK_URL||'http://127.0.0.1:5174/automate-somesh/');
+ await p.locator('#shared-details').waitFor(); // Initial render waits for the session check.
  const nav=n=>p.locator('#sidebar-nav').getByRole('button',{name:n,exact:true}).click();
  const jump=n=>p.locator('#sidebar-nav').getByRole('button',{name:n,exact:true}).evaluate(e=>e.click()); // no blur: regression for model updates on input
  const saved=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1')));
