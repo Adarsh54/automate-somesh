@@ -1,5 +1,5 @@
 export function blankCredits() {
-  return ['Composer', 'Publisher'].map(role => ({role, first:'', last:'', name:'', pro:'', ipi:'', share:''}));
+  return ['Composer', 'Publisher'].map(role => ({id:crypto.randomUUID(), role, first:'', last:'', name:'', pro:'', ipi:'', share:''}));
 }
 export function effectiveCue(cue, shared) {
   return {...cue, category: cue.category ?? shared?.category ?? 'unknown', credits: cue.credits ?? shared?.credits ?? []};
@@ -20,6 +20,9 @@ export function migrateCueDetails(state) {
       cue.credits ??= structuredClone(track?.credits ?? blankCredits());
     }
     state.cueDetailsVersion = 2;
+  }
+  for (const owner of [state.sharedCueDetails, ...state.cues, ...(state.cueDetailsArchive ?? [])]) {
+    for (const credit of owner.credits ?? []) credit.id ??= crypto.randomUUID();
   }
   for (const track of state.tracks) delete track.category;
 }

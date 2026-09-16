@@ -194,7 +194,7 @@ function provenanceField(value) {
   return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
 }
 function cueCreditEditor(cue, shared = false) {
-  return `<div class="cue-credit-form"><p class="muted">${shared ? "Shared credits update all inheriting cues." : "Credits overridden for this cue only."} Confirm every contributor and enter each role’s shares out of 100%.</p>${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
+  return `<div class="cue-credit-form"><p class="muted">${shared ? "Shared credits update all inheriting cues." : "Credits overridden for this cue only."} Confirm every contributor and enter each role’s shares out of 100%.</p>${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}" data-credit-id="${c.id}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
 }
 function production() {
   const p = effectiveProduction(state),
@@ -252,7 +252,7 @@ function reviewPage(issues) {
   return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
 }
 function credit(role) {
-  return { role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
+  return { id: id(), role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
 }
 function addCue(trackId) {
   const track = state.tracks.find((t) => t.id === trackId);
@@ -270,6 +270,14 @@ function addCue(trackId) {
   tab = "cues";
   save();
   render();
+}
+function writeCreditField(element, key) {
+  const owner = element.closest("#shared-details") ? state.sharedCueDetails
+    : state.cues.find(c => c.id === element.closest("[data-cue]")?.dataset.cue);
+  const person = owner?.credits?.find(p => p.id === element.closest("[data-credit]").dataset.creditId);
+  if (!person) return false; // A pending blur from a removed/reset contributor is obsolete.
+  person[key] = element.value;
+  return true;
 }
 function bind() {
   bindWorkflows();
@@ -307,9 +315,11 @@ function bind() {
     (e) =>
       (e.onchange = (event) => {
         const k = e.dataset.field;
+        if (e.closest("[data-cue]") && !state.cues.some(c => c.id === e.closest("[data-cue]").dataset.cue)) return;
+        if (e.closest("[data-editor]") && !state.tracks.some(t => t.id === e.closest("[data-editor]").dataset.editor)) return;
         let refresh = false;
         if (e.closest("#shared-details")) {
-          if (e.closest("[data-credit]")) state.sharedCueDetails.credits[Number(e.closest("[data-credit]").dataset.credit)][k] = e.value;
+          if (e.closest("[data-credit]")) { if (!writeCreditField(e, k)) return; }
           else state.sharedCueDetails[k] = e.value;
         } else if (e.closest("#workflow-settings")) {
           if (k === "rate") {
@@ -351,10 +361,9 @@ function bind() {
             state.movieOverrides ??= {};
             state.movieOverrides.duration = e.value;
           } else state.production[k] = e.value;
-        } else if (e.closest("[data-credit]"))
-          state.cues.find((c) => c.id === e.closest("[data-cue]").dataset.cue).credits[
-            Number(e.closest("[data-credit]").dataset.credit)
-          ][k] = e.value;
+        } else if (e.closest("[data-credit]")) {
+          if (!writeCreditField(e, k)) return;
+        }
         else if (e.closest("[data-editor]"))
           state.tracks.find((t) => t.id === e.closest("[data-editor]").dataset.editor)[k] = e.value;
         else if (e.closest("[data-cue]")) {

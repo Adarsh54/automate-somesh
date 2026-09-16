@@ -9,6 +9,16 @@ const assert=require('node:assert/strict');
  const saved=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1')));
  const ready=()=>p.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
  await nav('Shared cue details');
+ // Removing a focused contributor must not redirect a pending blur into its neighbor.
+ await p.locator('[data-add-credit="Composer"]').click();
+ await p.locator('[data-credit="2"] [data-field="last"]').fill('Keep writer');
+ await p.locator('[data-credit="0"] [data-field="last"]').fill('Removed writer');
+ await p.locator('[data-remove-credit="0"]').evaluate(e=>e.click());
+ assert.equal((await saved()).sharedCueDetails.credits.find(c=>c.role==='Publisher').last,'');
+ assert.equal((await saved()).sharedCueDetails.credits.find(c=>c.role==='Composer').last,'Keep writer');
+ await p.locator('[data-remove-credit="1"]').click();await p.locator('[data-remove-credit="0"]').click();await p.locator('[data-add-credit="Composer"]').click();await p.locator('[data-add-credit="Publisher"]').click();
+ // Restore conventional role order only for fixed export row assertions below.
+ await p.reload();await nav('Shared cue details');
  await p.locator('#shared-details [data-field="category"]').selectOption('original');
  for(const [key,value] of [['first','Common'],['last','Writer'],['name','Shared publisher']]) await p.locator(`#shared-details [data-field="${key}"]`).fill(value);
  for(const e of await p.locator('#shared-details [data-field="pro"]').all()) await e.fill('BMI');
@@ -35,7 +45,7 @@ const assert=require('node:assert/strict');
  await jump('Timings & usage');assert.equal(await first.locator('[data-field="title"]').inputValue(),'Independent title');assert.match(await first.textContent(),/Changed shared writer/);assert.equal(await second.locator('[data-field="last"]').inputValue(),'Solo writer');
  const originalStart=await first.locator('[data-field="start"]').inputValue();await first.locator('[data-field="start"]').fill('01:0');await jump('Shared cue details');await nav('Timings & usage');assert.equal(await first.locator('[data-field="start"]').inputValue(),'01:0');await first.locator('[data-field="start"]').fill(originalStart);
  await second.locator('[data-field="share"]').first().fill('');await jump('Review & export');assert.match(await p.locator('.issues').textContent(),/shares/);await nav('Timings & usage');assert.equal(await second.locator('[data-field="share"]').first().inputValue(),'');await second.locator('[data-field="share"]').first().fill('100');
- await second.locator('[data-reset-shared="credits"]').click();assert.match(await second.textContent(),/Changed shared writer/);assert.equal(await second.locator('[data-field="category"]').inputValue(),'sourced');
+ await second.locator('[data-reset-shared="credits"]').evaluate(e=>e.click());assert.match(await second.textContent(),/Changed shared writer/);assert.equal(await second.locator('[data-field="category"]').inputValue(),'sourced');
  await second.locator('[data-override-credits]').click();await second.locator('[data-field="last"]').fill('Solo writer');await second.locator('[data-field="name"]').fill('Solo publisher');
  await second.locator('[data-reset-shared="category"]').click();assert.equal(await second.locator('[data-field="category"]').inputValue(),'original');await second.locator('[data-field="category"]').selectOption('sourced');
  await p.reload();await nav('Timings & usage');assert.equal(await second.locator('[data-field="last"]').inputValue(),'Solo writer');assert.match(await first.textContent(),/Changed shared writer/);
