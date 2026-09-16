@@ -11,7 +11,6 @@ The production Vercel project is `cuestamp`. Configure these **server-only** env
 - `DATABASE_URL`: Neon PostgreSQL connection string with TLS
 - `BLOB_READ_WRITE_TOKEN`: server-only token for the private `cuestamp-media` Vercel Blob store
 - `BLOB_STORE_ID`: store ID, added by the Vercel store connection
-- `CRON_SECRET`: random secret of at least 32 characters; Vercel sends it as a Bearer token to the daily analysis cleanup route
 
 WorkOS AuthKit redirect URI:
 `https://cuestamp.com/api/auth?action=callback`
@@ -52,7 +51,7 @@ npm run dev:api
 VITE_API_ENABLED=true npm run dev
 ```
 
-Without service credentials, manual editing/export remains available, but uploading and analyzing media requires the API. No fake login or client-side processing fallback is used.
+If service credentials are missing, accounts remain disabled and the existing browser-only workspace still works. No fake login or fallback user is used.
 
 ## Account behavior
 
@@ -79,14 +78,14 @@ The editor saves drafts locally under a per-user key. **Save project** explicitl
 
 The `cuestamp-media` private Blob store (IAD1) is connected to Vercel. Save project uploads attached original files directly from the browser using multipart uploads, then saves their asset IDs in Neon. The server issues upload tokens only to the authenticated owner, restricted to an exact generated path, content type, declared size and one-hour expiration, without overwrite. Finalization checks Blob metadata before allowing a project reference. Project copies reuse immutable assets.
 
-Downloads require an owner check and return a GET-only signed URL scoped to one object, expiring after five minutes. URLs and credentials are never saved in the project document. Downloads go directly to Blob; media decoding runs in Vercel Functions. Restore media retries failed downloads without changing cue review flags or movie timing overrides.
+Downloads require an owner check and return a GET-only signed URL scoped to one object, expiring after five minutes. URLs and credentials are never saved in the project document. Downloads go directly to Blob; media decoding stays in the browser. Restore media retries failed downloads without changing cue review flags or movie timing overrides.
 
 - `POST /api/media?action=reserve`: validate metadata and create an owned pending asset.
 - `POST /api/media`: issue a constrained client upload token.
 - `POST /api/media?action=complete`: verify the uploaded object's size/path/type and mark ready.
 - `GET /api/media?id=UUID`: authorize and return a short-lived private download URL.
 
-Per-file application limit: 2 GiB; actual capacity depends on the Vercel plan (the current Hobby store shows 1 GB included storage and 10 GB transfer). The server decoder limits each file to 20 minutes. Failed saves retain the local draft; completed uploads are reused on retry. Removing a file from a project removes its reference, not the stored object, so other saved copies remain intact. Orphan cleanup and a permanent-delete UI are not yet implemented; manage unneeded objects in the private Blob dashboard. An interrupted upload before finalization may leave an unused object/reservation.
+Per-file application limit: 2 GiB; actual capacity depends on the Vercel plan (the current Hobby store shows 1 GB included storage and 10 GB transfer). The existing browser decoder duration limit still applies. Failed saves retain the local draft; completed uploads are reused on retry. Removing a file from a project removes its reference, not the stored object, so other saved copies remain intact. Orphan cleanup and a permanent-delete UI are not yet implemented; manage unneeded objects in the private Blob dashboard. An interrupted upload before finalization may leave an unused object/reservation.
 
 `scripts/browser-media-check.cjs` tests audio/video save, upload failure, reload/decoding and copy reuse with a mock Blob transport against the Vite dev server. `npm test` also tests real Postgres media ownership and signed-download authorization. A real production login/upload/download round trip is required before calling the hosted integration fully verified.
 
@@ -103,15 +102,3 @@ The WorkOS team/application and Google Cloud project/consent app use Cuestamp; t
 The frontend migrates legacy storage keys to the Cuestamp prefix on the same origin. Browser-only drafts cannot automatically cross domains; saved account projects are in the existing Neon database. Users sign in again on the new domain. Theme and guest preferences on a new domain start fresh.
 
 Verified after migration: HTTPS, domain redirects, production health endpoint, Google sign-in returning to `cuestamp.com`, and the renamed welcome/guest flow. The repo rename retained the Vercel Git integration and GitHub Pages deployment workflow.
-
-## Backend audio processing rollout
-
-Before deploying this branch, run migration `003_analysis.sql` via `npm run db:migrate`, configure `CRON_SECRET`, and enable Vercel Fluid Compute. The analysis route needs the configured 300-second maximum. Use a separate Neon branch, Blob store, APP_URL and session secret for previews. The current production credentials are intentionally not shared with previews.
-
-`api/analysis.js` supports private direct-upload reservation/token issuance, decode, and detection. The browser sends IDs and settings; PCM never returns to it. FFmpeg/ffprobe and the Node worker are explicitly included in the function bundle. A signed HttpOnly cookie owns temporary assets for guests and signed-in visitors, independent of WorkOS project ownership. This preserves guest processing and allows a login in the same browser without sharing another visitor's assets.
-
-Temporary assets expire 24 hours after reservation. The authenticated daily cron at `/api/analysis` deletes expired originals and PCM, then prunes quota/lease records. Allow up to one daily cleanup interval after expiration for deletion. Monitor cron failures and storage usage. Saved account media uses separate paths and is never deleted by this job.
-
-Limits: 40 upload reservations and 150 processing attempts per browser session per UTC day; 100 upload reservations and 300 attempts per trusted Vercel client IP per day. These are basic abuse controls, not billing caps. Each session has one processing lease; cancelled/disconnected calls can run until the 260-second processing deadline, and an immediate restart may need a retry. Failed detection keeps existing cues. Processing cache expires after 24 hours; reattach to analyze again. Originals must be <=2 GiB and <=20 minutes, and fit available Blob capacity.
-
-Local validation does not establish deployed Linux binary compatibility or production throughput. Verify a real guest upload/decode/detect, signed-in save/restore, and authenticated cleanup on a configured preview before merging to production.

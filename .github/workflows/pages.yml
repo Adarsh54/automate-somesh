@@ -1,4 +1,4 @@
-name: Redirect GitHub Pages to Cuestamp
+name: Deploy demo to GitHub Pages
 on:
   workflow_dispatch:
   push:
@@ -15,12 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build redirect to the full-stack app
-        run: |
-          mkdir -p dist
-          cat > dist/index.html <<'HTML'
-          <!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=https://cuestamp.com/"><title>Cuestamp</title><a href="https://cuestamp.com/">Open Cuestamp</a></html>
-          HTML
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_BASE_PATH: /cuestamp/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
