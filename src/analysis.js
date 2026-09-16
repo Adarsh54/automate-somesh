@@ -1,13 +1,13 @@
 // Browser/Node-compatible signal processing. All samples are mono at ANALYSIS_RATE.
 export const ANALYSIS_RATE = 2000;
 export const MAX_DURATION = 20 * 60;
-// Default music-only segmentation floor: −65 dBFS on normalized PCM.
+// Default music-only segmentation floor: −100 dBFS on normalized PCM.
 // Audio below this level, including soft passages and fades, is treated as silence.
-export const SILENCE_THRESHOLD_DB = -65;
+export const SILENCE_THRESHOLD_DB = -100;
 
 export function detectRegions(
   samples,
-  { thresholdDb = SILENCE_THRESHOLD_DB, gap = 2.5, minimum = 0.5 } = {},
+  { thresholdDb = SILENCE_THRESHOLD_DB, gap = 3, minimum = 0.5 } = {},
 ) {
   const hop = 40; // 20 ms boundaries
   const threshold = 10 ** (thresholdDb / 20);
