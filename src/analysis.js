@@ -31,7 +31,7 @@ export function detectRegions(
   return regions;
 }
 
-function fft(re, im, inverse = false) {
+export function fft(re, im, inverse = false) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1;
@@ -71,20 +71,20 @@ function fft(re, im, inverse = false) {
     }
 }
 
-export function prepareMovie(samples) {
+export function prepareMovie(samples, { transform = fft } = {}) {
   let n = 1;
   while (n < samples.length + 2 * ANALYSIS_RATE) n *= 2;
   const re = new Float64Array(n),
     im = new Float64Array(n);
   re.set(samples);
-  fft(re, im);
+  transform(re, im);
   const sum = new Float64Array(samples.length + 1),
     square = new Float64Array(samples.length + 1);
   for (let i = 0; i < samples.length; i++) {
     sum[i + 1] = sum[i] + samples[i];
     square[i + 1] = square[i] + samples[i] ** 2;
   }
-  return { samples, re, im, sum, square };
+  return { samples, re, im, sum, square, transform };
 }
 
 function anchorCandidates(movie, source, start, length, threshold) {
@@ -100,14 +100,14 @@ function anchorCandidates(movie, source, start, length, threshold) {
     energy += re[i] ** 2;
   }
   if (energy < 1e-6) return [];
-  fft(re, im);
+  movie.transform(re, im);
   for (let i = 0; i < n; i++) {
     const a = re[i],
       b = im[i];
     re[i] = movie.re[i] * a + movie.im[i] * b;
     im[i] = movie.im[i] * a - movie.re[i] * b;
   }
-  fft(re, im, true);
+  movie.transform(re, im, true);
   const candidates = [];
   let best = null;
   // One strongest local peak per 0.5 s neighborhood, not a global top-one match.

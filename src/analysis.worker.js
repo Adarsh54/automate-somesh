@@ -1,5 +1,9 @@
+import wasmUrl from "./fft.wasm?url&inline";
+import {loadWasmFFT} from "./wasm-fft.js";
 import { detectRegions, prepareMovie, matchTrack } from "./analysis.js";
-self.onmessage = ({ data }) => {
+let transformPromise;
+const loadTransform = () => transformPromise ??= loadWasmFFT(wasmUrl);
+self.onmessage = async ({ data }) => {
   try {
     const started = performance.now();
     if (data.mode === "offset") {
@@ -15,7 +19,8 @@ self.onmessage = ({ data }) => {
       return;
     }
     self.postMessage({ type: "progress", text: "Indexing movie audio…" });
-    const movie = prepareMovie(data.movie),
+    const transform = await loadTransform();
+    const movie = prepareMovie(data.movie, {transform}),
       results = [];
     data.tracks.forEach((t, index) => {
       const result = matchTrack(movie, t.samples, {
@@ -30,6 +35,7 @@ self.onmessage = ({ data }) => {
     });
     self.postMessage({
       type: "done",
+      engine: transform ? "wasm" : "javascript",
       results,
       elapsed: (performance.now() - started) / 1000,
     });

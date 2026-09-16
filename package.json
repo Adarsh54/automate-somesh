@@ -9,13 +9,16 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test",
     "dev:api": "node --env-file-if-exists=.env.local --watch server/dev.js",
-    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs"
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@shoelace-style/shoelace": "^2.20.1",
     "@vercel/blob": "^2.8.0",
     "@workos-inc/node": "^10.13.0",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
     "iron-session": "^9.0.1",
     "jszip": "3.10.1",
     "mediabunny": "^1.56.3",
