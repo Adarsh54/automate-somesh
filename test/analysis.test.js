@@ -41,7 +41,7 @@ test("silence segmentation retains separated regions and rejects silence", () =>
   assert.ok(r[1].end >= 14.9 && r[1].end <= 15);
   assert.equal(detectRegions(new Float32Array(sr * 5)).length, 0);
 });
-test("default silence detection retains above-threshold audio and splits silent and below-threshold gaps", () => {
+test("custom silence detection retains above-threshold audio and splits silent and below-threshold gaps", () => {
   const x = new Float32Array(sr * 12);
   for (let i = 0; i < x.length; i++) {
     const t = i / sr;
@@ -52,7 +52,7 @@ test("default silence detection retains above-threshold audio and splits silent 
     if (db !== null)
       x[i] = Math.SQRT2 * 10 ** (db / 20) * Math.sin(2 * Math.PI * 200 * t);
   }
-  const regions = detectRegions(x);
+  const regions = detectRegions(x, {thresholdDb: -40, gap: 0.35});
   assert.equal(regions.length, 3);
   for (const [i, start, end] of [[0, 1, 5], [1, 6, 8], [2, 9, 11]]) {
     assert.ok(Math.abs(regions[i].start - start) <= 0.02);

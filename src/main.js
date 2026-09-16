@@ -50,8 +50,8 @@ let state = {
     cues: [],
     mode: "movie",
     movieOffset: "",
-    silenceGap: 0.35,
-    thresholdDb: -40,
+    silenceGap: 2.5,
+    thresholdDb: -65,
     matchThreshold: 0.45,
   },
   selected = null,
@@ -84,11 +84,11 @@ migrateCueDetails(state);
 const savedThreshold = Number(state.thresholdDb);
 state.thresholdDb = state.thresholdDb != null && state.thresholdDb !== "" && Number.isFinite(savedThreshold)
   ? Math.round(Math.min(-10, Math.max(-90, savedThreshold)))
-  : -40;
+  : -65;
 const savedGap = Number(state.silenceGap);
 state.silenceGap = state.silenceGap != null && state.silenceGap !== "" && Number.isFinite(savedGap)
   ? Math.round(Math.min(10, Math.max(0, savedGap)) * 20) / 20
-  : 0.35;
+  : 2.5;
 const workflow = new Workflow({
   state,
   save,
