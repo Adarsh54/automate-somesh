@@ -1,7 +1,7 @@
 import "./storage-migration.js";
+import {themeToggle} from "./theme.js";
 import "./style.css";
 import {BROWSER_MAX_MB} from "./processing-policy.js";
-import {themeToggle} from "./theme.js";
 import {enterWorkspace} from "./welcome.js";
 import {sessionInfo, createCloudWorkspace} from "./cloud-projects.js";
 import {reviewProject} from "./domain/review.js";

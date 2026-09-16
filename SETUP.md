@@ -31,7 +31,7 @@ WorkOS hosted AuthKit displays **Continue with Google** on its login/signup form
 
 Google currently labels the consent destination `workos.com`, matching the shared WorkOS callback domain. Custom consent branding/domain verification is a separate follow-up.
 
-Use a separate WorkOS staging environment and Neon branch for development/preview. Do not expose production credentials to untrusted preview branches. For localhost use `APP_URL=http://localhost:5173` and add `http://localhost:5173/api/auth?action=callback` to the staging redirect allowlist.
+Use a separate WorkOS staging environment and Neon branch for development/preview. Do not expose production credentials to untrusted preview branches. For localhost use `APP_URL=http://127.0.0.1:5190` and add `http://127.0.0.1:5190/api/auth?action=callback` to the staging redirect allowlist.
 
 ## Database
 
@@ -47,10 +47,18 @@ Redeploy after setting Vercel environment variables.
 
 ## Local development
 
+Local authentication uses WorkOS **Staging** (`environment_01M2MF0JB2D5ME8DH5MKMRKWSZ`) and the Neon **local-development** branch (`br-withered-violet-a5u6xm3o`). This branch was created from the production schema without production rows. Its migrations are applied. The staging callback is `http://127.0.0.1:5190/api/auth?action=callback`.
+
+Keep `APP_URL`, `VITE_API_ENABLED=true`, `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `SESSION_SECRET`, and `DATABASE_URL` in the gitignored `.env.local`; server secrets must never have a `VITE_` prefix. This machine has these configured. Use the exact host and port below; localhost and 127.0.0.1 are different cookie origins. Staging accounts are separate from production accounts.
+
+Run the API and frontend in separate terminals:
+
 ```sh
 npm run dev:api
-VITE_API_ENABLED=true npm run dev
+VITE_API_ENABLED=true npm run dev -- --port 5190 --strictPort
 ```
+
+Local Blob storage is not configured yet; uploading media for account storage or server processing requires separate development Blob credentials.
 
 If service credentials are missing, accounts and large-file processing are unavailable; small-file browser processing and manual editing remain usable. No fake login or fallback user is used.
 

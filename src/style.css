@@ -5,31 +5,6 @@
   font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   font-synthesis: none;
   font-size: 14px;
-  color-scheme: light;
-  --bg: #fcfcfc;
-  --sidebar: #f5f5f5;
-  --surface: #fff;
-  --raised: #f3f5f3;
-  --hover: #e9ede9;
-  --line: #e3e7e3;
-  --strong-line: #ccd3cc;
-  --text: #202520;
-  --muted: #626b62;
-  --accent: #16783b;
-  --accent-hover: #105e2d;
-  --tint: #e8f5eb;
-  --action: #1ed760;
-  --action-hover: #3be477;
-  --action-text: #07150b;
-  --success: #39775d;
-  --warning: #946626;
-  --warning-bg: #fcf6e9;
-  --danger: #b04b58;
-  --shadow: 0 16px 60px #10201812;
-  background: var(--bg);
-  color: var(--text);
-}
-:root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121212;
   --sidebar: #080808;
@@ -43,12 +18,44 @@
   --accent: #1ed760;
   --accent-hover: #3be477;
   --tint: #17271c;
+  --action: #1ed760;
+  --action-hover: #3be477;
+  --action-text: #07150b;
   --success: #89c8a8;
   --warning: #dfbb7c;
   --warning-bg: #29251d;
   --danger: #f29aa6;
   --shadow: 0 16px 60px #0005;
+  background: var(--bg);
+  color: var(--text);
 }
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fffefe;
+  --sidebar: #f7f5f5;
+  --surface: #ffffff;
+  --raised: #f6f3f3;
+  --hover: #efeaea;
+  --line: #e9e3e3;
+  --strong-line: #d6cccc;
+  --text: #262123;
+  --muted: #74686c;
+  --accent: #c92b43;
+  --accent-hover: #ae2137;
+  --tint: #fff0f2;
+  --action: #d92d49;
+  --action-hover: #c0233d;
+  --action-text: #ffffff;
+  --success: #34734f;
+  --warning: #916127;
+  --warning-bg: #fff7e9;
+  --danger: #bd2440;
+  --shadow: 0 16px 60px #50203012;
+}
+.theme-toggle { display: grid; place-items: center; width: 32px; height: 32px; padding: 7px; border-color: transparent; background: transparent; color: var(--muted); flex-shrink: 0; }
+.theme-toggle svg { width: 17px; height: 17px; }
+
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, select { font: inherit; }
@@ -106,8 +113,6 @@ header b { font-weight: 450; color: var(--text); }
 .header-account { flex-shrink: 0; }
 .local { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; }
 .local::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
-.theme-toggle { display: grid; place-items: center; width: 32px; height: 32px; padding: 7px; border-color: transparent; background: transparent; color: var(--muted); flex-shrink: 0; }
-.theme-toggle svg { width: 17px; height: 17px; }
 .account-login { text-decoration: none; font-size: 11px; padding: 6px 10px; white-space: nowrap; }
 #cloud-logout { font-size: 11px; white-space: nowrap; }
 .content { width: 100%; max-width: 1240px; margin: auto; padding: 42px 48px 20px; }
