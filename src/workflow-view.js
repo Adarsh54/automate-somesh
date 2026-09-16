@@ -61,16 +61,7 @@ export function workflowView(state, workflow, { esc, field, select }) {
     state.tracks.length
       ? `<div class="step-block"><h2>2. ${mode === "offset" ? "Set each file’s starting film timecode" : "Place your cues"}</h2>${
           mode === "offset"
-            ? `<div class="file-offsets">${state.tracks.map((t) => `<div data-track-offset="${t.id}"><strong>${esc(t.filename)} <small>${time(t.duration)}</small></strong>${field("File begins at film timecode", "offset", t.offset, 'placeholder="01:00:00:00"')}</div>`).join("")}</div><p class="muted">For pre-roll, enter the actual file start (for example 00:59:55:00), not the first music onset.</p><h2>3. Detect regions between silences</h2><button class="primary" id="analyze">Detect music regions</button><details class="disclosure"><summary>Silence detection options</summary><div id="offset-settings" class="form-grid">${select(
-                "Silence threshold",
-                "thresholdDb",
-                String(state.thresholdDb),
-                [
-                  ["-55", "−55 dBFS · quiet tails"],
-                  ["-45", "−45 dBFS · balanced"],
-                  ["-35", "−35 dBFS · ignore noise"],
-                ],
-              )}<div class="gap-control"><label for="silence-gap">Minimum gap between cues</label><input id="silence-gap" data-field="silenceGap" type="range" min="0" max="30" step="0.05" value="${state.silenceGap}" aria-valuetext="${state.silenceGap} seconds"><output id="silence-gap-value" for="silence-gap">${state.silenceGap} seconds</output></div></div><p class="muted">Sound/silence detection on music-only audio; it does not classify dialogue. Regions shorter than 0.5 seconds are ignored.</p></details>`
+            ? `<div class="file-offsets">${state.tracks.map((t) => `<div data-track-offset="${t.id}"><strong>${esc(t.filename)} <small>${time(t.duration)}</small></strong>${field("File begins at film timecode", "offset", t.offset, 'placeholder="01:00:00:00"')}</div>`).join("")}</div><p class="muted">For pre-roll, enter the actual file start (for example 00:59:55:00), not the first music onset.</p><h2>3. Detect regions between silences</h2><button class="primary" id="analyze">Detect music regions</button><details class="disclosure"><summary>Silence detection options</summary><div id="offset-settings" class="form-grid"><div class="gap-control"><label for="silence-gap">Minimum gap between cues</label><input id="silence-gap" data-field="silenceGap" type="range" min="0" max="30" step="0.05" value="${state.silenceGap}" aria-valuetext="${state.silenceGap} seconds"><output id="silence-gap-value" for="silence-gap">${state.silenceGap} seconds</output></div></div><p class="muted">Silence is detected automatically to retain very soft music and fade tails. Use music-only audio; dialogue is not distinguished from music. Regions shorter than 0.5 seconds are ignored.</p></details>`
             : `<button class="primary" data-tab="cues">Enter / mark film timings →</button><p class="muted">A file offset is only needed if you use playback marks. Direct film in/out entry does not need one.</p>`
         }</div>`
       : ""

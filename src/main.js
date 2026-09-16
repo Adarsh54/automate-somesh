@@ -42,7 +42,6 @@ let state = {
     cues: [],
     mode: "movie",
     movieOffset: "",
-    thresholdDb: -45,
     silenceGap: 0.35,
     matchThreshold: 0.45,
   },
@@ -72,6 +71,8 @@ try {
     state.tracks.forEach((t) => (t.offset ??= ""));
   }
 } catch {}
+// Retired user setting must never override automatic silence detection.
+delete state.thresholdDb;
 const savedGap = Number(state.silenceGap);
 state.silenceGap = state.silenceGap != null && state.silenceGap !== "" && Number.isFinite(savedGap)
   ? Math.round(Math.min(30, Math.max(0, savedGap)) * 20) / 20

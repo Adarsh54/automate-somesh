@@ -40,6 +40,24 @@ test("silence segmentation retains separated regions and rejects silence", () =>
   assert.ok(Math.abs(r[1].end - 15) <= 0.04);
   assert.equal(detectRegions(new Float32Array(sr * 5)).length, 0);
 });
+test("automatic silence detection retains quiet music and fades but splits silent and near-silent gaps", () => {
+  const x = new Float32Array(sr * 12);
+  for (let i = 0; i < x.length; i++) {
+    const t = i / sr;
+    const db = t >= 1 && t < 3 ? -72
+      : t >= 3 && t < 5 ? -72 - 3 * (t - 3)
+      : (t >= 6 && t < 8) || (t >= 9 && t < 11) ? -74
+      : t >= 8 && t < 9 ? -90 : null;
+    if (db !== null)
+      x[i] = Math.SQRT2 * 10 ** (db / 20) * Math.sin(2 * Math.PI * 200 * t);
+  }
+  const regions = detectRegions(x);
+  assert.equal(regions.length, 3);
+  for (const [i, start, end] of [[0, 1, 5], [1, 6, 8], [2, 9, 11]]) {
+    assert.ok(Math.abs(regions[i].start - start) <= 0.02);
+    assert.ok(Math.abs(regions[i].end - end) <= 0.02);
+  }
+});
 test("matching finds repeated and trimmed placements in a mix, not unrelated audio", () => {
   const source = music(),
     movie = new Float32Array(sr * 40);

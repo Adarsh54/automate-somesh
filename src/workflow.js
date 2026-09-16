@@ -229,7 +229,6 @@ export class Workflow {
       options:
         mode === "offset"
           ? {
-              thresholdDb: Number(s.thresholdDb),
               gap: Number(s.silenceGap),
               minimum: 0.5,
             }
