@@ -43,6 +43,7 @@ let state = {
     mode: "movie",
     movieOffset: "",
     silenceGap: 0.35,
+    thresholdDb: -40,
     matchThreshold: 0.45,
   },
   selected = null,
@@ -72,8 +73,10 @@ try {
     state.tracks.forEach((t) => (t.offset ??= ""));
   }
 } catch {}
-// Retired user setting must never override automatic silence detection.
-delete state.thresholdDb;
+const savedThreshold = Number(state.thresholdDb);
+state.thresholdDb = state.thresholdDb != null && state.thresholdDb !== "" && Number.isFinite(savedThreshold)
+  ? Math.round(Math.min(-10, Math.max(-90, savedThreshold)))
+  : -40;
 const savedGap = Number(state.silenceGap);
 state.silenceGap = state.silenceGap != null && state.silenceGap !== "" && Number.isFinite(savedGap)
   ? Math.round(Math.min(10, Math.max(0, savedGap)) * 20) / 20
@@ -312,10 +315,11 @@ function bind() {
           }
           state[k] = e.value;
         } else if (e.closest("#movie-options") || e.closest("#offset-settings")) {
-          state[k] = k === "silenceGap" ? e.valueAsNumber : e.value;
-          if (k === "silenceGap") {
-            $("#silence-gap-value").value = `${e.value} seconds`;
-            e.setAttribute("aria-valuetext", `${e.value} seconds`);
+          state[k] = e.type === "range" ? e.valueAsNumber : e.value;
+          if (e.type === "range") {
+            const valueText = `${e.value} ${k === "thresholdDb" ? "dBFS" : "seconds"}`;
+            $(`#${e.id}-value`).value = valueText;
+            e.setAttribute("aria-valuetext", valueText);
           }
         }
         else if (e.closest("#movie-trim")) {
@@ -360,8 +364,9 @@ function bind() {
         updateIndicators();
       }),
   );
-  const gapSlider = $("#silence-gap");
-  if (gapSlider) gapSlider.oninput = gapSlider.onchange;
+  document.querySelectorAll('#offset-settings input[type="range"]').forEach(slider => {
+    slider.oninput = slider.onchange;
+  });
   document.querySelectorAll("[data-add-credit]").forEach(
     (b) =>
       (b.onclick = () => {

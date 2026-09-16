@@ -36,12 +36,12 @@ test("silence segmentation retains separated regions and rejects silence", () =>
   x.set(music(3, 2), sr * 12);
   const r = detectRegions(x);
   assert.equal(r.length, 2);
-  // The fixture has 100 ms fades; portions below the fixed floor are excluded.
+  // The fixture has 100 ms fades; portions below the default floor are excluded.
   assert.ok(r[0].start >= 2 && r[0].start <= 2.1);
   assert.ok(r[1].end >= 14.9 && r[1].end <= 15);
   assert.equal(detectRegions(new Float32Array(sr * 5)).length, 0);
 });
-test("fixed silence detection retains above-threshold audio and splits silent and below-threshold gaps", () => {
+test("default silence detection retains above-threshold audio and splits silent and below-threshold gaps", () => {
   const x = new Float32Array(sr * 12);
   for (let i = 0; i < x.length; i++) {
     const t = i / sr;
