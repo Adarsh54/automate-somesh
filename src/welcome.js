@@ -1,3 +1,4 @@
+import {authActions} from "./auth-actions.js";
 import {themeToggle} from "./theme.js";
 // Guest selection is a UI preference, never an authenticated identity.
 export async function enterWorkspace(account) {
@@ -6,11 +7,11 @@ export async function enterWorkspace(account) {
   try {guest=sessionStorage.getItem('cuestamp-guest')==='yes';} catch {}
   if(account.user || (guest && !failed))return;
   const app=document.querySelector('#app');
-  app.innerHTML=`<main class="welcome-page"><div class="welcome-topbar"><a class="welcome-brand" href="${import.meta.env.BASE_URL}" aria-label="Cuestamp home"><span aria-hidden="true">▥</span> Cuestamp</a>${themeToggle()}</div>
-    <div class="welcome-layout"><section class="welcome-intro"><p class="eyebrow">FROM SOUNDTRACK TO CUE SHEET</p><h1>Every cue.<br>Every credit.<br>All together.</h1><p>Find the music, refine your timings, and turn your credits into a finished cue sheet.</p><div class="welcome-steps"><span>01 &nbsp; Add your media</span><span>02 &nbsp; Review your cues</span><span>03 &nbsp; Export your sheet</span></div></section>
+  app.innerHTML=`<main class="welcome-page"><div class="welcome-topbar"><a class="welcome-brand" href="${import.meta.env.BASE_URL}" aria-label="Cuestamp home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span> Cuestamp</a>${themeToggle()}</div>
+    <div class="welcome-layout"><section class="welcome-intro"><p class="eyebrow">FROM SOUNDTRACK TO CUE SHEET</p><h1>The picture.<br>The music.<br><em>The credits.</em></h1><p>Find the music, refine your timings, and turn your credits into a finished cue sheet.</p><div class="welcome-score" aria-hidden="true"><span>PICTURE LOCK</span><div class="score-ruler">00:00 <span>01:00</span><span>02:00</span><span>03:00</span></div><div class="score-track"><i></i><i></i><i></i></div><div class="score-track secondary"><i></i><i></i></div><div class="score-caption">EVERY MOMENT, ACCOUNTED FOR.</div></div><div class="welcome-steps"><span>01 &nbsp; Add your media</span><span>02 &nbsp; Review your cues</span><span>03 &nbsp; Export your sheet</span></div></section>
     <section class="welcome-card" aria-labelledby="welcome-title"><span class="eyebrow">YOUR MUSIC WORKSPACE</span><h2 id="welcome-title">Welcome to Cuestamp</h2><p>Create an account to save projects, audio, and video—and pick up where you left off.</p>
     ${failed?'<p class="notice" role="alert">Login could not finish. Please try again, or continue as a guest.</p>':''}
-    ${account.configured?'<a class="primary welcome-action" href="/api/auth?action=signup">Sign up</a><a class="welcome-action welcome-login" href="/api/auth?action=login">Log in</a>':'<p class="notice" role="status">Account access is currently unavailable. You can still work as a guest.</p>'}
+    ${authActions(account, {welcome:true})}${!account.configured ? '<p class="notice" role="status">Account access is not connected in this environment. You can still work as a guest.</p>' : ""}
     <div class="welcome-divider"><span>or</span></div><button id="continue-guest" class="welcome-action">Continue as guest</button><p class="welcome-footnote">No account needed to create and export a cue sheet. Sign up whenever you’re ready to save your projects.</p></section></div><footer class="welcome-footer">CUESTAMP / MADE FOR THE PEOPLE BEHIND THE MUSIC</footer></main>`;
   await new Promise(resolve=>{
     document.querySelector('#continue-guest').onclick=()=>{

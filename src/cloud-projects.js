@@ -1,3 +1,4 @@
+import {authActions} from "./auth-actions.js";
 import {createCloudMedia} from "./cloud-media.js";
 import {migrateCueDetails} from "./cue-details.js";
 import {serverValidationEnabled} from "./api-client.js";
@@ -40,9 +41,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
     projects=(await request("/api/projects")).projects;
   }
   function view() {
-    if(!account.user) return account.configured
-      ? '<section class="panel account-panel"><div><strong>You’re working as a guest</strong><p>Sign up to save your projects and media.</p></div><div class="button-row"><a href="/api/auth?action=login">Log in</a><a class="primary" href="/api/auth?action=signup">Sign up</a></div></section>'
-      : account.error?`<p class="notice">${esc(account.error)}</p>`:"";
+    if(!account.user) return `<section class="panel account-panel"><div><strong>You’re working as a guest</strong><p>${account.configured ? "Sign up to save your projects and media." : esc(account.error || "Account access is not connected in this environment. You can keep working as a guest.")}</p></div><div class="button-row">${authActions(account)}</div></section>`;
     return `<section class="panel account-panel"><div><strong>${esc(account.user.email)}</strong><p id="cloud-status" role="status">${esc(status || (active ? "Click Save project to keep your latest changes." : "New workspace · save to add it to your account."))}</p></div><div class="button-row">
     <button class="primary" id="cloud-save" ${busy?"disabled":""}>Save project</button>
     <button id="cloud-copy" ${busy?"disabled":""}>Save a copy</button>
@@ -55,7 +54,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   }
   function header() {
     return account.user ? `<button id="cloud-logout" ${busy?"disabled":""}>Log out</button>`
-      : account.configured ? '<a class="account-login" href="/api/auth?action=login">Log in</a>' : '';
+      : authActions(account);
   }
   const confirmSwitch=()=>!dirty || confirm("Save your latest changes to your account before switching projects. Switch anyway?");
   function bind() {
