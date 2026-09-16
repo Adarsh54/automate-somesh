@@ -1,1 +1,19 @@
-{"name":"automate-somesh","private":true,"version":"1.0.0","type":"module","scripts":{"dev":"vite --host 127.0.0.1","build":"vite build","preview":"vite preview --host 127.0.0.1","test":"node --test"},"dependencies":{"jszip":"3.10.1"},"devDependencies":{"vite":"^7.3.6"}}
+{
+  "name": "automate-somesh",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "jszip": "3.10.1",
+    "mediabunny": "^1.56.3"
+  },
+  "devDependencies": {
+    "vite": "^7.3.6"
+  }
+}

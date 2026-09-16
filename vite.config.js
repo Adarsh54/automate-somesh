@@ -1,2 +1,2 @@
-import { defineConfig } from 'vite';
-export default defineConfig({base:'/automate-somesh/'});
+import { defineConfig } from "vite";
+export default defineConfig({ base: "/automate-somesh/" });
