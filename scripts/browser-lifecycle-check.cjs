@@ -12,7 +12,8 @@ const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1'))
 const library=()=>page.getByRole('navigation').getByRole('button',{name:'Find your cues',exact:true}).click();
 await page.locator('[data-mode="offset"]').click();
 await page.locator('[data-upload]').first().setInputFiles(`${root}/score.wav`);await ready();
-assert.equal(await page.locator('#analyze').isDisabled(),true);
+assert.equal(await page.locator('[data-field="offset"]').inputValue(),'01:00:00:00');
+assert.equal(await page.locator('#analyze').isEnabled(),true);
 await page.locator('[data-field="offset"]').fill('01:00:00:00');await page.locator('[data-field="offset"]').dispatchEvent('change');
 assert.equal(await page.locator('#analyze').isEnabled(),true);
 await page.locator('[data-track]').click();

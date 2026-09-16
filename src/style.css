@@ -992,6 +992,21 @@ footer span:first-child {
 .file-offsets label {
   margin: 0 !important;
 }
+.uploaded-tracks { margin-top: 18px; }
+.uploaded-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+.uploaded-tracks .uploaded-track {
+  padding: 14px 0;
+  border-bottom: 1px solid #edf1e9;
+}
+.uploaded-track strong { overflow-wrap: anywhere; min-width: 0; }
+.uploaded-track small { display: block; font-weight: 400; color: #7b8b7e; }
+.uploaded-track button { flex-shrink: 0; }
 .credit-details .button-row {
   margin-top: 16px;
 }

@@ -1,6 +1,6 @@
 import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
 import { decodeMedia } from "./media.js";
-import { toFrames, atOffset } from "./timecode.js";
+import { toFrames, atOffset, rates } from "./timecode.js";
 import { applyMovieMetadata } from "./project.js";
 import AnalysisWorker from "./analysis.worker.js?worker&inline";
 
@@ -61,7 +61,7 @@ export class Workflow {
             id: crypto.randomUUID(),
             title: file.name.replace(/\.[^.]+$/, ""),
             filename: file.name,
-            offset: "",
+            offset: rates[this.state.production.rate]?.drop ? "01:00:00;00" : "01:00:00:00",
             duration: decoded.duration,
             credits: ["Composer", "Publisher"].map((role) => ({
               role,
