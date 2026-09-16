@@ -70,16 +70,7 @@ export function workflowView(state, workflow, { esc, field, select }) {
                   ["-45", "−45 dBFS · balanced"],
                   ["-35", "−35 dBFS · ignore noise"],
                 ],
-              )}${select(
-                "Minimum gap between cues",
-                "silenceGap",
-                String(state.silenceGap),
-                [
-                  ["0.35", "0.35 seconds"],
-                  ["0.75", "0.75 seconds"],
-                  ["1.5", "1.5 seconds"],
-                ],
-              )}</div><p class="muted">Sound/silence detection on music-only audio; it does not classify dialogue. Regions shorter than 0.5 seconds are ignored.</p></details>`
+              )}<div class="gap-control"><label for="silence-gap">Minimum gap between cues</label><input id="silence-gap" data-field="silenceGap" type="range" min="0" max="30" step="0.05" value="${state.silenceGap}" aria-valuetext="${state.silenceGap} seconds"><output id="silence-gap-value" for="silence-gap">${state.silenceGap} seconds</output></div></div><p class="muted">Sound/silence detection on music-only audio; it does not classify dialogue. Regions shorter than 0.5 seconds are ignored.</p></details>`
             : `<button class="primary" data-tab="cues">Enter / mark film timings →</button><p class="muted">A file offset is only needed if you use playback marks. Direct film in/out entry does not need one.</p>`
         }</div>`
       : ""

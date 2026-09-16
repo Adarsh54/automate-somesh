@@ -72,6 +72,10 @@ try {
     state.tracks.forEach((t) => (t.offset ??= ""));
   }
 } catch {}
+const savedGap = Number(state.silenceGap);
+state.silenceGap = state.silenceGap != null && state.silenceGap !== "" && Number.isFinite(savedGap)
+  ? Math.round(Math.min(30, Math.max(0, savedGap)) * 20) / 20
+  : 0.35;
 const workflow = new Workflow({
   state,
   save,
@@ -305,8 +309,13 @@ function bind() {
             refresh = true;
           }
           state[k] = e.value;
-        } else if (e.closest("#movie-options") || e.closest("#offset-settings"))
-          state[k] = e.value;
+        } else if (e.closest("#movie-options") || e.closest("#offset-settings")) {
+          state[k] = k === "silenceGap" ? e.valueAsNumber : e.value;
+          if (k === "silenceGap") {
+            $("#silence-gap-value").value = `${e.value} seconds`;
+            e.setAttribute("aria-valuetext", `${e.value} seconds`);
+          }
+        }
         else if (e.closest("#movie-trim")) {
           state.movieOverrides ??= {};
           state.movieOverrides[k] = e.value;
@@ -349,6 +358,8 @@ function bind() {
         updateIndicators();
       }),
   );
+  const gapSlider = $("#silence-gap");
+  if (gapSlider) gapSlider.oninput = gapSlider.onchange;
   document.querySelectorAll("[data-add-credit]").forEach(
     (b) =>
       (b.onclick = () => {

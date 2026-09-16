@@ -1005,6 +1005,18 @@ footer span:first-child {
     flex-direction: column;
   }
 }
+.gap-control input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  accent-color: #345d42;
+}
+.gap-control output {
+  display: block;
+  color: #345d42;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 /* Sidebar preference changes presentation only; navigation stays available. */
 .sidebar-header{display:flex;align-items:center;justify-content:space-between;gap:8px}.sidebar-header .brand{font-size:22px}.sidebar-header .mark{font-size:26px}#sidebar-toggle{display:grid;place-items:center;width:34px;height:34px;flex-shrink:0;padding:6px;background:transparent;border-color:#dce5dd}#sidebar-toggle svg{width:20px;height:20px}.mobile-arrow{display:none}.nav{display:flex;align-items:center;gap:9px}.nav .nav-label{font-size:14px;margin:0;color:inherit}.nav .nav-step{font-size:11px;margin-right:7px}.nav-icon{width:21px;height:21px;flex-shrink:0}.nav:focus-visible,#sidebar-toggle:focus-visible{outline:2px solid #345d42;outline-offset:3px}aside{overflow-y:auto}.sidebar-collapsed aside{width:76px;padding:28px 12px}.sidebar-collapsed .sidebar-header{flex-direction:column;gap:18px}.sidebar-collapsed .brand-word,.sidebar-collapsed .project-label,.sidebar-collapsed .aside-note,.sidebar-collapsed .source-link,.sidebar-collapsed .nav-label{display:none}.sidebar-collapsed nav{margin-top:32px}.sidebar-collapsed .nav{justify-content:center;padding:14px 10px;min-height:48px}.sidebar-collapsed main{margin-left:76px;width:calc(100% - 76px)}.sidebar-collapsed #sidebar-toggle svg{transform:rotate(180deg)}
 @media(min-width:721px) and (max-width:1100px){.nav .nav-step{display:none}.sidebar-header .brand{font-size:20px}.sidebar-header .mark{font-size:24px}.nav .nav-label{font-size:13px}}
