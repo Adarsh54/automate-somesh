@@ -157,7 +157,7 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", shared: "Shared cue details.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", shared: "Enter common credits once. Customize only the cues that differ.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${["library", "shared"].includes(tab) ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
   bindSidebar();
   document.querySelectorAll("details").forEach((el) => {
@@ -170,7 +170,7 @@ function render() {
     });
 }
 const steps = [
-  ["library", "Find your cues"], ["shared", "Shared cue details"],
+  ["library", "Find your cues"],
   ["cues", "Timings & usage"], ["production", "Production details"], ["review", "Review & export"],
 ];
 function stepNavigation() {
@@ -288,7 +288,7 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         const sharedShortcut = b.dataset.tab === "shared";
-        tab = b.dataset.tab;
+        tab = sharedShortcut ? "library" : b.dataset.tab;
         (message = "");
         render();
         if (sharedShortcut) {
