@@ -1127,3 +1127,9 @@ footer span:first-child {
 .welcome-card .welcome-footnote {font-size:12px;margin:18px 0 0;text-align:center;}
 .welcome-footer {font-size:10px;letter-spacing:1.5px;color:#758178;border:0;padding:0;margin:0;}
 @media(max-width:760px){.welcome-page{padding:25px 22px;}.welcome-layout{grid-template-columns:1fr;gap:28px;padding:34px 0;max-width:480px;}.welcome-intro h1{font-size:44px;letter-spacing:-2px;}.welcome-intro>p:not(.eyebrow){font-size:16px;}.welcome-steps{display:none;}.welcome-card{padding:26px;}.welcome-footer{line-height:1.7;}}
+
+.header-account {display:flex;align-items:center;gap:16px;flex-shrink:0;}
+#account-actions {display:flex;align-items:center;}
+.account-login {display:inline-block;text-decoration:none;font-weight:700;border:1px solid #d5dedb;border-radius:7px;padding:10px 14px;background:#fff;white-space:nowrap;}
+#cloud-logout {white-space:nowrap;}
+@media(max-width:720px){header{gap:12px;}header>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.header-account{gap:8px;}.account-login,#cloud-logout{min-height:44px;}}

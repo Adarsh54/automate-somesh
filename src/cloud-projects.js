@@ -13,7 +13,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false;
   const metaKey=storageKey+":project";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=Boolean(localStorage.getItem(storageKey));} catch {}
-  const update=()=>{const el=document.querySelector("#cloud-workspace");if(el){el.innerHTML=view();bind();}};
+  const update=()=>{const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const el=document.querySelector("#cloud-workspace");if(el){el.innerHTML=view();bind();}};
   const stash=()=>{try {localStorage.setItem(storageKey+":backup",JSON.stringify(state));} catch {}};
   const replace=(project)=>{
     stash();localStorage.setItem(storageKey,JSON.stringify(project.data));
@@ -50,8 +50,12 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
     <button id="cloud-restore" ${busy?"disabled":""}>Restore media</button>
     <button id="cloud-new" ${busy?"disabled":""}>New project</button>
     <button id="cloud-import" ${busy?"disabled":""}>Import guest project</button>
-    <button id="cloud-logout" ${busy?"disabled":""}>Sign out</button></div>
+    </div>
     ${projects.length?`<div class="cloud-project-list">${projects.map(p=>`<button data-cloud-open="${esc(p.id)}" ${busy?"disabled":""}>${esc(p.title)} <small>${esc(new Date(p.updated_at).toLocaleString())}</small></button>`).join("")}</div>`:""}</section>`;
+  }
+  function header() {
+    return account.user ? `<button id="cloud-logout" ${busy?"disabled":""}>Log out</button>`
+      : account.configured ? '<a class="account-login" href="/api/auth?action=login">Log in</a>' : '';
   }
   const confirmSwitch=()=>!dirty || confirm("Save your latest changes to your account before switching projects. Switch anyway?");
   function bind() {
@@ -70,8 +74,8 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
       const {project}=await request("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:crypto.randomUUID(),revision:0,data})});
       replace({...project,data});
     });
-    el.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuebook-guest");}catch{}location.reload();});
+    document.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuebook-guest");}catch{}location.reload();});
     el.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{if(confirmSwitch())replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {view,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {view,header,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }
