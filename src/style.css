@@ -75,13 +75,7 @@ aside {
   padding: 0 9px;
   font-size: 29px;
 }
-.demo {
-  font-size: 9px;
-  letter-spacing: 1px;
-  align-self: flex-start;
-  margin-top: 4px;
-  color: #688177;
-}
+
 .project-label {
   font-size: 11px;
   letter-spacing: 1.5px;

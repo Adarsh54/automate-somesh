@@ -18,7 +18,7 @@ export async function decodeMedia(file, progress = () => {}, signal) {
     const duration = await input.computeDuration();
     if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_DURATION)
       throw new Error(
-        "Use a non-empty file no longer than 20 minutes for this demo.",
+        "Use a non-empty file no longer than 20 minutes.",
       );
     const output = new Float32Array(Math.ceil(duration * ANALYSIS_RATE));
     const counts = new Float32Array(output.length);
