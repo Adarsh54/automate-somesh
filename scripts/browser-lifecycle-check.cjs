@@ -18,7 +18,6 @@ assert.equal(await page.locator('#analyze').isEnabled(),true);
 await page.locator('[data-track]').click();
 await page.locator('[data-field="title"]').fill('Retained title');await page.locator('[data-field="title"]').dispatchEvent('change');
 await page.locator('[data-mode="manual"]').click();await page.locator('[data-add-cue]').click();
-await page.locator('.credit-details summary').click();
 await page.locator('[data-field="first"]').fill('Saved composer');await page.locator('[data-field="first"]').dispatchEvent('change');
 await library();
 assert.equal(await page.locator('#analyze').count(),0);
