@@ -1,3 +1,4 @@
+import {BROWSER_MAX_MB} from "./processing-policy.js";
 import { rates } from "./timecode.js";
 import { time } from "./model.js";
 import { effectiveProduction } from "./project.js";
@@ -74,6 +75,6 @@ export function workflowView(state, workflow, { esc, field, select }) {
   }`
   }
   ${workflow.busy ? `<button id="cancel-analysis">Cancel ${workflow.worker ? "detection" : "loading"}</button>` : ""}<p id="analysis-progress" role="status">${esc(workflow.progress)}</p>
-  <details class="disclosure"><summary>File support & storage</summary><p class="muted">MP4/AAC or WebM/Opus recommended for video; WAV, MP3, M4A, FLAC, or OGG for audio. Limit: 20 minutes per file. Sign in and save your project to keep its media. Files must be under 2 GB and fit within available storage.</p></details></section>
+  <p class="muted">Files over ${BROWSER_MAX_MB} MB are uploaded privately for server processing. Matching against one also uploads its reference files. Smaller comparisons stay on your device.</p><details class="disclosure"><summary>File support & storage</summary><p class="muted">MP4/AAC or WebM/Opus recommended for video; WAV, MP3, M4A, FLAC, or OGG for audio. Limit: 20 minutes per file. Temporary processing files expire after 24 hours and are deleted during daily cleanup. Sign in and save your project to keep its media. Files must be under 2 GB and fit within available storage.</p></details></section>
   ${state.analysisReport?.mode === mode ? `<section class="panel analysis-report"><div class="section-title"><h2>${state.analysisReport.count} detections to review</h2><button class="primary" data-tab="cues">Review timings & usage →</button></div><p class="muted">${state.analysisReport.seconds.toFixed(1)}s analysis · review candidates before export.</p><ul>${state.analysisReport.counts.map((r) => `<li>${esc(r.title)}<strong>${r.count ? `${r.count} placements` : "No match / region found"}</strong></li>`).join("")}</ul></section>` : ""}`;
 }

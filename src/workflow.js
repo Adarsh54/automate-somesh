@@ -1,5 +1,9 @@
 import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
 import { decodeMedia } from "./media.js";
+import {decodeMedia as decodeOnServer} from "./backend-analysis.js";
+import {useBackend} from "./processing-policy.js";
+import {MAX_MEDIA_BYTES} from "./media-policy.js";
+import {HybridAnalysis} from "./hybrid-analysis.js";
 import { toFrames, atOffset, rates } from "./timecode.js";
 import { applyMovieMetadata } from "./project.js";
 import AnalysisWorker from "./analysis.worker.js?worker&inline";
@@ -35,15 +39,15 @@ export class Workflow {
     this.progress = `Decoding ${file.name}…`;
     this.render();
     try {
-      const decoded = await decodeMedia(
-        file,
-        (percent) => {
-          this.progress = `Decoding ${file.name} · ${percent}%`;
-          const el = document.querySelector("#analysis-progress");
-          if (el) el.textContent = this.progress;
-        },
-        this.controller.signal,
-      );
+      if(file.size>MAX_MEDIA_BYTES)throw new Error("Files must be under 2 GB.");
+      const report=text=>{
+        this.progress=text;
+        const el=document.querySelector("#analysis-progress");
+        if(el)el.textContent=text;
+      };
+      const decoded=useBackend(file)
+        ? await decodeOnServer(file,report,this.controller.signal)
+        : await decodeMedia(file,percent=>report(`Decoding ${file.name} · ${percent}%`),this.controller.signal);
       if (this.controller.signal.aborted) return;
       const url = URL.createObjectURL(file);
       if (movie) {
@@ -90,7 +94,7 @@ export class Workflow {
         if (this.urls.has(track.id))
           URL.revokeObjectURL(this.urls.get(track.id));
         this.urls.set(track.id, url);
-        this.audio.set(track.id, decoded.samples);
+        this.audio.set(track.id, decoded.samples ?? {assetId:decoded.assetId});
         track.duration = decoded.duration;
       }
       if (!movie && !restoring && this.state.media) delete this.state.media.tracks[track.id];
@@ -143,21 +147,12 @@ export class Workflow {
     try {
       // Keep the worker with this app version: Pages removes old hashed assets
       // on deploy, but an already-open tab must still be able to start analysis.
-      this.worker = new AnalysisWorker();
+      this.worker = new HybridAnalysis({LocalWorker:AnalysisWorker});
     } catch {
       return fail("Audio analysis could not start. Try again, or reload and restore your media.");
     }
     const worker = this.worker;
     this.render();
-    this.worker.onerror = (event) => {
-      if (this.worker !== worker) return;
-      event.preventDefault();
-      fail("Audio analysis stopped unexpectedly. Retry; if it happens again, try a shorter audio export or reload and reattach your media.");
-    };
-    this.worker.addEventListener("messageerror", () => {
-      if (this.worker !== worker) return;
-      fail("The analysis result could not be read. Retry or use a shorter audio export.");
-    });
     this.worker.onmessage = ({ data }) => {
       if (this.worker !== worker) return;
       if (data.type === "progress") {
@@ -172,7 +167,7 @@ export class Workflow {
       this.progress = "";
       if (data.type === "error")
         return this.notify(
-          "The audio could not be analyzed. Try a shorter audio export or reattach the source files and retry. Existing cues were kept.",
+          `${data.message || "The audio could not be analyzed. Please retry."} Existing cues were kept.`,
         );
       const cues = [];
       for (const result of data.results) {
@@ -237,10 +232,14 @@ export class Workflow {
     try { this.worker.postMessage({
       mode,
       movie: this.movie?.samples,
+      movieAssetId: this.movie?.assetId,
+      movieFile: this.files.get("movie"),
       tracks: s.tracks.map((t) => ({
         id: t.id,
         title: t.title,
-        samples: this.audio.get(t.id),
+        samples: this.audio.get(t.id) instanceof Float32Array ? this.audio.get(t.id) : undefined,
+        assetId: this.audio.get(t.id)?.assetId,
+        file: this.files.get(t.id),
       })),
       options:
         mode === "offset"

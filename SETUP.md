@@ -11,6 +11,7 @@ The production Vercel project is `cuestamp`. Configure these **server-only** env
 - `DATABASE_URL`: Neon PostgreSQL connection string with TLS
 - `BLOB_READ_WRITE_TOKEN`: server-only token for the private `cuestamp-media` Vercel Blob store
 - `BLOB_STORE_ID`: store ID, added by the Vercel store connection
+- `CRON_SECRET`: random secret of at least 32 characters for authenticated analysis cleanup
 
 WorkOS AuthKit redirect URI:
 `https://cuestamp.com/api/auth?action=callback`
@@ -51,7 +52,7 @@ npm run dev:api
 VITE_API_ENABLED=true npm run dev
 ```
 
-If service credentials are missing, accounts remain disabled and the existing browser-only workspace still works. No fake login or fallback user is used.
+If service credentials are missing, accounts and large-file processing are unavailable; small-file browser processing and manual editing remain usable. No fake login or fallback user is used.
 
 ## Account behavior
 
@@ -78,7 +79,7 @@ The editor saves drafts locally under a per-user key. **Save project** explicitl
 
 The `cuestamp-media` private Blob store (IAD1) is connected to Vercel. Save project uploads attached original files directly from the browser using multipart uploads, then saves their asset IDs in Neon. The server issues upload tokens only to the authenticated owner, restricted to an exact generated path, content type, declared size and one-hour expiration, without overwrite. Finalization checks Blob metadata before allowing a project reference. Project copies reuse immutable assets.
 
-Downloads require an owner check and return a GET-only signed URL scoped to one object, expiring after five minutes. URLs and credentials are never saved in the project document. Downloads go directly to Blob; media decoding stays in the browser. Restore media retries failed downloads without changing cue review flags or movie timing overrides.
+Downloads require an owner check and return a GET-only signed URL scoped to one object, expiring after five minutes. URLs and credentials are never saved in the project document. Downloads go directly to Blob; media decoding follows the configured size cutoff. Restore media retries failed downloads without changing cue review flags or movie timing overrides.
 
 - `POST /api/media?action=reserve`: validate metadata and create an owned pending asset.
 - `POST /api/media`: issue a constrained client upload token.
@@ -102,3 +103,20 @@ The WorkOS team/application and Google Cloud project/consent app use Cuestamp; t
 The frontend migrates legacy storage keys to the Cuestamp prefix on the same origin. Browser-only drafts cannot automatically cross domains; saved account projects are in the existing Neon database. Users sign in again on the new domain. Theme and guest preferences on a new domain start fresh.
 
 Verified after migration: HTTPS, domain redirects, production health endpoint, Google sign-in returning to `cuestamp.com`, and the renamed welcome/guest flow. The repo rename retained the Vercel Git integration and GitHub Pages deployment workflow.
+
+## Hybrid browser/server audio processing
+
+Files <=100,000,000 bytes remain local. Larger files use `/api/analysis`, including in guest mode. `VITE_BROWSER_MAX_MB` can change the cutoff at build time. A movie/reference pair uses the server if either file is large, so its small counterpart also uploads. Audio-only projects route each track independently. Existing 20-minute/2 GiB file limits still apply.
+
+Before production rollout:
+
+1. Apply `003_analysis.sql` using `npm run db:migrate` against the intended Neon database.
+2. Configure `CRON_SECRET` and enable Fluid Compute; `vercel.json` sets the analysis route to 300 seconds and includes native FFmpeg/ffprobe and the Node worker.
+3. Use isolated preview credentials/storage to verify real guest upload/decode/detection and signed-in save/restore. Production WorkOS/Neon credentials are not currently shared with previews.
+4. Verify the daily `GET /api/analysis` cleanup with `Authorization: Bearer <CRON_SECRET>`. Vercel Cron supplies this automatically in production. Preview deployments need explicit cleanup testing; production schedules do not run there.
+
+`analysis_assets` holds temporary media ownership/metadata, `analysis_limits` enforces daily quotas and `analysis_leases` prevents concurrent processing in one browser session. A sealed HttpOnly cookie identifies temporary guest assets; saved projects/media still require WorkOS account ownership. Clients send owned IDs, never arbitrary source URLs or PCM payloads. Files upload directly to private Blob, avoiding the function body-size limit.
+
+Temporary originals and PCM expire 24 hours after reservation and are deleted by daily cleanup (allow one additional scheduling interval for physical deletion). Saved permanent media uses separate paths. The current save flow may upload a second permanent copy; restoration downloads for playback and may create a new temporary analysis upload. Monitor storage and cron failures.
+
+Limits per UTC day: 40 upload reservations/150 processing attempts per session and 100 reservations/300 attempts per trusted Vercel client IP. These are abuse controls, not billing caps. A request has a 260-second processing deadline; cancelled requests may retain their lease briefly. A retry may therefore ask the user to wait. Expired analysis assets require reattachment. An unavailable server does not silently force large files onto the browser.

@@ -10,9 +10,9 @@ Use Node.js 22.12+ (or 24): `npm ci`, then `npm run dev`. Open the printed local
 
 Vercel uses the checked-in `vercel.json`: install with `npm ci`, run tests and the Vite build, then serve `dist/`. Connect this GitHub repository with `master` as the production branch for automatic deployments; other branches produce previews.
 
-The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/cuestamp/` explicitly so that address remains usable.
+The default asset base is `/`. The GitHub Pages workflow redirects to Cuestamp so large-file processing has an API.
 
-Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Analysis remains in the browser; signed-in users can save audio/video to private Vercel Blob.
+Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Files up to 100 MB decode and analyze in the browser, with Wasm accelerating movie matching. Larger files upload privately and process in Vercel Functions. Signed-in users can save media to private Vercel Blob.
 
 ## Backend API
 
@@ -21,19 +21,19 @@ Local drafts remain in browser localStorage, scoped to the site's origin. Moving
 - Request fields: `production`, `mode`, `tracks`, `cues`, `sharedCueDetails`, and optional `movieOffset`, `movieMetadata`, `movieOverrides`. See `src/api-client.js` for the minimal payload and `server/services/validate-project.js` for the schema.
 - `api/`: thin Vercel HTTP entry points. `server/`: parsing/schema validation and services. `src/domain/review.js`: platform-independent business rules shared with the frontend.
 - Health and validation are public, stateless endpoints. Saved-project routes require WorkOS authentication and enforce ownership on every query. Media routes authorize direct uploads to private Vercel Blob and short-lived downloads.
-- Vercel enables server validation before export via `VITE_API_ENABLED=true` in the build command. Local/Pages builds remain browser-only unless enabled explicitly. If the server check fails, export shows a retryable error and retains edits.
-- Local full-stack development: run `npm run dev:api` and, in another terminal, `VITE_API_ENABLED=true npm run dev`. Vite proxies `/api` to port 3001. The anonymous workspace needs no credentials; accounts and cloud media require development credentials.
-- Each function has a 10-second maximum duration. No application request-body logging or persistent caches are used. WorkOS authentication and Neon project storage are implemented separately; distributed rate limiting and background processing remain future work.
+- Vercel enables server validation before export via `VITE_API_ENABLED=true` in the build command. This flag controls export validation; large-file processing separately requires the API. If the server check fails, export shows a retryable error and retains edits.
+- Local full-stack development: run `npm run dev:api` and, in another terminal, `VITE_API_ENABLED=true npm run dev`. Vite proxies `/api` to port 3001. Local processing needs no credentials; large-file processing, including for guests, and account media require development services.
+- The analysis function has a 300-second maximum duration; other routes retain 10 seconds. Guest analysis uses sealed ownership cookies, daily Neon quotas and one processing lease per session. Temporary source and PCM files expire after 24 hours and are deleted by daily authenticated cleanup.
 
 ## Workflow
 
-1. **Movie matching (experimental):** upload the finished movie and actual cue recordings used in it. The app decodes the movie's primary audio track, searches for supplied recordings and proposes each matching region's film in/out timecodes. Repeated uses and trimmed excerpts are supported within the limits below. No external catalog is involved; media is uploaded only when saving to an account.
+1. **Movie matching (experimental):** upload the finished movie and actual cue recordings used in it. The app decodes the movie's primary audio track, searches for supplied recordings and proposes each matching region's film in/out timecodes. Repeated uses and trimmed excerpts are supported within the limits below. No external catalog is involved; media is uploaded when saving to an account or processing a large file.
 2. **Audio with offset:** upload music-only audio exports, set each file's starting film timecode and detect regions separated by silence. This detects sound/silence in a known music-only input, not music versus dialogue. Quiet tails/noise depend on the threshold; short internal gaps can be merged.
 3. **Manual:** enter film timecodes directly or mark in/out during cue playback. Marks add that audio file's film-start offset.
 
 All workflows share production metadata, cue titles, usage, composer/publisher credits, PRO/IPI/shares, review and BMI XLSX export. The main Find your cues page starts with the full composer/publisher form. The four sidebar steps are Find your cues, Timings & usage, Production details, and Review & export. It provides common provenance and writer/publisher credits before or after detection. New cues inherit these values live. Each cue can override provenance or the entire credit list independently and reset either group to shared. Titles, timings and usage remain cue-specific. Existing saved cue values migrate conservatively as overrides; no legacy edits are overwritten. Provenance is optional and never inferred ownership. Unchanged, uniquely matched source segments keep overrides and IDs on rerun (including after clearing results); changed or ambiguous segments require review. Validation and BMI credit rows use effective shared/overridden values; Frame timings also records effective provenance. Text edits save on input without rebuilding the focused form. Each role's shares must total 100%. Automatic results need review before export; one confirmation action is available after reviewing the list. Cue titles can be edited separately for each detected region.
 
-Metadata, credits and placements persist in localStorage. Anonymous media needs reattachment after reload. Saved account media is restored from private Blob storage and decoded locally. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. When configured, WorkOS accounts can explicitly save private projects in Neon. Anonymous workspaces remain local. See [account setup](SETUP.md). On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
+Metadata, credits and placements persist in localStorage. Anonymous media needs reattachment after reload. Saved account media is restored from private Blob storage and decoded using the same size-based routing. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. When configured, WorkOS accounts can explicitly save private projects in Neon. Guest project drafts remain local; large-file processing temporarily uploads media. See [account setup](SETUP.md). On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
 
 ## Timecodes
 
@@ -71,9 +71,9 @@ Export requires a production title, valid cue timings/usages, complete contribut
 
 Use the same recording at original speed/pitch with reasonably audible music. Heavy masking, different mixes, EQ, retiming, short fragments, edits or stereo cancellation may cause missed/fragmented matches. Repetitive tones and similar recordings can produce false candidates. Similarity is a correlation measurement, **not a probability**. This is real signal analysis but does not guarantee every occurrence; review against the movie and correct when needed.
 
-Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes. Memory/work grow with movie length and reference count; use a desktop for larger projects.
+Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes and 2 GiB; backend routing does not raise these limits. Memory/work grow with movie length and reference count; use a desktop for larger projects.
 
-See [Wasm build and benchmark notes](wasm/README.md) for reproducible compilation, parity checks and the measured speedup. Wasm accelerates matching; it does not replace the frontend or require media uploads.
+See [Wasm build and benchmark notes](wasm/README.md) for reproducible compilation, parity checks and the measured speedup. Wasm accelerates local matching. Server-routed comparisons upload their originals, including small reference files needed to match a large movie.
 
 ## Verification
 
@@ -95,12 +95,18 @@ Local measurement on September 15, 2026: three references (8s, 5s, 6s) against a
 
 ## GitHub Pages
 
-Vite is configured for `/cuestamp/`. `.github/workflows/pages.yml` builds, tests and deploys the static output on pushes to `master` or manual dispatch.
-
-The repository is public with the owner’s explicit authorization, and Pages uses GitHub Actions as the build source. Site URL: https://adarsh54.github.io/cuestamp/
-
-Vercel serves the frontend and API publicly. GitHub Pages remains a static, browser-only build. On Vercel, validation processes submitted cue-sheet details without saving them or logging request bodies; media never leaves the browser.
+The legacy Pages address redirects to https://cuestamp.com/ because the complete app now needs server processing for large files.
 
 ## Dependency notices
 
 Mediabunny is MPL-2.0; unmodified source/license: https://github.com/Vanilagy/mediabunny (version in lockfile). JSZip is used under MIT: https://github.com/Stuk/jszip. Their npm packages contain license files. The matching algorithm uses no external catalog data.
+
+## Automatic processing route
+
+The cutoff is **100 MB (100,000,000 bytes)**. Files exactly at the cutoff stay local. Set the build-time `VITE_BROWSER_MAX_MB` to a positive number to tune it; the UI uses the same value. File size is a simple routing heuristic, not a guarantee of computational cost or faster completion.
+
+- Audio-only: each track runs locally or on the server based on its own size.
+- Movie matching: a comparison runs remotely when the movie or reference is large. Small counterparts upload on demand. Small comparisons still share one local Wasm movie index.
+- Results replace prior cues only after every comparison succeeds. Errors/cancellation preserve prior cues. Cancelling stops local work and client requests; an already-running server call can finish within its deadline.
+
+Verify with `npm test`, `scripts/browser-hybrid-check.cjs` (mocked cloud transport with tiny WAVs), and `scripts/backend-audio-check.mjs` (real native decoding against generated fixtures). The existing browser fixture check verifies real local Wasm processing. See SETUP.md for the migration and server environment requirements.
