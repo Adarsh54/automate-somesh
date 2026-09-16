@@ -14,7 +14,7 @@ const assert=require('node:assert/strict');
  await page.screenshot({path:'/tmp/cuestamp-welcome-mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Continue as guest'}).click();
  await page.locator('#shared-details').waitFor();
- assert.match(await page.locator('header').innerText(),/Guest workspace/);
+ assert.match(await page.locator('header').textContent(),/Guest workspace/);
  assert.doesNotMatch(await page.locator('body').innerText(),/processed in your browser|Device-local|decoded locally|frontend/i);
  await page.locator('#shared-details [data-field="last"]').fill('Guest writer');
  await page.reload();await page.locator('#shared-details').waitFor();
