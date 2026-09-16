@@ -1,4 +1,6 @@
 import "./style.css";
+import {reviewProject} from "./domain/review.js";
+import {serverValidationEnabled, validateOnServer} from "./api-client.js";
 import {cueDetails, migrateCueDetails, archiveCueDetails, effectiveCue} from "./cue-details.js";
 import {bindSidebar,sidebarIcon,sidebarToggle} from "./sidebar.js";
 import {
@@ -12,7 +14,6 @@ import { exportWorkbook } from "./export.js";
 import { Workflow, workflowView } from "./workflow.js";
 import {
   effectiveProduction,
-  productionIssues,
   productionWarnings,
   convertRate,
 } from "./project.js";
@@ -120,18 +121,7 @@ function field(label, key, value, attrs = "") {
 const select = (label, key, value, options) =>
   `<label>${label}<select data-field="${key}">${options.map(([v, l]) => `<option value="${esc(v)}" ${v === value ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>`;
 function review() {
-  const issues = productionIssues(state),
-    p = effectiveProduction(state);
-  if (!state.cues.length) issues.push("Add at least one cue placement");
-  state.cues.forEach((c, i) =>
-    cueIssues(
-      c,
-      state.tracks.find((t) => t.id === c.trackId),
-      p,
-      state.sharedCueDetails,
-    ).forEach((x) => issues.push(`Cue ${i + 1}: ${x}`)),
-  );
-  return issues;
+  return reviewProject(state).issues;
 }
 function render() {
   const openDetails = new Set(
@@ -252,7 +242,7 @@ function cues() {
 }
 function reviewPage(issues) {
   const warnings = productionWarnings(state);
-  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
+  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">${serverValidationEnabled ? "Cue-sheet details are sent securely for validation before export; media stays in your browser.<br>" : ""}Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
 }
 function credit(role) {
   return { id: id(), role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
@@ -461,16 +451,18 @@ function bind() {
       button.disabled = true;
       button.textContent = "Preparing spreadsheet…";
       try {
+        const snapshot = structuredClone(state);
+        if (serverValidationEnabled) await validateOnServer(snapshot);
         const blob = await exportWorkbook(
-          effectiveProduction(state),
-          state.tracks,
-          state.cues,
-          state.sharedCueDetails,
+          effectiveProduction(snapshot),
+          snapshot.tracks,
+          snapshot.cues,
+          snapshot.sharedCueDetails,
         );
         const url = URL.createObjectURL(blob),
           a = document.createElement("a");
         a.href = url;
-        a.download = `${effectiveProduction(state).title.replace(/[^a-z0-9_-]/gi, "_")}-cue-sheet.xlsx`;
+        a.download = `${effectiveProduction(snapshot).title.replace(/[^a-z0-9_-]/gi, "_")}-cue-sheet.xlsx`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
         message =

@@ -82,7 +82,22 @@ const assert=require('node:assert/strict');
  await nav('Find your cues');await p.locator('[data-mode="movie"]').click();await nav('Find your cues');assert.equal(await p.locator('[data-field="last"]').inputValue(),'Latest shared writer');await nav('Find your cues');await p.locator('[data-mode="offset"]').click();
  await nav('Timings & usage');assert.equal(await p.locator('[data-field="usage"]').first().inputValue(),'BV');await p.locator('#confirm-detections').click();
  await nav('Production details');await p.locator('[data-field="title"]').fill('Shared details export');await jump('Review & export');assert.equal(await p.locator('#export').isEnabled(),true);
+ if(process.env.EXPECT_API==='true') {
+  await p.route('**/api/validate', route=>route.abort(), {times:1});
+  await p.locator('#export').click();
+  await p.waitForFunction(()=>document.querySelector('.notice')?.textContent.includes('could not reach'));
+  assert.equal((await saved()).cues[0].title,'Independent title');
+  assert.equal(await p.locator('#export').isEnabled(),true);
+ }
+ const apiRequest = process.env.EXPECT_API==='true' ? p.waitForRequest(r=>r.url().endsWith('/api/validate')) : null;
  const dl=p.waitForEvent('download');await p.locator('#export').click();await (await dl).saveAs('/tmp/cuebook-shared.xlsx');
+ if(apiRequest) {
+  const payload=(await apiRequest).postDataJSON();
+  assert.equal(payload.cues[0].usage,'BV');
+  assert.equal(payload.cueDetailsArchive,undefined);
+  assert.equal(payload.tracks[0].filename,undefined);
+  assert.equal(payload.sharedCueDetails.credits[0].ipi,undefined);
+ }
  await nav('Find your cues');await p.setViewportSize({width:390,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.equal(await p.locator('[data-field="last"]').isVisible(),true);await p.screenshot({path:'/tmp/cuebook-shared-mobile.png',fullPage:true});
  // Legacy values become explicit overrides, including after reload and shared edits.
  await p.evaluate(()=>{const s=JSON.parse(localStorage.getItem('cuebook-v1'));s.cues[0].credits=structuredClone(s.sharedCueDetails.credits);s.cues[0].credits[0].last='Legacy writer';s.cues[0].category='original';delete s.sharedCueDetails;delete s.cueDetailsVersion;localStorage.setItem('cuebook-v1',JSON.stringify(s));});

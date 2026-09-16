@@ -63,7 +63,7 @@ export function cueIssues(cue, track, production, shared) {
     rate = production.rate || "24";
   if (!(cue.title || track?.title || "").trim())
     issues.push("Cue title missing");
-  if (!usages[cue.usage]) issues.push("Choose usage");
+  if (!Object.hasOwn(usages, cue.usage)) issues.push("Choose usage");
   if (duration(cue, rate) === null)
     issues.push("Enter valid film in/out timecodes, with out after in");
   const show = seconds(production.duration),

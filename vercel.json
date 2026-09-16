@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "npm test && npm run build",
-  "outputDirectory": "dist"
+  "buildCommand": "npm test && VITE_API_ENABLED=true npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 10
+    }
+  }
 }

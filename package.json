@@ -7,11 +7,13 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test"
+    "test": "node --test",
+    "dev:api": "node --watch server/dev.js"
   },
   "dependencies": {
     "jszip": "3.10.1",
-    "mediabunny": "^1.56.3"
+    "mediabunny": "^1.56.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "vite": "^7.3.6"
