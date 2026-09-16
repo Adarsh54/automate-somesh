@@ -1,10 +1,18 @@
 # Cuebook
 
-A static, device-local cue sheet workspace. Live: https://adarsh54.github.io/automate-somesh/
+A static, device-local cue sheet workspace. Live: https://automate-somesh.vercel.app/
 
 ## Run
 
-Use Node.js 22.12+ (or 24): `npm ci`, then `npm run dev`. Open the printed `/automate-somesh/` URL. `npm test` checks timing and credit validation; `npm run build` creates `dist/`.
+Use Node.js 22.12+ (or 24): `npm ci`, then `npm run dev`. Open the printed local URL. `npm test` checks timing and credit validation; `npm run build` creates `dist/`.
+
+## Hosting
+
+Vercel uses the checked-in `vercel.json`: install with `npm ci`, run tests and the Vite build, then serve `dist/`. Connect this GitHub repository with `master` as the production branch for automatic deployments; other branches produce previews.
+
+The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/automate-somesh/` explicitly so that address remains usable.
+
+Project details remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Audio/video and analysis remain browser-only.
 
 ## Workflow
 
