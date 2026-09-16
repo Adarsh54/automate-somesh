@@ -1,4 +1,5 @@
 import "./style.css";
+import {sessionInfo, createCloudWorkspace} from "./cloud-projects.js";
 import {reviewProject} from "./domain/review.js";
 import {serverValidationEnabled, validateOnServer} from "./api-client.js";
 import {cueDetails, migrateCueDetails, archiveCueDetails, effectiveCue} from "./cue-details.js";
@@ -18,6 +19,9 @@ import {
   convertRate,
 } from "./project.js";
 import { rates, toFrames, atOffset, elapsed, fromFrames } from "./timecode.js";
+const account = await sessionInfo();
+const storageKey = account.user ? `cuebook-user:${account.user.id}:draft` : "cuebook-v1";
+let cloudWorkspace;
 const blankProduction = {
   title: "",
   aka: "",
@@ -50,10 +54,10 @@ let state = {
   },
   selected = null,
   tab = "library",
-  message = "",
+  message = new URLSearchParams(location.search).has("authError") ? "Sign-in could not finish. Please try again." : "",
   clearedResults = null;
 try {
-  const saved = JSON.parse(localStorage.getItem("cuebook-v1"));
+  const saved = JSON.parse(localStorage.getItem(storageKey));
   if (
     saved?.production &&
     Array.isArray(saved.tracks) &&
@@ -109,7 +113,8 @@ const $ = (s) => document.querySelector(s),
 const id = () => crypto.randomUUID();
 function save() {
   try {
-    localStorage.setItem("cuebook-v1", JSON.stringify(state));
+    localStorage.setItem(storageKey, JSON.stringify(state));
+    cloudWorkspace?.changed();
   } catch {
     message =
       "Browser storage is full or unavailable. Keep this page open and export before leaving.";
@@ -147,9 +152,10 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
   bindSidebar();
+  cloudWorkspace?.bind();
   document.querySelectorAll("details").forEach((el) => {
     if (openDetails.has(el.querySelector("summary")?.textContent))
       el.open = true;
@@ -705,4 +711,5 @@ function bindWorkflows() {
       };
   });
 }
+cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc});
 render();

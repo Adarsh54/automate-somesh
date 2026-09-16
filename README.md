@@ -12,7 +12,7 @@ Vercel uses the checked-in `vercel.json`: install with `npm ci`, run tests and t
 
 The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/automate-somesh/` explicitly so that address remains usable.
 
-Project details remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Audio/video and analysis remain browser-only.
+Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Audio/video and analysis remain browser-only.
 
 ## Backend API
 
@@ -20,10 +20,10 @@ Project details remain in browser localStorage, scoped to the site's origin. Mov
 - `POST /api/validate`: JSON project validation; returns `{valid, issues, warnings}`. A structurally valid but incomplete cue sheet returns HTTP 200 with `valid: false`; malformed shapes return 400, unsupported media types 415, wrong methods 405, and bodies above 1 MiB 413.
 - Request fields: `production`, `mode`, `tracks`, `cues`, `sharedCueDetails`, and optional `movieOffset`, `movieMetadata`, `movieOverrides`. See `src/api-client.js` for the minimal payload and `server/services/validate-project.js` for the schema.
 - `api/`: thin Vercel HTTP entry points. `server/`: parsing/schema validation and services. `src/domain/review.js`: platform-independent business rules shared with the frontend.
-- Public, stateless endpoints: no authentication, persistence or media upload. Validation is not proof of project ownership. Future saved-project routes require authentication and authorization.
+- Health and validation are public, stateless endpoints. Saved-project routes require WorkOS authentication and enforce ownership on every query. No media upload is implemented.
 - Vercel enables server validation before export via `VITE_API_ENABLED=true` in the build command. Local/Pages builds remain browser-only unless enabled explicitly. If the server check fails, export shows a retryable error and retains edits.
 - Local full-stack development: run `npm run dev:api` and, in another terminal, `VITE_API_ENABLED=true npm run dev`. Vite proxies `/api` to port 3001. No Vercel account or secrets are required locally.
-- Each function has a 10-second maximum duration. No application request-body logging or persistent caches are used. Database, authentication, distributed rate limiting and background processing are future work.
+- Each function has a 10-second maximum duration. No application request-body logging or persistent caches are used. WorkOS authentication and Neon project storage are implemented separately; distributed rate limiting and background processing remain future work.
 
 ## Workflow
 
@@ -33,7 +33,7 @@ Project details remain in browser localStorage, scoped to the site's origin. Mov
 
 All workflows share production metadata, cue titles, usage, composer/publisher credits, PRO/IPI/shares, review and BMI XLSX export. The main Find your cues page starts with the full composer/publisher form. The four sidebar steps are Find your cues, Timings & usage, Production details, and Review & export. It provides common provenance and writer/publisher credits before or after detection. New cues inherit these values live. Each cue can override provenance or the entire credit list independently and reset either group to shared. Titles, timings and usage remain cue-specific. Existing saved cue values migrate conservatively as overrides; no legacy edits are overwritten. Provenance is optional and never inferred ownership. Unchanged, uniquely matched source segments keep overrides and IDs on rerun (including after clearing results); changed or ambiguous segments require review. Validation and BMI credit rows use effective shared/overridden values; Frame timings also records effective provenance. Text edits save on input without rebuilding the focused form. Each role's shares must total 100%. Automatic results need review before export; one confirmation action is available after reviewing the list. Cue titles can be edited separately for each detected region.
 
-Metadata, credits and placements persist in localStorage. Media, low-rate samples and previews are session-only and need reattachment after reload. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. No accounts, backend storage or cross-device sync. On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
+Metadata, credits and placements persist in localStorage. Media, low-rate samples and previews are session-only and need reattachment after reload. Audio reattachment checks filename/duration, not cryptographic identity. Reattaching/replacing a movie requires rerunning its matching before those results can be exported. When configured, WorkOS accounts can explicitly save private projects in Neon. Anonymous workspaces remain local. See [account setup](SETUP.md). On Vercel, export sends selected cue-sheet details to a stateless validation API; media, IPI values, archives and media profiles are excluded. Google Fonts supplies interface fonts; audio and project data are never sent there.
 
 ## Timecodes
 
