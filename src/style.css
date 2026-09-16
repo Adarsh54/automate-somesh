@@ -1257,10 +1257,96 @@ footer span:first-child {
 .cuey-form button {
   flex-shrink: 0;
 }
+.team-link {
+  margin-top: auto;
+  color: #4d6b58;
+  font-size: 12px;
+}
+.footer-team-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #718177;
+  font-size: 10px;
+  font-weight: 400;
+}
+.footer-team-link:hover {
+  background: transparent;
+  color: #275d48;
+}
+.team-page {
+  max-width: 980px;
+  padding: 36px 0 20px;
+}
+.team-page h1 {
+  margin-bottom: 10px;
+}
+.team-intro {
+  max-width: 520px;
+  margin: 0 0 34px;
+  color: #718177;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.team-member {
+  overflow: hidden;
+  padding: 0 0 24px;
+  border: 1px solid #dce4df;
+  border-radius: 10px;
+  background: white;
+}
+.team-avatar {
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 22px;
+  border-radius: 0;
+  background: #e8f0df;
+  color: #3f6549;
+  font-family: Manrope, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+.team-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.team-member-rishil .team-avatar img {
+  transform: scale(1.3);
+}
+.team-member h2 {
+  padding: 0 24px;
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.team-member p {
+  padding: 0 24px;
+  margin: 0;
+  color: #718177;
+  font-size: 13px;
+}
+[data-theme="dark"] .team-member,
+[data-theme="dark"] .cuey-panel {
+  background: var(--night-panel);
+  border-color: var(--night-border);
+  color: var(--night-text);
+}
+[data-theme="dark"] .team-avatar {
+  background: var(--night-raised);
+  color: var(--night-accent);
+}
 @media (max-width: 720px) {
   .cuey {
     right: 18px;
     bottom: 18px;
+  }
+  .team-grid {
+    grid-template-columns: 1fr;
   }
 }
 
