@@ -21,6 +21,7 @@ async function call(handler, {method="POST", body, headers={"content-type":"appl
 }
 test("API validates shared credits, individual overrides and reviewed timings with identical domain rules",async()=>{
   const state=sample();
+  delete state.cues[0].method; // Saved legacy manual cues may predate the method field.
   let response=await call(validate,{body:state});
   assert.equal(response.code,200);assert.equal(response.body.valid,true);
   assert.deepEqual(response.body,reviewProject(state));

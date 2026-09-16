@@ -24,7 +24,7 @@ const project = z.object({
   tracks: z.array(z.object({id: text.min(1), title: optionalText, offset: optionalText})).max(500),
   cues: z.array(z.object({
     trackId: text.min(1), title: optionalText, start: optionalText, end: optionalText,
-    usage: optionalText, method: z.enum(["movie", "offset", "manual"]),
+    usage: optionalText, method: z.enum(["movie", "offset", "manual"]).optional(),
     reviewed: z.boolean().optional(), staleSource: z.boolean().optional(),
     credits: credits.optional(),
   })).max(2000),
