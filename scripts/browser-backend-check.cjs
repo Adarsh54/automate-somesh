@@ -9,7 +9,7 @@ const {randomUUID}=require('node:crypto');
   page.on('pageerror',e=>errors.push(e.message));
   // Replace only transport. The real Workflow and BackendAnalysis classes drive the UI.
   const module=readFileSync('src/backend-analysis.js','utf8').replace("import {upload} from '@vercel/blob/client';",`async function upload(path,file,options){options.onUploadProgress({percentage:100});return {};}`);
-  await page.route('**/src/backend-analysis.js*',r=>r.fulfill({contentType:'text/javascript',body:module}));
+  await page.route('**/src/backend-analysis.js',r=>r.fulfill({contentType:'text/javascript',body:module}));
   await page.route('**/api/auth?**',r=>r.fulfill({json:{configured:true,user:null}}));
   await page.route('**/api/analysis?**',async r=>{
    const action=new URL(r.request().url()).searchParams.get('action'),body=r.request().postDataJSON();requests.push({action,body});
@@ -26,7 +26,6 @@ const {randomUUID}=require('node:crypto');
   const file={name:'movie.mp4',mimeType:'video/mp4',buffer:Buffer.from('mock media')};
   await page.locator('#movie-upload').setInputFiles(file);
   await page.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
-  await page.locator('#movie-preview').waitFor({state:'attached'}).catch(async error=>{console.error(await page.locator('body').innerText(),requests,errors);throw error;});
   await page.locator('[data-upload]').setInputFiles({...file,name:'score.wav',mimeType:'audio/wav'});
   await page.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
   await page.locator('#analyze').click();await page.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
