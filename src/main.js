@@ -1,5 +1,8 @@
 import "./storage-migration.js";
 import "./style.css";
+import "@shoelace-style/shoelace/dist/themes/light.css";
+import "@shoelace-style/shoelace/dist/components/icon/icon.js";
+import "@shoelace-style/shoelace/dist/components/tooltip/tooltip.js";
 import {themeToggle} from "./theme.js";
 import {enterWorkspace} from "./welcome.js";
 import {sessionInfo, createCloudWorkspace} from "./cloud-projects.js";
@@ -132,6 +135,36 @@ const select = (label, key, value, options) =>
 function review() {
   return reviewProject(state).issues;
 }
+let cueyOpen = false;
+let cueyAnswer = "";
+function cuey() {
+  const questions = ["Which workflow should I choose?", "Why can't I export yet?", "What files can I use?", "What does review mean?", "Is my media uploaded?", "What if a cue is not found?", "How do I add credits?", "Can I enter timings myself?"];
+  return `<div class="cuey"><sl-tooltip content="${cueyOpen ? "Close" : "Ask"} Cuey"><button class="cuey-launcher" id="cuey-launcher" aria-label="${cueyOpen ? "Close" : "Ask"} Cuey" aria-expanded="${cueyOpen}" aria-controls="cuey-panel"><sl-icon name="chat-dots" aria-hidden="true"></sl-icon></button></sl-tooltip><section class="cuey-panel${cueyOpen ? " open" : ""}" id="cuey-panel" aria-label="Cuey help"><div class="cuey-header"><div><span class="eyebrow">CUEBOOK GUIDE</span><h2>Cuey</h2></div><button class="text" id="cuey-close" aria-label="Close Cuey">Close</button></div><p class="muted">Ask about the workflow, timings, credits, or export.</p><div class="cuey-questions">${questions.map((question) => `<button data-cuey-question="${esc(question)}">${esc(question)}</button>`).join("")}</div>${cueyAnswer ? `<div class="cuey-answer" role="status">${esc(cueyAnswer)}</div>` : ""}<form id="cuey-form" class="cuey-form"><input id="cuey-input" type="text" placeholder="Ask a question" autocomplete="off" aria-label="Ask Cuey a question"><button class="primary" type="submit">Ask</button></form></section></div>`;
+}
+function answerCuey(question) {
+  const text = question.toLowerCase();
+  if (text.includes("workflow") || text.includes("choose")) return "Use Movie matching for a finished movie, Audio with offset for music-only exports, or Manual to enter timings yourself.";
+  if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export to download the XLSX."; }
+  if (text.includes("file") || text.includes("format")) return "For video, MP4/AAC or WebM/Opus works best. For audio, use WAV, MP3, M4A, FLAC, or OGG. Files are analyzed in your browser.";
+  if (text.includes("uploaded") || text.includes("private") || text.includes("media")) return "Your media is analyzed locally in the browser. It is only uploaded when you explicitly save a project to an account.";
+  if (text.includes("not found") || text.includes("no match") || text.includes("missing")) return "Check that the reference recording is the same speed and pitch as the movie audio. You can also add the placement manually in Timings & usage.";
+  if (text.includes("review") || text.includes("confirm")) return "Review means checking detected cue boundaries, usage, timings, and credits. Automatic timings must be confirmed before export.";
+  if (text.includes("credit") || text.includes("composer") || text.includes("publisher")) return "Add shared composer and publisher details on Find your cues. A cue can override them later in Timings & usage.";
+  if (text.includes("manual") || text.includes("myself") || text.includes("enter timing")) return "Choose Manual, add a cue recording, then enter Film in and Film out directly or mark them during playback.";
+  if (text.includes("offset") || text.includes("timecode")) return "An offset is the film timecode where an audio file begins. It lets Cuebook convert playback or detected positions into film timings.";
+  if (text.includes("save") || text.includes("account")) return "Guest drafts stay in this browser. Sign in and click Save project to keep a project and its media in your account.";
+  return "I can help with workflows, supported files, timings, credits, review, and export. Try one of the questions above.";
+}
+function teamPage() {
+  const members = [["Somesh Yatham", "team/somesh.png"], ["Rishil Uppaluru", "team/rishi.JPG"], ["Adarsh Ashok", "team/adarsh.png"]];
+  return `<section class="team-page"><div class="eyebrow">THE PEOPLE BEHIND CUESTAMP</div><h1>Meet the team.</h1><p class="team-intro">Three people building a simpler way to turn music into a finished cue sheet.</p><div class="team-grid">${members.map(([name, photo]) => `<article class="team-member team-member-${name.split(" ")[0].toLowerCase()}"><div class="team-avatar"><img src="${import.meta.env.BASE_URL}${photo}" alt="${esc(name)}"></div><h2>${name}</h2><p>Team member</p></article>`).join("")}</div><button class="primary" data-tab="library">Back to workspace</button></section>`;
+}
+function bindCuey() {
+  $("#cuey-launcher")?.addEventListener("click", () => { cueyOpen = !cueyOpen; render(); });
+  $("#cuey-close")?.addEventListener("click", () => { cueyOpen = false; render(); });
+  document.querySelectorAll("[data-cuey-question]").forEach((button) => { button.onclick = () => { cueyAnswer = answerCuey(button.dataset.cueyQuestion); cueyOpen = true; render(); }; });
+  $("#cuey-form")?.addEventListener("submit", (event) => { event.preventDefault(); const input = $("#cuey-input"); if (!input.value.trim()) return; cueyAnswer = answerCuey(input.value); cueyOpen = true; render(); });
+}
 function render() {
   const openDetails = new Set(
     [...document.querySelectorAll("details[open]")].map(
@@ -157,7 +190,11 @@ function render() {
       .join(
         "",
       )}</nav><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account">${themeToggle()}<span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+  document.querySelector(".source-link")?.insertAdjacentHTML("beforebegin", `<button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
+  if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
+  $("#app").insertAdjacentHTML("beforeend", cuey());
   bind();
+  bindCuey();
   bindSidebar();
   cloudWorkspace?.bind();
   document.querySelectorAll("details").forEach((el) => {
