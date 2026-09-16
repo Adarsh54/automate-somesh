@@ -15,7 +15,20 @@ The production Vercel project is `automate-somesh`. Configure these **server-onl
 WorkOS AuthKit redirect URI:
 `https://automate-somesh.vercel.app/api/auth?action=callback`
 
-Enable hosted email login/signup and email verification in WorkOS. Social login can be added later. Configure the production application name as Cuebook. WorkOS may require billing information before activating its production environment.
+Enable hosted email login/signup and email verification in WorkOS. Google login is enabled in the production WorkOS environment. Configure the production application name as Cuebook. WorkOS may require billing information before activating its production environment.
+
+### Google sign-in
+
+WorkOS hosted AuthKit displays **Continue with Google** on its login/signup forms; no separate frontend OAuth flow or Google secret in Vercel is needed.
+
+- Google Cloud project: `Cuebook` (`cultivated-link-508820-i9`).
+- OAuth client: `Cuebook WorkOS`, type Web application. Client credentials are stored in the WorkOS Google provider configuration, never in this repository.
+- Google authorized redirect URI: `https://auth.workos.com/sso/oauth/google/m5AZrm2RHsjLXphO5hmbGA3Cz/callback`. This is distinct from the app's WorkOS callback above.
+- Access is limited to `userinfo.email` and `userinfo.profile`. No Gmail mailbox scopes are requested, and WorkOS's Return Google OAuth tokens option is off.
+- Google audience is External. Its publishing status currently remains Testing: Google disables Publish app pending completion of branding. For these basic identity scopes, Google's [documented exception](https://support.google.com/cloud/answer/15549945?hl=en) permits users outside the test-user list, without a testing warning or seven-day authorization expiry. Revisit publishing/verification before adding any other scope.
+- Verified on September 16, 2026: the live AuthKit Google button, Google account selection and consent, successful callback to Cuebook, and signed-in account/Log out controls. No test users were added to Google's allowlist.
+
+Google currently labels the consent destination `workos.com`, matching the shared WorkOS callback domain. Custom consent branding/domain verification is a separate follow-up.
 
 Use a separate WorkOS staging environment and Neon branch for development/preview. Do not expose production credentials to untrusted preview branches. For localhost use `APP_URL=http://localhost:5173` and add `http://localhost:5173/api/auth?action=callback` to the staging redirect allowlist.
 
