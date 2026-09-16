@@ -16,8 +16,13 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   page.on("dialog", (dialog) => dialog.accept());
   await page.goto(url);
   async function fill(selector, value) {
-    await page.locator(selector).fill(value);
-    await page.locator(selector).dispatchEvent("change");
+    const control = page.locator(selector).last();
+    await control.evaluate((el) => {
+      for (let node = el.parentElement; node; node = node.parentElement)
+        if (node.tagName === "DETAILS") node.open = true;
+    });
+    await control.fill(value);
+    await control.dispatchEvent("change");
   }
   async function saved() {
     return page.evaluate(() => JSON.parse(localStorage.getItem("cuebook-v1")));
@@ -109,7 +114,6 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   for (const [key, value] of Object.entries({
     title: "Matching fixture",
     company: "Test Studio",
-    duration: "00:10:00",
     preparedBy: "Test Producer",
     email: "test@example.com",
   }))
@@ -173,6 +177,9 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   state = await saved();
   assert.equal(state.cues.at(-1).start, "01:02:03:12");
   await page.locator('.nav[data-tab="library"]').click();
+  await page.locator('[data-field="rate"]').evaluate((el) => {
+    el.closest("details").open = true;
+  });
   await page.locator('[data-field="rate"]').selectOption("25");
   state = await saved();
   assert.equal(state.cues.at(-1).start, "01:02:03:13");
@@ -181,13 +188,11 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
   assert.equal(await page.locator("[data-cue]").count(), 4);
   await page.locator('.nav[data-tab="library"]').click();
   // Invalid media must produce an error and no new track.
-  await page
-    .locator("[data-upload]")
-    .setInputFiles({
-      name: "broken.wav",
-      mimeType: "audio/wav",
-      buffer: Buffer.from("not an audio file"),
-    });
+  await page.locator("[data-upload]").setInputFiles({
+    name: "broken.wav",
+    mimeType: "audio/wav",
+    buffer: Buffer.from("not an audio file"),
+  });
   await ready();
   assert.match(await page.locator(".notice").innerText(), /Could not read/);
   assert.equal((await saved()).tracks.length, 2);

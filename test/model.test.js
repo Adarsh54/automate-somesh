@@ -33,12 +33,14 @@ test("placement validates usage and production bounds", () => {
   assert.deepEqual(
     cueIssues({ start: "00:00:00", end: "00:01:05", usage: "BI" }, track, {
       duration: "00:02:00",
+      startTimecode: "00:00:00:00",
     }),
     [],
   );
   assert.match(
     cueIssues({ start: "00:00:00", end: "00:03:00", usage: "" }, track, {
       duration: "00:02:00",
+      startTimecode: "00:00:00:00",
     }).join(" "),
     /Choose usage.*ends after/,
   );

@@ -18,7 +18,15 @@ Metadata, credits and placements persist in localStorage. Media, low-rate sample
 
 ## Timecodes
 
-Production start and **file start** are distinct. A file starting at `00:59:55:00` with a match at relative position 15 seconds produces `01:00:10:00` at 24 fps. Each offset/manual audio file can have its own start. Container audio timestamps preserve leading audio gaps. Embedded editorial timecode is not read automatically: enter the file's starting film timecode explicitly.
+Production start and **file start** are distinct. A file starting at `00:59:55:00` with a match at relative position 15 seconds produces `01:00:10:00` at 24 fps. Each offset/manual audio file can have its own start. Container timestamps preserve relative audio gaps but are never treated as editorial film timecode.
+
+The selected path controls the sequence and visible fields:
+
+- Movie: upload first, then review derived title (filename), duration, frame rate and origin summaries. Reference uploads appear after the movie. Supported **single-sample QuickTime `tmcd`** tracks supply genuine embedded timecode and its rate. The parser rejects counter formats, ambiguous/multiple timecode tracks, unsupported rates and shifted/discontinuous edit lists. Other embedded timecode formats are not supported. Constant video rate is detected by scanning frame timestamps; VFR/unsupported rate uses an explicitly labeled 24 fps timecode-grid fallback. When supported embedded timecode is absent, origin is explicitly **assumed file-relative 00:00:00:00**, not a claim about film timecode. One optional timing editor changes the file origin/rate and excludes pre-roll/tail. Full-file duration/start is the initial production assumption, visibly stated and editable.
+- Offset: upload music, then set each file's start in a visible list; source durations are automatic. Full show duration and full production start remain unknown. Silence controls are optional disclosures.
+- Manual: upload, then enter film in/out (cue duration is calculated) or optionally specify an offset for playback marks. No matching/silence settings.
+
+Movie-derived title/length/origin are not carried into audio-only paths. Explicitly entered project metadata stays shared. Replacing a movie resets per-file timing overrides; returning to the same name/size/modification-time profile restores them. This identity is a convenience, not cryptographic verification. Audio and placements remain shared and are not deleted by switching paths. Frame rate is a shared project grid, so changes convert existing cue positions to preserve elapsed time.
 
 Supported rates: 24, 25, 30, 24000/1001 (23.976 non-drop), 30000/1001 (29.97 non-drop), and 29.97 drop-frame. Use `HH:MM:SS:FF`; drop-frame accepts a semicolon before frames and rejects nonexistent frame labels. Changing rate converts positions to preserve elapsed time and clears automatic timing reviews. Changing a detected file's offset shifts its results and clears reviews. Bounds are checked relative to production start, not midnight. Midnight rollover is outside demo scope.
 
@@ -32,7 +40,7 @@ Original XLSX: https://cdn.bmi.com/forms/rapidcue/Cue_Sheet_Template_2016V3-6-5.
 
 `public/bmi-cue-sheet-template.xlsx` is the unmodified reference. Export preserves BMI's template, styling, validations and hidden lookup sheet, filling A–R from row 20 with one contributor per row (maximum 980 rows). Calculated fields are stored as numeric values to avoid dependence on Excel-specific formulas. Shares retain percentage formatting. Because BMI has no frame columns, its clock labels and durations round to whole seconds. Rounded totals may differ from exact totals. An added **Frame timings** worksheet preserves full timecodes, rate, elapsed durations, file offsets, detected relative boundaries, review state and signal similarity.
 
-The UI requires core production details, valid placements/usages, complete contributors and reviewed automatic timings. Airdate, version, category and episode details may be inapplicable or unknown; review relevant fields before submission. The result is a review draft, not automatic submission or guaranteed BMI acceptance.
+Export requires a production title, valid cue timings/usages, complete contributor credits and reviewed automatic timings. Company/full show duration and contact details are collected at final review, not upfront. Unknown production fields cause explicit **draft-export warnings** and are left blank in the workbook; a music-only file's duration is never substituted for show duration. Complete applicable BMI production details before submission. Airdate, episode details and other optional metadata are in a disclosure. The result is a review draft, not automatic submission or guaranteed BMI acceptance.
 
 ## Analysis implementation and limits
 
@@ -40,6 +48,7 @@ The UI requires core production details, valid placements/usages, complete contr
 - `src/analysis.js`: mean-normalized waveform cross-correlation using FFTs, then local correlation to trace matching regions. Handles gain changes and polarity inversion. At most 16 two-second anchors per reference and 100 candidate alignments bound long-reference work. Excerpts must overlap a usable anchor; references over about 32 seconds are searched more sparsely.
 - `src/analysis.worker.js`: cancellable worker for matching and silence detection. Progress describes actual decoding or current reference/anchor work. Cancellation keeps previous results.
 - `src/timecode.js`: frame arithmetic, drop/non-drop parsing, offsets and export clock conversion.
+- `src/metadata.js` / `src/project.js`: bounded QuickTime timecode reading, rate inference/fallback, path-specific effective production values, per-file overrides and draft validation. QuickTime format source: https://developer.apple.com/documentation/quicktime-file-format/timecode_sample_description . Frame metrics: https://mediabunny.dev/guide/reading-media-files . Creation timestamps and unrelated metadata are never used as film origins.
 
 Use the same recording at original speed/pitch with reasonably audible music. Heavy masking, different mixes, EQ, retiming, short fragments, edits or stereo cancellation may cause missed/fragmented matches. Repetitive tones and similar recordings can produce false candidates. Similarity is a correlation measurement, **not a probability**. This is real signal analysis but does not guarantee every occurrence; review against the movie and correct when needed.
 
@@ -54,9 +63,12 @@ Generate deterministic non-copyrighted integration media using Python and ffmpeg
 ```sh
 python scripts/generate-fixtures.py /tmp/cuebook-fixtures /path/to/ffmpeg
 PLAYWRIGHT_MODULE=/path/to/playwright node scripts/browser-check.cjs
+PLAYWRIGHT_MODULE=/path/to/playwright node scripts/metadata-browser-check.cjs
 ```
 
 `CUEBOOK_URL` targets another deployment; `FIXTURES` overrides the fixture folder. Chrome runs in an isolated test profile. The script exercises actual 10-minute MP4/AAC decoding, repeated uses, a trimmed excerpt, a no-match reference, all three workflows, offsets, credits/review/export, persistence, mobile layout and browser errors. Generated media/workbooks stay outside the repository.
+
+Metadata/UX verification additionally covers actual 24/25 fps and drop-frame embedded-timecode MOVs, variable-rate MP4, inferred summaries, no upfront duplicate timing fields, independent offsets, switching paths, file replacement/restored overrides, and draft XLSX with genuinely unknown show duration. Unit tests exercise inference, provenance isolation, pre-roll, invalid timing and unknown bounds.
 
 Local measurement on September 15, 2026: three references (8s, 5s, 6s) against a 10-minute synthetic MP4 found all five expected placements and no match for the unrelated reference. Signal processing took approximately **1.5 seconds**; upload/decode/analyze flow took **2.4 seconds**. This is a synthetic baseline on this machine, not a guarantee for arbitrary movies/hardware. Boundaries passed a 0.2-second tolerance. The downloaded workbook was separately parsed to verify clock times, durations, totals, shares and the Frame timings sheet.
 

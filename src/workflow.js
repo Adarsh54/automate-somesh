@@ -1,5 +1,6 @@
 import { decodeMedia } from "./media.js";
-import { toFrames, atOffset, rates } from "./timecode.js";
+import { toFrames, atOffset } from "./timecode.js";
+import { applyMovieMetadata } from "./project.js";
 
 export class Workflow {
   constructor({ state, save, render, notify }) {
@@ -45,6 +46,7 @@ export class Workflow {
       if (movie) {
         if (this.movie) URL.revokeObjectURL(this.movie.url);
         this.movie = { ...decoded, filename: file.name, url };
+        applyMovieMetadata(this.state, file, decoded);
         this.state.cues
           .filter((c) => c.method === "movie")
           .forEach((c) => {
@@ -236,75 +238,4 @@ export class Workflow {
   }
 }
 
-export function workflowView(state, workflow, { esc, field, select }) {
-  const mode = state.mode;
-  const modes = [
-    [
-      "movie",
-      "01",
-      "Movie matching",
-      "Find supplied recordings in your finished movie.",
-      "EXPERIMENTAL",
-    ],
-    [
-      "offset",
-      "02",
-      "Audio with offset",
-      "Find music regions between silences in a score export.",
-      "MUSIC-ONLY AUDIO",
-    ],
-    [
-      "manual",
-      "03",
-      "Manual",
-      "Enter film timings or mark them from cue playback.",
-      "YOU SET THE TIMINGS",
-    ],
-  ];
-  return `<div class="workflow-modes">${modes.map(([key, n, title, text, tag]) => `<button data-mode="${key}" class="workflow-mode ${mode === key ? "chosen" : ""}" ${workflow.busy ? "disabled" : ""}><span class="eyebrow">${n} / ${tag}</span><h2>${title}</h2><p>${text}</p><span class="mode-choice">${mode === key ? "● Selected" : "○ Choose workflow"}</span></button>`).join("")}</div>
-  <section class="panel workflow-settings"><div class="section-title"><h2>${mode === "movie" ? "Match the recordings you used" : mode === "offset" ? "Place a music-only export on the film timeline" : "Set cue timings by hand"}</h2><span class="muted">All processing stays on this device</span></div>
-  <div class="form-grid" id="workflow-settings">${select(
-    "Project frame rate",
-    "rate",
-    state.production.rate,
-    Object.entries(rates).map(([k, v]) => [k, v.label]),
-  )}${field("Production starts at film timecode", "startTimecode", state.production.startTimecode, 'placeholder="01:00:00:00"')}</div>
-  <p class="muted">Use HH:MM:SS:FF (${state.production.rate === "29.97df" ? "semicolon before frames for drop-frame" : "frames, not milliseconds"}). File start is separate from production start: a file beginning at 00:59:55:00 can contain five seconds of pre-roll.</p>
-  ${
-    mode === "movie"
-      ? `<div class="movie-input"><label class="upload-button">${workflow.movie ? "Replace movie" : "＋ Add finished movie"}<input id="movie-upload" type="file" accept="video/mp4,video/webm,.mov,.m4v" ${workflow.busy ? "disabled" : ""}></label><span>${workflow.movie ? `${esc(workflow.movie.filename)} · ${(workflow.movie.duration / 60).toFixed(1)} min` : "MP4 with AAC or WebM with Opus recommended"}</span></div><div id="movie-settings" class="form-grid">${field("Movie file starts at film timecode", "movieOffset", state.movieOffset, 'placeholder="00:59:55:00"')}${select(
-          "Match sensitivity",
-          "matchThreshold",
-          String(state.matchThreshold),
-          [
-            ["0.55", "Strict · fewer false matches"],
-            ["0.45", "Balanced"],
-            ["0.32", "Sensitive · more review needed"],
-          ],
-        )}</div>${workflow.movie ? `<video id="movie-preview" controls preload="metadata" src="${workflow.movie.url}"></video>` : ""}<p class="muted">Upload the same cue recordings used in the movie. Finds repeated uses and excerpts containing a matching 1–2 second segment. Best at original speed/pitch; heavy dialogue, effects, retiming and very short cues can be missed. Longer references use up to 16 search segments, so short excerpts may be missed. No external catalog search.</p>`
-      : mode === "offset"
-        ? `<div class="form-grid" id="offset-settings">${select(
-            "Silence threshold",
-            "thresholdDb",
-            String(state.thresholdDb),
-            [
-              ["-55", "−55 dBFS · include quiet tails"],
-              ["-45", "−45 dBFS · balanced"],
-              ["-35", "−35 dBFS · ignore low noise"],
-            ],
-          )}${select(
-            "Minimum gap between cues",
-            "silenceGap",
-            String(state.silenceGap),
-            [
-              ["0.35", "0.35 seconds"],
-              ["0.75", "0.75 seconds"],
-              ["1.5", "1.5 seconds"],
-            ],
-          )}</div><p class="muted">Use music-only audio, with silence between cues. This detects sound above the threshold, not a music-vs-dialogue classifier. Regions shorter than 0.5 seconds are ignored. Each file has its own starting film timecode below.</p>`
-        : '<p class="muted">Each audio file can have its own film-start offset. Add a manual cue, enter film in/out directly, or use “Mark in/out” during cue playback to add its offset automatically.</p>'
-  }
-  <p class="muted">Desktop Chrome recommended. Codec support depends on your browser; files without a decodable audio track show an error. Limit: 20 minutes per file. Media must be reattached after refresh; timing and credit details are saved locally.</p>
-  <div class="button-row"><label class="upload-button">＋ Add ${mode === "offset" ? "music-only audio" : "cue audio files"}<input type="file" multiple accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg" data-upload="unknown" ${workflow.busy ? "disabled" : ""}></label>${mode !== "manual" ? `<button class="primary" id="analyze" ${workflow.busy || !state.tracks.length ? "disabled" : ""}>${mode === "movie" ? "Find music in movie" : "Detect music regions"}</button>` : ""}${workflow.busy ? '<button id="cancel-analysis">Cancel</button>' : ""}</div><p id="analysis-progress" role="status">${esc(workflow.progress)}</p>
-  </section>${state.analysisReport ? `<section class="panel analysis-report"><div class="section-title"><h2>Last analysis · ${state.analysisReport.count} detections</h2><button class="primary" data-tab="cues">Review timings →</button></div><p class="muted">${state.analysisReport.mode === "movie" ? "Movie matching" : "Audio with offset"} · ${state.analysisReport.seconds.toFixed(1)}s signal processing (excludes file decoding). Detections are candidates to review, not guaranteed identifications.</p><ul>${state.analysisReport.counts.map((r) => `<li>${esc(r.title)} <strong>${r.count ? `${r.count} ${r.count === 1 ? "placement" : "placements"}` : "No match / region found"}</strong></li>`).join("")}</ul></section>` : ""}`;
-}
+export { workflowView } from "./workflow-view.js";

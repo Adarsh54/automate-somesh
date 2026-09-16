@@ -19,7 +19,7 @@ export function time(value) {
     .map((x) => String(x).padStart(2, "0"))
     .join(":");
 }
-import { elapsed, rates } from "./timecode.js";
+import { elapsed, rates, toFrames } from "./timecode.js";
 export function duration(cue, rate = "24") {
   if (cue.start?.length === 8 && cue.end?.length === 8) {
     const a = seconds(cue.start),
@@ -65,13 +65,17 @@ export function cueIssues(cue, track, production) {
   if (duration(cue, rate) === null)
     issues.push("Enter valid film in/out timecodes, with out after in");
   const show = seconds(production.duration),
-    origin = production.startTimecode || "00:00:00:00";
-  const start =
-    cue.start?.length === 8
+    origin = production.startTimecode || null;
+  const start = !origin
+    ? null
+    : cue.start?.length === 8
       ? seconds(cue.start)
       : elapsed(origin, cue.start, rate);
-  const end =
-    cue.end?.length === 8 ? seconds(cue.end) : elapsed(origin, cue.end, rate);
+  const end = !origin
+    ? null
+    : cue.end?.length === 8
+      ? seconds(cue.end)
+      : elapsed(origin, cue.end, rate);
   if (start !== null && start < 0)
     issues.push("Cue starts before the production start");
   if (show !== null && end !== null && end > show + 1 / rates[rate].fps)
@@ -80,5 +84,7 @@ export function cueIssues(cue, track, production) {
     issues.push("Review detected timing");
   if (cue.staleSource)
     issues.push("Movie reattached or replaced; rerun matching");
+  if (cue.method === "offset" && toFrames(track?.offset, rate) === null)
+    issues.push("Correct this audio file’s starting film timecode");
   return [...issues, ...(track ? creditIssues(track) : ["Track missing"])];
 }

@@ -1,5 +1,6 @@
 import { Input, ALL_FORMATS, BlobSource, AudioSampleSink } from "mediabunny";
 import { ANALYSIS_RATE, MAX_DURATION } from "./analysis.js";
+import { readQuickTimeTimecode } from "./metadata.js";
 
 // Integrate decoded samples into fixed time bins, preserving container timestamps
 // (including leading gaps). Stream chunks rather than retaining full-rate movie PCM.
@@ -15,11 +16,17 @@ export async function decodeMedia(file, progress = () => {}, signal) {
       throw new Error(
         "This browser cannot decode the audio codec. Try Chrome with MP4/AAC, WebM/Opus, or a PCM WAV audio export.",
       );
-    const duration = await input.computeDuration();
+    const mediaStart = Math.max(0, await input.getFirstTimestamp());
+    const duration = (await input.computeDuration()) - mediaStart;
     if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_DURATION)
-      throw new Error(
-        "Use a non-empty file no longer than 20 minutes.",
-      );
+      throw new Error("Use a non-empty file no longer than 20 minutes.");
+    const video = await input.getPrimaryVideoTrack();
+    const frameMetrics = video
+      ? await video
+          .computeFrameRateMetrics({ targetPacketCount: Infinity })
+          .catch(() => null)
+      : null;
+    const embeddedTimecode = video ? await readQuickTimeTimecode(file) : null;
     const output = new Float32Array(Math.ceil(duration * ANALYSIS_RATE));
     const counts = new Float32Array(output.length);
     const sink = new AudioSampleSink(track);
@@ -37,7 +44,8 @@ export async function decodeMedia(file, progress = () => {}, signal) {
         // resampling consistent across AAC/PCM rates and decoder chunk boundaries.
         for (let frame = 0; frame < sample.numberOfFrames; frame++) {
           const at = Math.floor(
-            (sample.timestamp + frame / sample.sampleRate) * ANALYSIS_RATE +
+            (sample.timestamp - mediaStart + frame / sample.sampleRate) *
+              ANALYSIS_RATE +
               1e-7,
           );
           if (at < 0 || at >= output.length) continue;
@@ -51,7 +59,8 @@ export async function decodeMedia(file, progress = () => {}, signal) {
             Math.min(
               100,
               Math.round(
-                ((sample.timestamp + sample.duration) / duration) * 100,
+                ((sample.timestamp - mediaStart + sample.duration) / duration) *
+                  100,
               ),
             ),
           );
@@ -62,7 +71,13 @@ export async function decodeMedia(file, progress = () => {}, signal) {
     for (let i = 0; i < output.length; i++)
       if (counts[i]) output[i] /= counts[i];
     progress(100);
-    return { samples: output, duration, codec: track.codec };
+    return {
+      samples: output,
+      duration,
+      codec: track.codec,
+      frameMetrics,
+      embeddedTimecode,
+    };
   } finally {
     input.dispose();
   }
