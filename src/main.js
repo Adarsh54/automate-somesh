@@ -189,6 +189,7 @@ function render() {
         "",
       )}</nav><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account">${themeToggle()}<span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div><div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   document.querySelector(".source-link")?.insertAdjacentHTML("beforebegin", `<button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
+  if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
   $("#app").insertAdjacentHTML("beforeend", cuey());
   bind();
@@ -323,6 +324,7 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         const sharedShortcut = b.dataset.tab === "shared";
+        if(location.hash === "#/projects") history.pushState(null,"","#/workspace");
         tab = sharedShortcut ? "library" : b.dataset.tab;
         (message = "");
         render();
@@ -757,3 +759,10 @@ cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow
 render();
 
 cloudWorkspace.restore();
+function routePage() {
+  if(location.hash === "#/projects") {tab="projects";render();cloudWorkspace.loadProjects();}
+  else if(tab === "projects") {tab="library";render();}
+  window.scrollTo({top:0});
+}
+window.addEventListener("hashchange",routePage);
+routePage();

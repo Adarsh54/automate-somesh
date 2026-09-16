@@ -385,3 +385,14 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
   .cuey { right: 18px; bottom: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition: none !important; scroll-behavior: auto !important; } }
+
+.saved-projects { display: grid; gap: 10px; }
+.saved-project { display: flex; align-items: center; gap: 16px; padding: 20px; text-align: left; border-color: var(--line); }
+.saved-project > span:nth-child(2) { min-width: 0; flex: 1; }
+.saved-project strong { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.saved-project small { display: block; color: var(--muted); margin-top: 6px; font-size: 11px; }
+.saved-project-icon { display: grid; place-items: center; width: 38px; height: 42px; background: var(--tint); color: var(--accent); border-radius: 7px; font-size: 20px; }
+#projects-page > .heading { margin-bottom: 32px; }
+#projects-page .empty .button-row { justify-content: center; margin-top: 20px; }
+
+@media (max-width:720px) { #projects-page .heading > .account-login { margin-top: 16px; } }

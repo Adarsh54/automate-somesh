@@ -75,7 +75,7 @@ If service credentials are missing, accounts and large-file processing are unava
 
 Sessions use Secure cookies in production, HttpOnly, SameSite=Lax and SDK validation/refresh. Both ownership and revision are checked in each update. No client-supplied user ID is trusted.
 
-The editor saves drafts locally under a per-user key. **Save project** explicitly sends a snapshot to Neon; there is no automatic cloud save yet. **Save a copy** resolves a conflict without overwriting the other version. **Import browser project** explicitly copies the old anonymous workspace into the signed-in account and keeps the original. Saved media loads automatically after reloading or switching projects. Older projects need one reattachment and save to upload their media. Signing out revokes the session but retains the per-user local draft on this device.
+The editor saves drafts locally under a per-user key. **Save project** explicitly sends a snapshot to Neon; there is no automatic cloud save yet. **Save a copy** resolves a conflict without overwriting the other version. **My projects** opens a dedicated saved-projects page at `#/projects`. Saved media loads automatically after reloading or switching projects. Older projects need one reattachment and save to upload their media. Signing out revokes the session but retains the per-user local draft on this device.
 
 ## Checks
 
@@ -100,7 +100,7 @@ Per-file application limit: 2 GiB; actual capacity depends on the Vercel plan (t
 
 ## Guest entry
 
-First-time signed-out visitors choose Continue as guest, Log in, or Sign up. WorkOS hosts the actual login/signup, verification and password reset forms; Cuestamp never handles passwords. Guest selection is remembered in sessionStorage for the tab and grants no access to account APIs. Guest drafts remain separate from account drafts and can be explicitly imported after login using Import guest project. Signing out clears the guest-entry preference and returns to the welcome screen.
+First-time signed-out visitors choose Continue as guest, Log in, or Sign up. WorkOS hosts the actual login/signup, verification and password reset forms; Cuestamp never handles passwords. Guest selection is remembered in sessionStorage for the tab and grants no access to account APIs. Guest drafts remain separate from account drafts. Signing out clears the guest-entry preference and returns to the welcome screen.
 
 ## Cuestamp domain and naming
 
