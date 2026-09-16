@@ -1,7 +1,7 @@
 const mobile = window.matchMedia('(max-width: 720px)');
 const preference = {desktop: false, mobile: true};
 for (const size of Object.keys(preference)) {
-  try { const saved = localStorage.getItem(`cuebook-sidebar-${size}`); if(saved !== null) preference[size] = saved === 'collapsed'; } catch {}
+  try { const saved = localStorage.getItem(`cuestamp-sidebar-${size}`); if(saved !== null) preference[size] = saved === 'collapsed'; } catch {}
 }
 
 const paths = {
@@ -29,7 +29,7 @@ export function bindSidebar() {
   toggle.onclick = () => {
     const size = mobile.matches ? 'mobile' : 'desktop';
     preference[size] = !preference[size];
-    try { localStorage.setItem(`cuebook-sidebar-${size}`, preference[size] ? 'collapsed' : 'expanded'); } catch {}
+    try { localStorage.setItem(`cuestamp-sidebar-${size}`, preference[size] ? 'collapsed' : 'expanded'); } catch {}
     applySidebar();
   };
   applySidebar();

@@ -1,4 +1,4 @@
-const key = 'cuebook-theme';
+const key = 'cuestamp-theme';
 const system = window.matchMedia('(prefers-color-scheme: dark)');
 let preference;
 try { preference = localStorage.getItem(key); } catch {}

@@ -30,7 +30,7 @@ export const sealFlow = data => sealData(data,{password:settings().secret,ttl:60
 export const openFlow = value => unsealData(value,{password:settings().secret,ttl:600});
 export async function authenticate(req,res,client = workos) {
   settings();
-  const data=cookie(req,"cuebook-session");
+  const data=cookie(req,"cuestamp-session");
   if (!data) return null;
   const session=client().userManagement.loadSealedSession({sessionData:data,cookiePassword:settings().secret});
   let result=await session.authenticate();
@@ -38,9 +38,9 @@ export async function authenticate(req,res,client = workos) {
     result=await session.refresh();
     if (!result.authenticated) {
       if (result.retryable) throw Object.assign(new Error("AUTH_TEMPORARILY_UNAVAILABLE"),{status:503});
-      setCookie(res,"cuebook-session","",0);return null;
+      setCookie(res,"cuestamp-session","",0);return null;
     }
-    if(result.sealedSession) setCookie(res,"cuebook-session",result.sealedSession,60*60*24*7);
+    if(result.sealedSession) setCookie(res,"cuestamp-session",result.sealedSession,60*60*24*7);
   }
   return {user:result.user,sessionId:result.sessionId};
 }

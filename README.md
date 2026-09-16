@@ -1,6 +1,6 @@
-# Cuebook
+# Cuestamp
 
-A Vite cue sheet workspace with a small Vercel Functions API. Live: https://automate-somesh.vercel.app/
+A Vite cue sheet workspace with a small Vercel Functions API. Live: https://cuestamp.com/
 
 ## Run
 
@@ -10,7 +10,7 @@ Use Node.js 22.12+ (or 24): `npm ci`, then `npm run dev`. Open the printed local
 
 Vercel uses the checked-in `vercel.json`: install with `npm ci`, run tests and the Vite build, then serve `dist/`. Connect this GitHub repository with `master` as the production branch for automatic deployments; other branches produce previews.
 
-The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/automate-somesh/` explicitly so that address remains usable.
+The default asset base is `/`. The existing GitHub Pages workflow sets `VITE_BASE_PATH=/cuestamp/` explicitly so that address remains usable.
 
 Local drafts remain in browser localStorage, scoped to the site's origin. Moving to a new domain does not transfer saved project details from the old domain. Analysis remains in the browser; signed-in users can save audio/video to private Vercel Blob.
 
@@ -80,12 +80,12 @@ Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and ot
 Generate deterministic non-copyrighted integration media using Python and ffmpeg:
 
 ```sh
-python scripts/generate-fixtures.py /tmp/cuebook-fixtures /path/to/ffmpeg
+python scripts/generate-fixtures.py /tmp/cuestamp-fixtures /path/to/ffmpeg
 PLAYWRIGHT_MODULE=/path/to/playwright node scripts/browser-check.cjs
 PLAYWRIGHT_MODULE=/path/to/playwright node scripts/metadata-browser-check.cjs
 ```
 
-`CUEBOOK_URL` targets another deployment; `FIXTURES` overrides the fixture folder. Chrome runs in an isolated test profile. The script exercises actual 10-minute MP4/AAC decoding, repeated uses, a trimmed excerpt, a no-match reference, all three workflows, offsets, credits/review/export, persistence, mobile layout and browser errors. Generated media/workbooks stay outside the repository.
+`CUESTAMP_URL` targets another deployment; `FIXTURES` overrides the fixture folder. Chrome runs in an isolated test profile. The script exercises actual 10-minute MP4/AAC decoding, repeated uses, a trimmed excerpt, a no-match reference, all three workflows, offsets, credits/review/export, persistence, mobile layout and browser errors. Generated media/workbooks stay outside the repository.
 
 Metadata/UX verification additionally covers actual 24/25 fps and drop-frame embedded-timecode MOVs, variable-rate MP4, inferred summaries, no upfront duplicate timing fields, independent offsets, switching paths, file replacement/restored overrides, and draft XLSX with genuinely unknown show duration. Unit tests exercise inference, provenance isolation, pre-roll, invalid timing and unknown bounds.
 
@@ -93,9 +93,9 @@ Local measurement on September 15, 2026: three references (8s, 5s, 6s) against a
 
 ## GitHub Pages
 
-Vite is configured for `/automate-somesh/`. `.github/workflows/pages.yml` builds, tests and deploys the static output on pushes to `master` or manual dispatch.
+Vite is configured for `/cuestamp/`. `.github/workflows/pages.yml` builds, tests and deploys the static output on pushes to `master` or manual dispatch.
 
-The repository is public with the owner’s explicit authorization, and Pages uses GitHub Actions as the build source. Site URL: https://adarsh54.github.io/automate-somesh/
+The repository is public with the owner’s explicit authorization, and Pages uses GitHub Actions as the build source. Site URL: https://adarsh54.github.io/cuestamp/
 
 Vercel serves the frontend and API publicly. GitHub Pages remains a static, browser-only build. On Vercel, validation processes submitted cue-sheet details without saving them or logging request bodies; media never leaves the browser.
 

@@ -1,5 +1,5 @@
 {
-  "name": "automate-somesh",
+  "name": "cuestamp",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@shoelace-style/shoelace": "^2.20.1",
     "@vercel/blob": "^2.8.0",
     "@workos-inc/node": "^10.13.0",
     "iron-session": "^9.0.1",

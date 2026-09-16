@@ -1,32 +1,32 @@
-# Cuebook accounts and projects
+# Cuestamp accounts and projects
 
 ## Services and secrets
 
-The production Vercel project is `automate-somesh`. Configure these **server-only** environment variables for Production (never prefix secrets with VITE_):
+The production Vercel project is `cuestamp`. Configure these **server-only** environment variables for Production (never prefix secrets with VITE_):
 
-- `APP_URL=https://automate-somesh.vercel.app`
+- `APP_URL=https://cuestamp.com`
 - `WORKOS_API_KEY`: production WorkOS environment API key
 - `WORKOS_CLIENT_ID`: client ID from the same WorkOS environment
 - `SESSION_SECRET`: random secret of at least 32 characters; generate with `openssl rand -base64 48`
 - `DATABASE_URL`: Neon PostgreSQL connection string with TLS
-- `BLOB_READ_WRITE_TOKEN`: server-only token for the private `cuebook-media` Vercel Blob store
+- `BLOB_READ_WRITE_TOKEN`: server-only token for the private `cuestamp-media` Vercel Blob store
 - `BLOB_STORE_ID`: store ID, added by the Vercel store connection
 
 WorkOS AuthKit redirect URI:
-`https://automate-somesh.vercel.app/api/auth?action=callback`
+`https://cuestamp.com/api/auth?action=callback`
 
-Enable hosted email login/signup and email verification in WorkOS. Google login is enabled in the production WorkOS environment. Configure the production application name as Cuebook. WorkOS may require billing information before activating its production environment.
+Enable hosted email login/signup and email verification in WorkOS. Google login is enabled in the production WorkOS environment. Configure the production application name as Cuestamp. WorkOS may require billing information before activating its production environment.
 
 ### Google sign-in
 
 WorkOS hosted AuthKit displays **Continue with Google** on its login/signup forms; no separate frontend OAuth flow or Google secret in Vercel is needed.
 
-- Google Cloud project: `Cuebook` (`cultivated-link-508820-i9`).
-- OAuth client: `Cuebook WorkOS`, type Web application. Client credentials are stored in the WorkOS Google provider configuration, never in this repository.
+- Google Cloud project: `Cuestamp` (`cultivated-link-508820-i9`).
+- OAuth client: `Cuestamp WorkOS`, type Web application. Client credentials are stored in the WorkOS Google provider configuration, never in this repository.
 - Google authorized redirect URI: `https://auth.workos.com/sso/oauth/google/m5AZrm2RHsjLXphO5hmbGA3Cz/callback`. This is distinct from the app's WorkOS callback above.
 - Access is limited to `userinfo.email` and `userinfo.profile`. No Gmail mailbox scopes are requested, and WorkOS's Return Google OAuth tokens option is off.
 - Google audience is External. Its publishing status currently remains Testing: Google disables Publish app pending completion of branding. For these basic identity scopes, Google's [documented exception](https://support.google.com/cloud/answer/15549945?hl=en) permits users outside the test-user list, without a testing warning or seven-day authorization expiry. Revisit publishing/verification before adding any other scope.
-- Verified on September 16, 2026: the live AuthKit Google button, Google account selection and consent, successful callback to Cuebook, and signed-in account/Log out controls. No test users were added to Google's allowlist.
+- Verified on September 16, 2026: the live AuthKit Google button, Google account selection and consent, successful callback to Cuestamp, and signed-in account/Log out controls. No test users were added to Google's allowlist.
 
 Google currently labels the consent destination `workos.com`, matching the shared WorkOS callback domain. Custom consent branding/domain verification is a separate follow-up.
 
@@ -76,7 +76,7 @@ The editor saves drafts locally under a per-user key. **Save project** explicitl
 
 ## Private audio/video storage
 
-The `cuebook-media` private Blob store (IAD1) is connected to Vercel. Save project uploads attached original files directly from the browser using multipart uploads, then saves their asset IDs in Neon. The server issues upload tokens only to the authenticated owner, restricted to an exact generated path, content type, declared size and one-hour expiration, without overwrite. Finalization checks Blob metadata before allowing a project reference. Project copies reuse immutable assets.
+The `cuestamp-media` private Blob store (IAD1) is connected to Vercel. Save project uploads attached original files directly from the browser using multipart uploads, then saves their asset IDs in Neon. The server issues upload tokens only to the authenticated owner, restricted to an exact generated path, content type, declared size and one-hour expiration, without overwrite. Finalization checks Blob metadata before allowing a project reference. Project copies reuse immutable assets.
 
 Downloads require an owner check and return a GET-only signed URL scoped to one object, expiring after five minutes. URLs and credentials are never saved in the project document. Downloads go directly to Blob; media decoding stays in the browser. Restore media retries failed downloads without changing cue review flags or movie timing overrides.
 
@@ -91,4 +91,14 @@ Per-file application limit: 2 GiB; actual capacity depends on the Vercel plan (t
 
 ## Guest entry
 
-First-time signed-out visitors choose Continue as guest, Log in, or Sign up. WorkOS hosts the actual login/signup, verification and password reset forms; Cuebook never handles passwords. Guest selection is remembered in sessionStorage for the tab and grants no access to account APIs. Guest drafts remain separate from account drafts and can be explicitly imported after login using Import guest project. Signing out clears the guest-entry preference and returns to the welcome screen.
+First-time signed-out visitors choose Continue as guest, Log in, or Sign up. WorkOS hosts the actual login/signup, verification and password reset forms; Cuestamp never handles passwords. Guest selection is remembered in sessionStorage for the tab and grants no access to account APIs. Guest drafts remain separate from account drafts and can be explicitly imported after login using Import guest project. Signing out clears the guest-entry preference and returns to the welcome screen.
+
+## Cuestamp domain and naming
+
+Production is `https://cuestamp.com`, backed by the Vercel project `cuestamp` and GitHub repository `Adarsh54/cuestamp` (`master` deploys production). Namecheap BasicDNS holds the apex A record `216.198.79.1` and `www` CNAME `59818d06f1fafed0.vercel-dns-017.com.`. Vercel manages HTTPS. `www.cuestamp.com` and `cuestamp.vercel.app` redirect to the apex; the previous deployment hostname also redirects directly to the apex.
+
+The WorkOS team/application and Google Cloud project/consent app use Cuestamp; the Neon project is `cuestamp` and private Blob store is `cuestamp-media`. Resource IDs, database contents, media ownership and OAuth credentials remain unchanged. The existing WorkOS API-key label is historical; the dashboard exposes expiration editing but no name editing, so the credential was retained.
+
+The frontend migrates legacy storage keys to the Cuestamp prefix on the same origin. Browser-only drafts cannot automatically cross domains; saved account projects are in the existing Neon database. Users sign in again on the new domain. Theme and guest preferences on a new domain start fresh.
+
+Verified after migration: HTTPS, domain redirects, production health endpoint, Google sign-in returning to `cuestamp.com`, and the renamed welcome/guest flow. The repo rename retained the Vercel Git integration and GitHub Pages deployment workflow.

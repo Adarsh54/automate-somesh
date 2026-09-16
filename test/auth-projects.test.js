@@ -4,7 +4,7 @@ import {equalState,requireOrigin,sealFlow,openFlow,authenticate} from "../server
 import {parseProject} from "../server/projects.js";
 import projects from "../api/projects.js";
 import auth from "../api/auth.js";
-const env={WORKOS_API_KEY:"sk_test_placeholder",WORKOS_CLIENT_ID:"client_test",SESSION_SECRET:"x".repeat(40),APP_URL:"https://cuebook.example",DATABASE_URL:"postgresql://unused"};
+const env={WORKOS_API_KEY:"sk_test_placeholder",WORKOS_CLIENT_ID:"client_test",SESSION_SECRET:"x".repeat(40),APP_URL:"https://cuestamp.example",DATABASE_URL:"postgresql://unused"};
 Object.assign(process.env,env);
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},getHeader(k){return this.headers[k];},status(n){this.code=n;return this;},json(v){this.body=v;return this;},end(){}});
 test("OAuth state comparison rejects absent, different and unequal-length values",()=>{
@@ -18,9 +18,9 @@ test("OAuth flow is sealed and tampering cannot yield a verifier",async()=>{
   assert.equal((await openFlow(sealed.slice(0,80)+(sealed[80]==="a"?"b":"a")+sealed.slice(81))).codeVerifier,undefined);
 });
 test("writes require the exact configured Origin, never the request Host",()=>{
-  requireOrigin({headers:{origin:"https://cuebook.example"}});
-  for(const origin of [undefined,"https://attacker.example","https://cuebook.example.attacker.example","null"])
-    assert.throws(()=>requireOrigin({headers:{origin,host:"cuebook.example"}}),{status:403});
+  requireOrigin({headers:{origin:"https://cuestamp.example"}});
+  for(const origin of [undefined,"https://attacker.example","https://cuestamp.example.attacker.example","null"])
+    assert.throws(()=>requireOrigin({headers:{origin,host:"cuestamp.example"}}),{status:403});
 });
 test("unauthenticated project access never queries Neon and me never exposes tokens",async()=>{
   const req={method:"GET",url:"/api/projects",headers:{}},res=response();
@@ -41,7 +41,7 @@ test("project storage accepts unfinished work, strips owner metadata and rejects
   assert.throws(()=>parseProject({...input,data:{...input.data,production:{title:"",rate:"bad"}}}),{status:400});
 });
 test("expired sessions refresh securely; outages retain cookies, terminal failures clear them",async()=>{
-  const req={headers:{cookie:"cuebook-session=sealed"}};
+  const req={headers:{cookie:"cuestamp-session=sealed"}};
   const client=result=>()=>({userManagement:{loadSealedSession:()=>({
     authenticate:async()=>({authenticated:false}),refresh:async()=>result,
   })}});
@@ -64,6 +64,6 @@ test('login and signup open their respective WorkOS forms with a sealed PKCE flo
     assert.equal(target.searchParams.get('screen_hint'),screen);
     assert.equal(target.searchParams.get('code_challenge_method'),'S256');
     assert.ok(target.searchParams.get('code_challenge'));
-    assert.match(res.headers['Set-Cookie'][0],/cuebook-auth-flow=.*HttpOnly/);
+    assert.match(res.headers['Set-Cookie'][0],/cuestamp-auth-flow=.*HttpOnly/);
   }
 });

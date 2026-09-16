@@ -11,4 +11,4 @@ createServer(async (req, res) => {
   const handler = routes[new URL(req.url, "http://localhost").pathname];
   if (!handler) return res.status(404).json({error:"NOT_FOUND"});
   try { await handler(req, res); } catch { res.status(500).json({error:"INTERNAL_ERROR"}); }
-}).listen(3001, "127.0.0.1", () => console.log("Cuebook API: http://127.0.0.1:3001"));
+}).listen(3001, "127.0.0.1", () => console.log("Cuestamp API: http://127.0.0.1:3001"));

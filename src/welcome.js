@@ -3,7 +3,7 @@ import {themeToggle} from "./theme.js";
 export async function enterWorkspace(account) {
   const failed=new URLSearchParams(location.search).has('authError');
   let guest=false;
-  try {guest=sessionStorage.getItem('cuebook-guest')==='yes';} catch {}
+  try {guest=sessionStorage.getItem('cuestamp-guest')==='yes';} catch {}
   if(account.user || (guest && !failed))return;
   const app=document.querySelector('#app');
   app.innerHTML=`<main class="welcome-page"><div class="welcome-topbar"><a class="welcome-brand" href="${import.meta.env.BASE_URL}" aria-label="Cuestamp home"><span aria-hidden="true">▥</span> Cuestamp</a>${themeToggle()}</div>
@@ -14,7 +14,7 @@ export async function enterWorkspace(account) {
     <div class="welcome-divider"><span>or</span></div><button id="continue-guest" class="welcome-action">Continue as guest</button><p class="welcome-footnote">No account needed to create and export a cue sheet. Sign up whenever you’re ready to save your projects.</p></section></div><footer class="welcome-footer">CUESTAMP / MADE FOR THE PEOPLE BEHIND THE MUSIC</footer></main>`;
   await new Promise(resolve=>{
     document.querySelector('#continue-guest').onclick=()=>{
-      try {sessionStorage.setItem('cuebook-guest','yes');} catch {}
+      try {sessionStorage.setItem('cuestamp-guest','yes');} catch {}
       if(failed){const url=new URL(location.href);url.searchParams.delete('authError');history.replaceState(null,'',url);}
       resolve();
     };

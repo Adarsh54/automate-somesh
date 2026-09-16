@@ -179,7 +179,7 @@ export async function exportWorkbook(production, tracks, cues, shared) {
     "xl/workbook.xml",
     workbookXml.replace(
       "</sheets>",
-      '<sheet name="Frame timings" sheetId="3" r:id="rIdCuebookFrames"/></sheets>',
+      '<sheet name="Frame timings" sheetId="3" r:id="rIdCuestampFrames"/></sheets>',
     ),
   );
   const rels = await zip.file("xl/_rels/workbook.xml.rels").async("string");
@@ -187,7 +187,7 @@ export async function exportWorkbook(production, tracks, cues, shared) {
     "xl/_rels/workbook.xml.rels",
     rels.replace(
       "</Relationships>",
-      '<Relationship Id="rIdCuebookFrames" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>',
+      '<Relationship Id="rIdCuestampFrames" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>',
     ),
   );
   const types = await zip.file("[Content_Types].xml").async("string");

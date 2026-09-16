@@ -1,5 +1,5 @@
 """Deterministic, non-copyrighted integration fixtures. Run with Python + ffmpeg.
-Usage: python scripts/generate-fixtures.py /tmp/cuebook-fixtures /path/to/ffmpeg
+Usage: python scripts/generate-fixtures.py /tmp/cuestamp-fixtures /path/to/ffmpeg
 Generated media is intentionally not committed.
 """
 import array
