@@ -86,3 +86,10 @@ test('upload tokens are restricted to an owned pending path and leases release o
  const broken=createAnalysisHandler({...common,stat:async()=>({pathname:asset.pathname,size:100,contentType:'audio/wav'}),sign:async()=>'',decode:async()=>{throw Object.assign(Error('Bad audio'),{status:400});}});
  const failed=response();await broken(request('decode',{id:asset.id}),failed);assert.equal(failed.code,400);assert.equal(released,1);
 });
+test('packaged native binaries execute on the build platform',async()=>{
+ const {default:ffmpeg}=await import('ffmpeg-static');
+ const {default:ffprobe}=await import('ffprobe-static');
+ const {runBinary}=await import('../server/audio-processing.js');
+ assert.match((await runBinary(ffmpeg,['-version'],AbortSignal.timeout(10000))).toString(),/ffmpeg version/);
+ assert.match((await runBinary(ffprobe.path,['-version'],AbortSignal.timeout(10000))).toString(),/ffprobe version/);
+});
