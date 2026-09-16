@@ -14,6 +14,25 @@ const assert=require('node:assert/strict');
  assert.equal(await p.locator('[data-track]').count(),0);
  assert.equal(await p.evaluate(()=>document.querySelector('#shared-details').getBoundingClientRect().top < document.querySelector('.workflow-modes').getBoundingClientRect().top),true);
  await p.locator('#sidebar-toggle').click();assert.equal(await p.locator('#shared-details [data-field="last"]').isVisible(),true);
+ // Sequential navigation visits every numbered step in each workflow and sidebar state.
+ const order=['library','shared','cues','production','review'];
+ for(const mode of ['movie','offset','manual']) {
+  await p.locator(`[data-mode="${mode}"]`).click();
+  await p.locator('#shared-details [data-field="last"]').fill('Navigation draft');
+  for(let i=0;i<5;i++) {
+   assert.equal(await p.locator('#sidebar-nav [aria-current="page"]').getAttribute('data-tab'),order[i]);
+   if(i===1) {assert.equal(await p.locator('#shared-details').count(),1);assert.equal(await p.locator('#shared-details [data-field="last"]').inputValue(),'Navigation draft');}
+   if(i<4) await p.locator('[data-step="next"]').first().click();
+  }
+  for(let i=4;i>0;i--) {
+   await p.locator('[data-step="back"]').last().click();
+   assert.equal(await p.locator('#sidebar-nav [aria-current="page"]').getAttribute('data-tab'),order[i-1]);
+  }
+  await nav('Shared cue details');
+  assert.equal(await p.locator('#sidebar-nav [aria-current="page"]').getAttribute('data-tab'),'shared');
+  assert.equal(await p.locator('#shared-details').evaluate(e=>e===document.activeElement),true);
+  await nav('Find your cues');await p.locator('#sidebar-toggle').click();
+ }
  // Fill directly on the initial main page, with no sidebar navigation.
  // Removing a focused contributor must not redirect a pending blur into its neighbor.
  await p.locator('[data-add-credit="Composer"]').click();
@@ -40,13 +59,13 @@ const assert=require('node:assert/strict');
  await p.screenshot({path:'/tmp/cuebook-shared-form.png',fullPage:true});
  await nav('Find your cues');await p.locator('[data-mode="offset"]').click();await p.locator('[data-upload]').first().setInputFiles(`${process.env.FIXTURES||'/tmp/cuebook-fixtures'}/score.wav`);await ready();
  await p.locator('[data-field="offset"]').fill('01:00:00:00');await p.locator('#analyze').click();await ready();
- let state=await saved();assert.equal(state.cues.length,2);assert.equal(state.cues[0].credits,undefined);assert.equal(state.cues[0].category,undefined);
+ let state=await saved();assert.equal(state.cues.length,2);assert.deepEqual(state.cues.map(c=>c.usage),["BI","BI"]);assert.equal(state.cues[0].credits,undefined);assert.equal(state.cues[0].category,undefined);
  const ids=state.cues.map(c=>c.id);
  await nav('Timings & usage');const first=p.locator('[data-cue]').nth(0),second=p.locator('[data-cue]').nth(1);
  assert.equal(await first.locator('[data-field="category"]').inputValue(),'original');assert.match(await first.textContent(),/Common writer/);
  await second.locator('[data-override-credits]').click();await second.locator('[data-field="last"]').fill('Solo writer');await second.locator('[data-field="name"]').fill('Solo publisher');
  await second.locator('[data-field="category"]').selectOption('sourced');
- await first.locator('[data-field="title"]').fill('Independent title');
+ await first.locator('[data-field="usage"]').selectOption('BV');await first.locator('[data-field="title"]').fill('Independent title');
  await jump('Shared cue details');await p.locator('[data-field="last"]').fill('Changed shared writer');await p.locator('[data-field="name"]').fill('Changed shared publisher');
  await jump('Timings & usage');assert.equal(await first.locator('[data-field="title"]').inputValue(),'Independent title');assert.match(await first.textContent(),/Changed shared writer/);assert.equal(await second.locator('[data-field="last"]').inputValue(),'Solo writer');
  const originalStart=await first.locator('[data-field="start"]').inputValue();await first.locator('[data-field="start"]').fill('01:0');await jump('Shared cue details');await nav('Timings & usage');assert.equal(await first.locator('[data-field="start"]').inputValue(),'01:0');await first.locator('[data-field="start"]').fill(originalStart);
@@ -56,12 +75,12 @@ const assert=require('node:assert/strict');
  await second.locator('[data-reset-shared="category"]').click();assert.equal(await second.locator('[data-field="category"]').inputValue(),'original');await second.locator('[data-field="category"]').selectOption('sourced');
  await p.reload();await nav('Timings & usage');assert.equal(await second.locator('[data-field="last"]').inputValue(),'Solo writer');assert.match(await first.textContent(),/Changed shared writer/);
  await nav('Find your cues');await p.locator('[data-track]').click();await p.locator('[data-reattach]').setInputFiles(`${process.env.FIXTURES||'/tmp/cuebook-fixtures'}/score.wav`);await ready();
- await p.locator('#analyze').click();await ready();state=await saved();assert.deepEqual(state.cues.map(c=>c.id),ids);assert.equal(state.cues[1].credits[0].last,'Solo writer');assert.equal(state.cues[0].credits,undefined);
+ await p.locator('#analyze').click();await ready();state=await saved();assert.deepEqual(state.cues.map(c=>c.id),ids);assert.equal(state.cues[0].usage,'BV');assert.equal(state.cues[1].credits[0].last,'Solo writer');assert.equal(state.cues[0].credits,undefined);
  await p.locator('[data-clear-results="offset"]').click();await nav('Shared cue details');await p.locator('[data-field="last"]').fill('Latest shared writer');await p.locator('#undo-clear').click();assert.equal((await saved()).cues[0].credits,undefined);
  await nav('Find your cues');await p.locator('[data-clear-results="offset"]').click();await p.locator('#analyze').click();await ready();assert.equal((await saved()).cues[1].credits[0].last,'Solo writer');
- await p.locator('[data-mode="manual"]').click();await p.locator('[data-add-cue]').click();assert.equal((await saved()).cues.at(-1).credits,undefined);await p.locator('[data-remove-cue]').last().click();
+ await p.locator('[data-mode="manual"]').click();await p.locator('[data-add-cue]').click();assert.equal((await saved()).cues.at(-1).usage,'BI');assert.equal((await saved()).cues.at(-1).credits,undefined);await p.locator('[data-remove-cue]').last().click();
  await nav('Find your cues');await p.locator('[data-mode="movie"]').click();await nav('Shared cue details');assert.equal(await p.locator('[data-field="last"]').inputValue(),'Latest shared writer');await nav('Find your cues');await p.locator('[data-mode="offset"]').click();
- await nav('Timings & usage');for(const el of await p.locator('[data-field="usage"]').all()) await el.selectOption('BI');await p.locator('#confirm-detections').click();
+ await nav('Timings & usage');assert.equal(await p.locator('[data-field="usage"]').first().inputValue(),'BV');await p.locator('#confirm-detections').click();
  await nav('Production details');await p.locator('[data-field="title"]').fill('Shared details export');await jump('Review & export');assert.equal(await p.locator('#export').isEnabled(),true);
  const dl=p.waitForEvent('download');await p.locator('#export').click();await (await dl).saveAs('/tmp/cuebook-shared.xlsx');
  await nav('Shared cue details');await p.setViewportSize({width:390,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.equal(await p.locator('[data-field="last"]').isVisible(),true);await p.screenshot({path:'/tmp/cuebook-shared-mobile.png',fullPage:true});

@@ -21,6 +21,7 @@ export function migrateCueDetails(state) {
     }
     state.cueDetailsVersion = 2;
   }
+  for (const cue of [...state.cues, ...(state.cueDetailsArchive ?? [])]) cue.usage ??= "BI";
   for (const owner of [state.sharedCueDetails, ...state.cues, ...(state.cueDetailsArchive ?? [])]) {
     for (const credit of owner.credits ?? []) credit.id ??= crypto.randomUUID();
   }

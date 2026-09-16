@@ -150,20 +150,14 @@ function render() {
         ).length,
     ).length;
   $("#app").innerHTML =
-    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuebook"><span class="mark" aria-hidden="true">▥</span><span class="brand-word">cuebook</span></a>${sidebarToggle}</div><div class="project-label">MUSIC WORKSPACE</div><nav id="sidebar-nav" aria-label="Workspace navigation">${[
-      ["library", "01", "Find your cues"],
-      ["shared", "02", "Shared cue details"],
-      ["cues", "03", "Timings & usage"],
-      ["production", "04", "Production details"],
-      ["review", "05", "Review & export"],
-    ]
+    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuebook"><span class="mark" aria-hidden="true">▥</span><span class="brand-word">cuebook</span></a>${sidebarToggle}</div><div class="project-label">MUSIC WORKSPACE</div><nav id="sidebar-nav" aria-label="Workspace navigation">${steps
       .map(
-        ([key, n, label]) =>
-          `<button class="nav ${tab === key ? "active" : ""}" data-tab="${key}" aria-label="${label}" title="${label}" ${tab===key?'aria-current="page"':''}>${sidebarIcon(key)}<span class="nav-label"><span class="nav-step">${n}</span>${label}</span></button>`,
+        ([key, label], index) =>
+          `<button class="nav ${tab === key ? "active" : ""}" data-tab="${key}" aria-label="${label}" title="${label}" ${tab===key?'aria-current="page"':''}>${sidebarIcon(key)}<span class="nav-label"><span class="nav-step">${String(index + 1).padStart(2, "0")}</span>${label}</span></button>`,
       )
       .join(
         "",
-      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", shared: "Shared cue details.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", shared: "Enter common credits once. Customize only the cues that differ.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", shared: "Shared cue details.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", shared: "Enter common credits once. Customize only the cues that differ.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${stepNavigation()}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${["library", "shared"].includes(tab) ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
   bindSidebar();
   document.querySelectorAll("details").forEach((el) => {
@@ -174,6 +168,15 @@ function render() {
     document.querySelectorAll("button,input,select").forEach((el) => {
       if (el.id !== "cancel-analysis" && el.id !== "sidebar-toggle" && !(workflow.worker && (el.id === "analyze" || el.hasAttribute("data-clear-results")))) el.disabled = true;
     });
+}
+const steps = [
+  ["library", "Find your cues"], ["shared", "Shared cue details"],
+  ["cues", "Timings & usage"], ["production", "Production details"], ["review", "Review & export"],
+];
+function stepNavigation() {
+  const index = steps.findIndex(([key]) => key === tab);
+  const button = (direction, target) => `<button class="${direction === "next" ? "primary" : ""}" data-step="${direction}" data-tab="${steps[target][0]}">${direction === "next" ? "Next" : "Back"}: ${String(target + 1).padStart(2, "0")} · ${steps[target][1]} ${direction === "next" ? "→" : "←"}</button>`;
+  return `<div class="button-row step-navigation" aria-label="Step navigation">${index > 0 ? button("back", index - 1) : ""}${index < steps.length - 1 ? button("next", index + 1) : ""}</div>`;
 }
 function library() {
   return (
@@ -231,7 +234,7 @@ function production() {
      ["Original", "Original"],
      ["Revision", "Revision"],
    ],
- )}</div></details><button class="primary" data-tab="review">Review & export →</button></section>`;
+ )}</div></details></section>`;
 }
 function cues() {
   const cueNav = state.cues.length ? `<nav class="cue-navigation" aria-label="Jump to cue">${state.cues.map((c, i) => `<a href="#cue-${c.id}"><span>Cue ${i + 1}</span><strong>${esc(c.title || state.tracks.find(t => t.id === c.trackId)?.title || "Untitled cue")}</strong></a>`).join("")}</nav>` : "";
@@ -263,7 +266,7 @@ function addCue(trackId) {
     title: track.title,
     start: track.offset || "",
     end: "",
-    usage: "",
+    usage: "BI",
     method: "manual",
     reviewed: true,
   });
@@ -285,7 +288,7 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         const sharedShortcut = b.dataset.tab === "shared";
-        tab = sharedShortcut ? "library" : b.dataset.tab;
+        tab = b.dataset.tab;
         (message = "");
         render();
         if (sharedShortcut) {

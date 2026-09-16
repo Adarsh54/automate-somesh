@@ -188,7 +188,7 @@ export class Workflow {
                 : track.title),
             start,
             end,
-            usage: prior?.usage ?? "",
+            usage: prior?.usage ?? "BI",
             method: key,
             reviewed: false,
             relativeStart: match.start,

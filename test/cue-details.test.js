@@ -46,3 +46,10 @@ test('live defaults propagate while independent overrides reset cleanly and surv
   assert.equal(effectiveCue(second,state.sharedCueDetails).category,'original');
   migrateCueDetails(state);assert.equal(first.credits,undefined);
 });
+
+test('missing usage migrates to BI without changing explicit choices, including archives', () => {
+  const state = {tracks:[], cues:[{}, {usage:'BV'}, {usage:''}], cueDetailsArchive:[{}, {usage:'VI'}], cueDetailsVersion:2};
+  migrateCueDetails(state);
+  assert.deepEqual(state.cues.map(c=>c.usage), ['BI','BV','']);
+  assert.deepEqual(state.cueDetailsArchive.map(c=>c.usage), ['BI','VI']);
+});
