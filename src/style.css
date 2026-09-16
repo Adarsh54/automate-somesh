@@ -1133,3 +1133,50 @@ footer span:first-child {
 .account-login {display:inline-block;text-decoration:none;font-weight:700;border:1px solid #d5dedb;border-radius:7px;padding:10px 14px;background:#fff;white-space:nowrap;}
 #cloud-logout {white-space:nowrap;}
 @media(max-width:720px){header{gap:12px;}header>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.header-account{gap:8px;}.account-login,#cloud-logout{min-height:44px;}}
+
+/* Theme preference is independent of the account and project. */
+:root { color-scheme: light; }
+.welcome-topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.theme-toggle { display:grid; place-items:center; width:44px; height:44px; padding:10px; flex-shrink:0; }
+.theme-toggle svg { width:21px; height:21px; }
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --night-bg:#111916;
+  --night-panel:#19231e;
+  --night-raised:#202e26;
+  --night-border:#3b5144;
+  --night-text:#e5eee8;
+  --night-muted:#a6b9ad;
+  --night-accent:#b8de9d;
+  background:var(--night-bg);
+  color:var(--night-text);
+}
+[data-theme="dark"] :is(button, input, select, .panel, aside, .workflow-mode, .welcome-card, .welcome-login, .account-login, .upload-button, .cue-navigation a) {
+  background:var(--night-panel); color:var(--night-text); border-color:var(--night-border);
+}
+[data-theme="dark"] button:hover { background:var(--night-raised); }
+[data-theme="dark"] :is(a, .brand, .welcome-brand, .welcome-intro h1, header b, .empty h3, .duration strong) { color:var(--night-text); }
+[data-theme="dark"] :is(.project-label, .nav, .nav span, header, .heading p, .stats span, .upload p, .upload small, .upload-top>span:last-child, .muted, .empty, .track small, .panel label, .file-name, .duration, .export p, footer, .workflow-mode p, .movie-input, .metadata-summary span, .metadata-summary small, .file-offsets small, .uploaded-track small, .inheritance, .welcome-intro>p:not(.eyebrow), .welcome-card p, .welcome-divider, .welcome-footer) { color:var(--night-muted); }
+[data-theme="dark"] :is(.eyebrow, .local, .badge, .mode-choice, #analysis-progress, .analysis-report strong, .journey, .disclosure summary, .gap-control output, .welcome-steps, .cue-number, .empty>span) { color:var(--night-accent); }
+[data-theme="dark"] :is(header, .stats, .stats>div, footer, .analysis-report li, .journey, .disclosure, .step-block, .file-offsets>div, .uploaded-tracks .uploaded-track, .contributor-section, .track-row, .local, .empty, #sidebar-toggle) { border-color:var(--night-border); }
+[data-theme="dark"] :is(.credit, .contributor-section .credit, .metadata-summary, .track-icon, .journey b, .section-title h2 span, .upload-icon) { background:var(--night-raised); color:var(--night-text); border-color:var(--night-border); }
+[data-theme="dark"] :is(.nav.active, .track.selected, .workflow-mode.chosen, .upload, .complete, .sheet-icon) { background:#273c2c; color:var(--night-text); border-color:#729263; }
+[data-theme="dark"] .nav { background:transparent; }
+[data-theme="dark"] .nav.active { background:#273c2c; }
+[data-theme="dark"] .nav.active span { color:var(--night-accent); }
+[data-theme="dark"] .upload.sourced { background:#25313e; border-color:#526980; }
+[data-theme="dark"] :is(a, button).primary { background:var(--night-accent); border-color:var(--night-accent); color:#172617; }
+[data-theme="dark"] .primary:hover { background:#cbeaaf; }
+[data-theme="dark"] :is(.notice, .welcome-card .notice) { background:#352e20; border-color:#7d663c; color:#efd19a; }
+[data-theme="dark"] :is(.issues, .badge.pending) { color:#efd19a; }
+[data-theme="dark"] .notice.neutral { background:#22332c; border-color:var(--night-border); color:#bfd6c6; }
+[data-theme="dark"] .danger { color:#f0aa98; }
+[data-theme="dark"] .welcome-page { background:var(--night-bg); }
+[data-theme="dark"] .welcome-divider::before, [data-theme="dark"] .welcome-divider::after { background:var(--night-border); }
+[data-theme="dark"] .text, [data-theme="dark"] #sidebar-toggle { background:transparent; }
+[data-theme="dark"] :is(input:focus, select:focus, .nav:focus-visible, #sidebar-toggle:focus-visible, .upload-button:focus-within, .cue:target) { outline-color:var(--night-accent); }
+[data-theme="dark"] input { accent-color:var(--night-accent); }
+[data-theme="dark"] .gap-control input[type="range"] { accent-color:var(--night-accent); }
+@media(max-width:480px) { .header-account .local { display:none; } }
+
+[data-theme="dark"] input::placeholder { color:#91a297; opacity:1; }

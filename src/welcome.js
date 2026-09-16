@@ -1,3 +1,4 @@
+import {themeToggle} from "./theme.js";
 // Guest selection is a UI preference, never an authenticated identity.
 export async function enterWorkspace(account) {
   const failed=new URLSearchParams(location.search).has('authError');
@@ -5,7 +6,7 @@ export async function enterWorkspace(account) {
   try {guest=sessionStorage.getItem('cuebook-guest')==='yes';} catch {}
   if(account.user || (guest && !failed))return;
   const app=document.querySelector('#app');
-  app.innerHTML=`<main class="welcome-page"><a class="welcome-brand" href="${import.meta.env.BASE_URL}" aria-label="Cuebook home"><span aria-hidden="true">▥</span> Cuebook</a>
+  app.innerHTML=`<main class="welcome-page"><div class="welcome-topbar"><a class="welcome-brand" href="${import.meta.env.BASE_URL}" aria-label="Cuebook home"><span aria-hidden="true">▥</span> Cuebook</a>${themeToggle()}</div>
     <div class="welcome-layout"><section class="welcome-intro"><p class="eyebrow">FROM SOUNDTRACK TO CUE SHEET</p><h1>Every cue.<br>Every credit.<br>All together.</h1><p>Find the music, refine your timings, and turn your credits into a finished cue sheet.</p><div class="welcome-steps"><span>01 &nbsp; Add your media</span><span>02 &nbsp; Review your cues</span><span>03 &nbsp; Export your sheet</span></div></section>
     <section class="welcome-card" aria-labelledby="welcome-title"><span class="eyebrow">YOUR MUSIC WORKSPACE</span><h2 id="welcome-title">Welcome to Cuebook</h2><p>Create an account to save projects, audio, and video—and pick up where you left off.</p>
     ${failed?'<p class="notice" role="alert">Login could not finish. Please try again, or continue as a guest.</p>':''}
