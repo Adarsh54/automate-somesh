@@ -1,9 +1,9 @@
 // Browser/Node-compatible signal processing. All samples are mono at ANALYSIS_RATE.
 export const ANALYSIS_RATE = 2000;
 export const MAX_DURATION = 20 * 60;
-// Fixed music-only segmentation floor: RMS 0.1 on normalized PCM.
+// Fixed music-only segmentation floor: RMS 0.01 on normalized PCM.
 // Audio below this level, including soft passages and fades, is treated as silence.
-export const SILENCE_THRESHOLD_DB = -20;
+export const SILENCE_THRESHOLD_DB = -40;
 
 export function detectRegions(
   samples,
