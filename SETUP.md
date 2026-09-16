@@ -95,7 +95,7 @@ First-time signed-out visitors choose Continue as guest, Log in, or Sign up. Wor
 
 ## Cuestamp domain and naming
 
-Production is `https://cuestamp.com`, backed by the Vercel project `cuestamp` and GitHub repository `Adarsh54/cuestamp` (`master` deploys production). Namecheap BasicDNS holds the apex A record `216.198.79.1` and `www` CNAME `59818d06f1fafed0.vercel-dns-017.com.`. Vercel manages HTTPS. `www.cuestamp.com` and `cuestamp.vercel.app` redirect to the apex; the previous deployment hostname redirects through the new Vercel hostname.
+Production is `https://cuestamp.com`, backed by the Vercel project `cuestamp` and GitHub repository `Adarsh54/cuestamp` (`master` deploys production). Namecheap BasicDNS holds the apex A record `216.198.79.1` and `www` CNAME `59818d06f1fafed0.vercel-dns-017.com.`. Vercel manages HTTPS. `www.cuestamp.com` and `cuestamp.vercel.app` redirect to the apex; the previous deployment hostname also redirects directly to the apex.
 
 The WorkOS team/application and Google Cloud project/consent app use Cuestamp; the Neon project is `cuestamp` and private Blob store is `cuestamp-media`. Resource IDs, database contents, media ownership and OAuth credentials remain unchanged. The existing WorkOS API-key label is historical; the dashboard exposes expiration editing but no name editing, so the credential was retained.
 
