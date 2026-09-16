@@ -48,7 +48,8 @@ let state = {
   selected = null,
   tab = "library",
   message = "",
-  creditsOpen = false;
+  creditsOpen = false,
+  clearedResults = null;
 try {
   const saved = JSON.parse(localStorage.getItem("cuebook-v1"));
   if (
@@ -155,7 +156,7 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
   bindSidebar();
   document.querySelectorAll("details").forEach((el) => {
@@ -164,20 +165,20 @@ function render() {
   });
   if (workflow.busy)
     document.querySelectorAll("button,input,select").forEach((el) => {
-      if (el.id !== "cancel-analysis" && el.id !== "sidebar-toggle") el.disabled = true;
+      if (el.id !== "cancel-analysis" && el.id !== "sidebar-toggle" && !(workflow.worker && (el.id === "analyze" || el.hasAttribute("data-clear-results")))) el.disabled = true;
     });
 }
 function library() {
   return (
     workflowView(state, workflow, { esc, field, select }) +
-    `<div class="section-title"><h2>Cue audio library <span>${state.tracks.length}</span></h2><span class="muted">Audio is shared across paths · select a file to edit credits</span></div>${state.tracks.length ? `<div class="library-grid"><div class="track-list">${state.tracks.map((t) => `<button class="track ${selected === t.id ? "selected" : ""}" data-track="${t.id}"><span class="track-icon">♪</span><span><strong>${esc(t.title)}</strong><small>${time(t.duration)} · ${workflow.audio.has(t.id) ? "Audio ready" : "Reattach audio to analyze"}</small></span><span class="badge ${creditIssues(t).length ? "pending" : ""}">${creditIssues(t).length ? "Needs credits" : "Credits entered"}</span></button>`).join("")}</div>${editor()}</div>` : '<div class="empty"><span>♫</span><h3>Add the music behind the picture</h3><p>Upload cue recordings or a music-only export using the selected workflow above.</p></div>'}`
+    `<div class="section-title"><h2>Cue audio library <span>${state.tracks.length}</span></h2><span class="muted">Audio is shared across paths · select a file to edit credits</span></div>${state.tracks.length ? `<div class="library-grid"><div class="track-list">${state.tracks.map((t) => `<div class="track-row"><button class="track ${selected === t.id ? "selected" : ""}" data-track="${t.id}"><span class="track-icon">♪</span><span><strong>${esc(t.title)}</strong><small>${time(t.duration)} · ${workflow.audio.has(t.id) ? "Audio ready" : "Reattach audio to analyze"}</small></span><span class="badge ${creditIssues(t).length ? "pending" : ""}">${creditIssues(t).length ? "Needs credits" : "Credits entered"}</span></button><button class="text danger" data-remove-track="${t.id}" aria-label="Remove audio track ${esc(t.title)}" title="Remove track and its placements">Remove track</button></div>`).join("")}</div>${editor()}</div>` : '<div class="empty"><span>♫</span><h3>Add the music behind the picture</h3><p>Upload cue recordings or a music-only export using the selected workflow above.</p></div>'}`
   );
 }
 function editor() {
   const t = state.tracks.find((t) => t.id === selected);
   if (!t)
     return '<div class="panel empty"><p>Select a track to review its details.</p></div>';
-  return `<section class="panel editor" data-editor="${t.id}"><div class="section-title"><h2>Track details</h2><button class="text danger" data-remove-track="${t.id}">Remove</button></div>${field("Cue / song title", "title", t.title)}${select(
+  return `<section class="panel editor" data-editor="${t.id}"><div class="section-title"><h2>Track details</h2></div>${field("Cue / song title", "title", t.title)}${select(
     "Credit provenance (does not establish ownership)",
     "category",
     t.category,
@@ -390,6 +391,7 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         state.cues = state.cues.filter((c) => c.id !== b.dataset.removeCue);
+        delete state.analysisReport;
         save();
         render();
       }),
@@ -405,6 +407,8 @@ function bind() {
         state.tracks = state.tracks.filter((t) => t.id !== key);
         state.cues = state.cues.filter((c) => c.trackId !== key);
         selected = null;
+        clearedResults = null;
+        delete state.analysisReport;
         save();
         render();
       }),
@@ -436,6 +440,12 @@ function bind() {
     };
 }
 function updateIndicators() {
+  const analyze = $("#analyze"), help = $("#detection-help");
+  if (analyze) {
+    const reason = workflow.analysisUnavailable();
+    analyze.disabled = Boolean(reason);
+    if (help) help.textContent = reason || "Ready to detect with current settings.";
+  }
   const header = document.querySelector("header b");
   if (header)
     header.textContent =
@@ -484,7 +494,12 @@ async function upload(files) {
   }
   render();
 }
+function forgetClearUndo() {
+  clearedResults = null;
+  $("#undo-clear")?.parentElement.remove();
+}
 function rebaseDetections(predicate, offset) {
+  forgetClearUndo();
   const rate = state.production.rate,
     next = toFrames(offset, rate);
   if (next === null) return;
@@ -501,6 +516,7 @@ function rebaseDetections(predicate, offset) {
   });
 }
 function changeRate(rate) {
+  forgetClearUndo();
   if (
     state.cues.length &&
     !confirm(
@@ -538,9 +554,34 @@ function bindWorkflows() {
   );
   if ($("#movie-upload"))
     $("#movie-upload").onchange = (e) => {
-      if (e.target.files[0]) workflow.load(e.target.files[0], null, true);
+      if (e.target.files[0]) {
+        forgetClearUndo();
+        workflow.load(e.target.files[0], null, true);
+      }
     };
-  if ($("#analyze")) $("#analyze").onclick = () => workflow.analyze();
+  document.querySelectorAll("[data-clear-results]").forEach(button => {
+    button.onclick = () => {
+      if (workflow.worker) workflow.cancel();
+      const method = button.dataset.clearResults;
+      clearedResults = { cues: state.cues.filter(c => c.method === method), report: state.analysisReport?.mode === method ? state.analysisReport : null };
+      state.cues = state.cues.filter(c => c.method !== method);
+      if (state.analysisReport?.mode === method) delete state.analysisReport;
+      message = "";
+      save();
+      render();
+    };
+  });
+  if ($("#undo-clear")) $("#undo-clear").onclick = () => {
+    state.cues.push(...clearedResults.cues);
+    if (clearedResults.report) state.analysisReport = clearedResults.report;
+    clearedResults = null;
+    save();
+    render();
+  };
+  if ($("#analyze")) $("#analyze").onclick = () => {
+    clearedResults = null;
+    workflow.analyze();
+  };
   if ($("#cancel-analysis"))
     $("#cancel-analysis").onclick = () => workflow.cancel();
   document.querySelectorAll("[data-reattach]").forEach(

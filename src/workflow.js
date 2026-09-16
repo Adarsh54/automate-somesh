@@ -104,46 +104,35 @@ export class Workflow {
     }
   }
 
+  analysisUnavailable() {
+    const s = this.state;
+    if (s.mode === "manual") return "Manual workflow uses entered timings, not detection.";
+    if (this.busy && !this.worker) return "Wait for audio decoding to finish.";
+    if (!s.tracks.length) return "Add at least one audio track to detect cues.";
+    if (s.tracks.some(t => !this.audio.has(t.id))) return "Reattach missing audio files to run detection.";
+    if (s.mode === "movie" && !this.movie) return "Reattach the movie to run detection.";
+    if (s.mode === "movie" && toFrames(s.movieOffset, s.production.rate) === null)
+      return "Enter a valid movie file-start timecode.";
+    if (s.mode === "offset" && s.tracks.some(t => toFrames(t.offset, s.production.rate) === null))
+      return "Enter a valid file-start timecode for each audio track.";
+    return "";
+  }
+
   analyze() {
-    const s = this.state,
-      mode = s.mode,
-      rate = s.production.rate;
-    if (this.busy) return;
-    if (!s.tracks.length)
-      return this.notify("Add at least one cue audio file.");
-    if (s.tracks.some((t) => !this.audio.has(t.id)))
-      return this.notify(
-        "Reattach the missing audio files before analyzing. Files are not retained after a page reload.",
-      );
-    if (
-      mode === "movie" &&
-      (!this.movie || toFrames(s.movieOffset, rate) === null)
-    )
-      return this.notify(
-        "Add the finished movie and enter its file-start film timecode.",
-      );
-    if (
-      mode === "offset" &&
-      s.tracks.some((t) => toFrames(t.offset, rate) === null)
-    )
-      return this.notify(
-        "Enter a valid file-start film timecode for every audio file.",
-      );
-    const key = mode === "movie" ? "movie" : "offset";
-    if (
-      s.cues.some((c) => c.method === key) &&
-      !confirm(
-        `Replace the previous ${key} analysis results? Manual cues and results from the other workflow will be kept.`,
-      )
-    )
-      return;
+    const reason = this.analysisUnavailable();
+    if (reason) return this.notify(reason);
+    const s = this.state, mode = s.mode, rate = s.production.rate, key = mode;
+    // Replace an active worker before starting; late events cannot restore old results.
+    this.worker?.terminate();
     this.busy = true;
     this.progress = "Starting audio analysis…";
-    this.render();
     this.worker = new Worker(new URL("./analysis.worker.js", import.meta.url), {
       type: "module",
     });
+    const worker = this.worker;
+    this.render();
     this.worker.onerror = (event) => {
+      if (this.worker !== worker) return;
       this.worker?.terminate();
       this.worker = null;
       this.busy = false;
@@ -153,6 +142,7 @@ export class Workflow {
       );
     };
     this.worker.onmessage = ({ data }) => {
+      if (this.worker !== worker) return;
       if (data.type === "progress") {
         this.progress = data.text;
         const el = document.querySelector("#analysis-progress");

@@ -1005,6 +1005,16 @@ footer span:first-child {
     flex-direction: column;
   }
 }
+.track-row {
+  border-bottom: 1px solid #e3e9e4;
+  padding-bottom: 8px;
+}
+.track-row > .track {
+  width: 100%;
+}
+.track-row > .danger {
+  margin: 0 14px;
+}
 .gap-control input[type="range"] {
   width: 100%;
   min-height: 32px;
