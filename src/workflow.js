@@ -180,7 +180,7 @@ export class Workflow {
           const prior = matchingCue(s.cues, track.id, key, match, mediaName) ?? matchingCue(s.cueDetailsArchive ?? [], track.id, key, match, mediaName);
           cues.push({
             ...cueDetails(track, prior),
-            id: crypto.randomUUID(),
+            id: prior?.id ?? crypto.randomUUID(),
             trackId: track.id,
             title: prior?.title ?? (
               result.matches.length > 1 && mode === "offset"

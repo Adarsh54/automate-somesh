@@ -5,6 +5,7 @@ for (const size of Object.keys(preference)) {
 }
 
 const paths = {
+  shared: '<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m2-16a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 4v3"/>',
   library: '<path d="M5 8v8m5-12v16m5-13v10m4-7v4"/>',
   cues: '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
   production: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7"/>',

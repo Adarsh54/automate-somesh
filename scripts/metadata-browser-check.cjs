@@ -124,6 +124,7 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
     await el.selectOption("BI");
   for (const cue of await page.locator("[data-cue]").all()) {
     const cueId = await cue.getAttribute("data-cue");
+    await cue.locator("[data-override-credits]").click();
     for (const [selector, value] of [
       ['[data-credit="0"] [data-field="last"]', "Writer"],
       ['[data-credit="0"] [data-field="pro"]', "BMI"],

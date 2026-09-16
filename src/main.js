@@ -1,11 +1,12 @@
 import "./style.css";
-import {cueDetails, migrateCueDetails, archiveCueDetails} from "./cue-details.js";
+import {cueDetails, migrateCueDetails, archiveCueDetails, effectiveCue} from "./cue-details.js";
 import {bindSidebar,sidebarIcon,sidebarToggle} from "./sidebar.js";
 import {
   usages,
   time,
   duration,
   cueIssues,
+  creditIssues,
 } from "./model.js";
 import { exportWorkbook } from "./export.js";
 import { Workflow, workflowView } from "./workflow.js";
@@ -127,6 +128,7 @@ function review() {
       c,
       state.tracks.find((t) => t.id === c.trackId),
       p,
+      state.sharedCueDetails,
     ).forEach((x) => issues.push(`Cue ${i + 1}: ${x}`)),
   );
   return issues;
@@ -144,14 +146,16 @@ function render() {
           c,
           state.tracks.find((t) => t.id === c.trackId),
           effectiveProduction(state),
+        state.sharedCueDetails,
         ).length,
     ).length;
   $("#app").innerHTML =
     `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuebook"><span class="mark" aria-hidden="true">▥</span><span class="brand-word">cuebook</span></a>${sidebarToggle}</div><div class="project-label">MUSIC WORKSPACE</div><nav id="sidebar-nav" aria-label="Workspace navigation">${[
       ["library", "01", "Find your cues"],
-      ["cues", "02", "Timings & usage"],
-      ["production", "03", "Production details"],
-      ["review", "04", "Review & export"],
+      ["shared", "02", "Shared cue details"],
+      ["cues", "03", "Timings & usage"],
+      ["production", "04", "Production details"],
+      ["review", "05", "Review & export"],
     ]
       .map(
         ([key, n, label]) =>
@@ -159,7 +163,7 @@ function render() {
       )
       .join(
         "",
-      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+      )}</nav><div class="aside-note"><span class="small-icon">↗</span><strong>Your music stays here.</strong><p>Audio is processed in your browser. Details are saved on this device; audio previews last until you close or refresh the page.</p></div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><span class="local">Device-local workspace</span></header><div class="content"><div class="heading"><div><div class="eyebrow">FROM TRACK TO CUE SHEET</div><h1>${{ library: "From soundtrack to cue sheet.", shared: "Shared cue details.", production: "Set the scene.", cues: "Place the music.", review: "The final check." }[tab]}</h1><p>${{ library: "Choose how to find your timings. Keep every creator in the credits.", shared: "Enter common credits once. Customize only the cues that differ.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div>${state.cues.length ? `<button class="primary" data-tab="${tab === "library" ? "cues" : tab === "review" ? "library" : "review"}">${tab === "library" ? "Review timings →" : tab === "review" ? "Back to workflow" : "Review & export →"}</button>` : ""}</div><div class="stats"><div><strong>${String(state.tracks.length).padStart(2, "0")}</strong><span>Tracks in library</span></div><div><strong>${String(state.cues.length).padStart(2, "0")}</strong><span>Cue placements</span></div><div><strong>${String(ready).padStart(2, "0")}</strong><span>Cues with complete details</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "shared" ? sharedDetails() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}<footer><span>CUEBOOK / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
   bind();
   bindSidebar();
   document.querySelectorAll("details").forEach((el) => {
@@ -183,8 +187,14 @@ function editor() {
     return '<div class="panel empty"><p>Select a track to review its details.</p></div>';
   return `<section class="panel editor" data-editor="${t.id}"><div class="section-title"><h2>Audio source</h2></div>${field("Source label", "title", t.title)}${state.mode === "manual" ? `<details class="disclosure"><summary>Use playback marks (optional)</summary>${field("This audio file starts at film timecode", "offset", t.offset, 'placeholder="01:00:00:00"')}<p class="muted">Only needed for playback marking. Direct film in/out entry needs no file offset.</p></details>` : ""}<p class="file-name">${esc(t.filename)} · ${t.duration === null ? "Duration unavailable" : time(t.duration)}</p>${urls.has(t.id) ? `<audio id="track-preview" controls src="${urls.get(t.id)}"></audio>` : `<label class="upload-button">Reattach ${esc(t.filename)}<input data-reattach="${t.id}" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg"></label>`}${t.error ? `<p class="notice">${esc(t.error)}</p>` : ""}<p class="muted">Set provenance and writer/publisher credits separately on each cue in Timings &amp; usage.</p>${state.mode === "manual" ? `<button class="primary" data-add-cue="${t.id}">Add manual placement</button>` : ""}</section>`;
 }
-function cueCreditEditor(cue) {
-  return `<div class="cue-credit-form"><p class="muted">Credits for this cue only. Confirm every contributor and enter each role’s shares out of 100%.</p>${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
+function sharedDetails() {
+  return `<section class="panel" id="shared-details"><h2>Common provenance &amp; credits</h2><p class="muted">Used by every cue that follows shared details, including new detections and manual cues. Cue overrides stay separate. Titles, timings and usage remain cue-specific.</p>${provenanceField(state.sharedCueDetails.category)}${cueCreditEditor(state.sharedCueDetails, true)}<p id="shared-credit-status" class="muted" role="status">${esc(creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.")}</p></section>`;
+}
+function provenanceField(value) {
+  return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
+}
+function cueCreditEditor(cue, shared = false) {
+  return `<div class="cue-credit-form"><p class="muted">${shared ? "Shared credits update all inheriting cues." : "Credits overridden for this cue only."} Confirm every contributor and enter each role’s shares out of 100%.</p>${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
 }
 function production() {
   const p = effectiveProduction(state),
@@ -231,7 +241,7 @@ function cues() {
           .map((c, i) => {
             const t = state.tracks.find((t) => t.id === c.trackId),
               d = duration(c, state.production.rate);
-            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span>${esc(c.title || t.title)}</h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><p class="muted">Source: ${esc(t.filename)} · ${c.method === "movie" ? `Movie match · waveform similarity ${Math.round(c.score * 100)}% (not a probability)` : c.method === "offset" ? "Detected music-only region" : "Manual placement"}${c.fileOffset ? ` · file starts ${esc(c.fileOffset)}` : ""}</p><div class="form-grid cue-fields">${field("Cue title", "title", c.title || t.title)}${select("Cue provenance", "category", c.category, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]])}${field("Film in (HH:MM:SS:FF)", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out (HH:MM:SS:FF)", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<audio data-cue-audio="${c.id}" controls preload="metadata" src="${urls.get(t.id)}"></audio>` : ""}${c.method === "manual" && urls.has(t.id) ? `<button data-mark-in="${c.id}">Mark in at playback</button><button data-mark-out="${c.id}">Mark out at playback</button><span class="muted">Playback + file offset ${esc(t.offset || "(not set)")}</span>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div>${cueCreditEditor(c)}<p class="cue-status muted">${esc(cueIssues(c, t, effectiveProduction(state)).join(" · ") || "Placement and credits complete")}</p></section>`;
+            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span><span data-cue-title>${esc(c.title || t.title)}</span></h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><p class="muted">Source: ${esc(t.filename)} · ${c.method === "movie" ? `Movie match · waveform similarity ${Math.round(c.score * 100)}% (not a probability)` : c.method === "offset" ? "Detected music-only region" : "Manual placement"}${c.fileOffset ? ` · file starts ${esc(c.fileOffset)}` : ""}</p><div class="form-grid cue-fields">${field("Cue title", "title", c.title || t.title)}${provenanceField(effectiveCue(c, state.sharedCueDetails).category)}<div class="inheritance"><span>${c.category == null ? "Provenance: follows shared details" : "Provenance: cue override"}</span>${c.category != null ? `<button data-reset-shared="category">Use shared provenance</button>` : ""}</div>${field("Film in (HH:MM:SS:FF)", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out (HH:MM:SS:FF)", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<audio data-cue-audio="${c.id}" controls preload="metadata" src="${urls.get(t.id)}"></audio>` : ""}${c.method === "manual" && urls.has(t.id) ? `<button data-mark-in="${c.id}">Mark in at playback</button><button data-mark-out="${c.id}">Mark out at playback</button><span class="muted">Playback + file offset ${esc(t.offset || "(not set)")}</span>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div>${c.credits != null ? `<div class="button-row"><strong>Credits: cue override</strong><button data-reset-shared="credits">Use shared credits</button></div>${cueCreditEditor(c)}` : `<div class="panel inherited-credits"><h3>Credits: follows shared details</h3><p>${esc(effectiveCue(c, state.sharedCueDetails).credits.map(p => p.role === "Composer" ? [p.first,p.last].filter(Boolean).join(" ") : p.name).filter(Boolean).join(" · ") || "No shared names entered yet")}</p><div class="button-row"><button data-tab="shared">Edit shared details</button><button data-override-credits>Customize credits for this cue</button></div></div>`}<p class="cue-status muted">${esc(cueIssues(c, t, effectiveProduction(state), state.sharedCueDetails).join(" · ") || "Placement and credits complete")}</p></section>`;
           })
           .join("")
       : '<div class="empty"><h3>No placements yet</h3><p>Run an automatic workflow or add a manual cue above.</p></div>'
@@ -239,7 +249,7 @@ function cues() {
 }
 function reviewPage(issues) {
   const warnings = productionWarnings(state);
-  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.filter(c => c.category === "original").length} original · ${state.cues.filter(c => c.category === "sourced").length} sourced · ${state.cues.filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
+  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
 }
 function credit(role) {
   return { role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
@@ -295,10 +305,13 @@ function bind() {
   });
   document.querySelectorAll("[data-field]").forEach(
     (e) =>
-      (e.onchange = () => {
+      (e.onchange = (event) => {
         const k = e.dataset.field;
         let refresh = false;
-        if (e.closest("#workflow-settings")) {
+        if (e.closest("#shared-details")) {
+          if (e.closest("[data-credit]")) state.sharedCueDetails.credits[Number(e.closest("[data-credit]").dataset.credit)][k] = e.value;
+          else state.sharedCueDetails[k] = e.value;
+        } else if (e.closest("#workflow-settings")) {
           if (k === "rate") {
             changeRate(e.value);
             return;
@@ -343,15 +356,16 @@ function bind() {
             Number(e.closest("[data-credit]").dataset.credit)
           ][k] = e.value;
         else if (e.closest("[data-editor]"))
-          state.tracks.find((t) => t.id === selected)[k] = e.value;
+          state.tracks.find((t) => t.id === e.closest("[data-editor]").dataset.editor)[k] = e.value;
         else if (e.closest("[data-cue]")) {
           const c = state.cues.find(
             (c) => c.id === e.closest("[data-cue]").dataset.cue,
           );
           c[k] = e.value;
+          if (k === "category") refresh = true;
           if (k === "start" || k === "end") c.reviewed = false;
         }
-        if (refresh) {
+        if (refresh && event?.type !== "input") {
           save();
           render();
           return;
@@ -360,14 +374,23 @@ function bind() {
         updateIndicators();
       }),
   );
-  document.querySelectorAll('#offset-settings input[type="range"]').forEach(slider => {
-    slider.oninput = slider.onchange;
+  document.querySelectorAll('input[data-field]').forEach(input => {
+    input.oninput = input.onchange;
+  });
+  document.querySelectorAll('[data-override-credits]').forEach(button => button.onclick = () => {
+    const cue = state.cues.find(c => c.id === button.closest('[data-cue]').dataset.cue);
+    cue.credits = structuredClone(state.sharedCueDetails.credits);
+    save(); render();
+  });
+  document.querySelectorAll('[data-reset-shared]').forEach(button => button.onclick = () => {
+    const cue = state.cues.find(c => c.id === button.closest('[data-cue]').dataset.cue);
+    delete cue[button.dataset.resetShared];
+    save(); render();
   });
   document.querySelectorAll("[data-add-credit]").forEach(
     (b) =>
       (b.onclick = () => {
-        state.cues
-          .find((c) => c.id === b.closest("[data-cue]").dataset.cue)
+        (b.closest("#shared-details") ? state.sharedCueDetails : state.cues.find(c => c.id === b.closest("[data-cue]").dataset.cue))
           .credits.push(credit(b.dataset.addCredit));
         save();
         render();
@@ -376,8 +399,7 @@ function bind() {
   document.querySelectorAll("[data-remove-credit]").forEach(
     (b) =>
       (b.onclick = () => {
-        state.cues
-          .find((c) => c.id === b.closest("[data-cue]").dataset.cue)
+        (b.closest("#shared-details") ? state.sharedCueDetails : state.cues.find(c => c.id === b.closest("[data-cue]").dataset.cue))
           .credits.splice(Number(b.dataset.removeCredit), 1);
         save();
         render();
@@ -426,6 +448,7 @@ function bind() {
           effectiveProduction(state),
           state.tracks,
           state.cues,
+          state.sharedCueDetails,
         );
         const url = URL.createObjectURL(blob),
           a = document.createElement("a");
@@ -442,6 +465,8 @@ function bind() {
     };
 }
 function updateIndicators() {
+  const sharedStatus = $("#shared-credit-status");
+  if (sharedStatus) sharedStatus.textContent = creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.";
   const analyze = $("#analyze"), help = $("#detection-help");
   if (analyze) {
     const reason = workflow.analysisUnavailable();
@@ -458,6 +483,7 @@ function updateIndicators() {
         c,
         state.tracks.find((t) => t.id === c.trackId),
         effectiveProduction(state),
+        state.sharedCueDetails,
       ).length,
   ).length;
   document.querySelectorAll(".stats strong")[2].textContent = String(
@@ -475,10 +501,13 @@ function updateIndicators() {
     const c = state.cues.find((c) => c.id === el.dataset.cue),
       t = state.tracks.find((t) => t.id === c.trackId),
       d = duration(c, state.production.rate);
+    el.querySelector("[data-cue-title]").textContent = c.title || t.title;
+    const link = document.querySelector(`.cue-navigation a[href="#cue-${c.id}"] strong`);
+    if (link) link.textContent = c.title || t.title;
     el.querySelector(".duration strong").textContent =
       d === null ? "Missing placement" : d.toFixed(3) + " s";
     el.querySelector(".cue-status").textContent =
-      cueIssues(c, t, effectiveProduction(state)).join(" · ") ||
+      cueIssues(c, t, effectiveProduction(state), state.sharedCueDetails).join(" · ") ||
       "Placement and credits complete";
     const checkbox = el.querySelector("[data-reviewed]");
     if (checkbox) checkbox.checked = Boolean(c.reviewed);

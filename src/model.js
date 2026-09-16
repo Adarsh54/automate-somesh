@@ -1,3 +1,4 @@
+import {effectiveCue} from "./cue-details.js";
 export const usages = {
   BI: "Background instrumental",
   BV: "Background vocal",
@@ -56,7 +57,8 @@ export function creditIssues(track) {
   }
   return issues;
 }
-export function cueIssues(cue, track, production) {
+export function cueIssues(cue, track, production, shared) {
+  if (shared) cue = effectiveCue(cue, shared);
   const issues = [],
     rate = production.rate || "24";
   if (!(cue.title || track?.title || "").trim())

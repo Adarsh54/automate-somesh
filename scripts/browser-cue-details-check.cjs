@@ -17,13 +17,15 @@ const assert=require('node:assert/strict');
  await page.getByRole('navigation',{name:'Jump to cue'}).getByRole('link').nth(1).click();
  assert.equal(await page.locator('[data-cue]').nth(1).evaluate(e=>e.matches(':target')),true);
  const firstCue=page.locator('[data-cue]').first();
+ await firstCue.locator('[data-override-credits]').click();
  await firstCue.locator('[data-add-credit="Composer"]').click();
  assert.equal(await firstCue.locator('[data-credit]').count(),3);
- assert.equal(await page.locator('[data-cue]').nth(1).locator('[data-credit]').count(),2);
+ assert.equal(await page.locator('[data-cue]').nth(1).locator('[data-credit]').count(),0);
  await firstCue.locator('[data-remove-credit="2"]').click();
  assert.equal(await firstCue.locator('[data-credit]').count(),2);
  for(let i=0;i<2;i++){
   const cue=page.locator('[data-cue]').nth(i);
+  if(await cue.locator('[data-override-credits]').count()) await cue.locator('[data-override-credits]').click();
   await cue.locator('[data-field="category"]').selectOption(i?'sourced':'original');
   await cue.locator('[data-field="usage"]').selectOption('BI');
   assert.equal(await cue.locator('[data-field="last"]').isVisible(),true);

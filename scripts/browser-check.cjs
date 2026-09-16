@@ -98,6 +98,7 @@ const url = process.env.CUEBOOK_URL || "http://127.0.0.1:5173/automate-somesh/";
     await select.selectOption("BI");
   for (const cue of await page.locator("[data-cue]").all()) {
     const cueId = await cue.getAttribute("data-cue");
+    await cue.locator("[data-override-credits]").click();
     for (const [selector, value] of [
       ['[data-credit="0"] [data-field="first"]', "Ada"],
       ['[data-credit="0"] [data-field="last"]', "Writer"],

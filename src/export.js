@@ -1,7 +1,9 @@
+import {effectiveCue} from "./cue-details.js";
 import JSZip from "jszip";
 import { seconds, duration } from "./model.js";
 import { bmiClock, rates } from "./timecode.js";
-export async function exportWorkbook(production, tracks, cues) {
+export async function exportWorkbook(production, tracks, cues, shared) {
+  if (shared) cues = cues.map(cue => effectiveCue(cue, shared));
   const response = await fetch(
     `${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx`,
   );

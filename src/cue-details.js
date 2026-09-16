@@ -1,20 +1,27 @@
+export function blankCredits() {
+  return ['Composer', 'Publisher'].map(role => ({role, first:'', last:'', name:'', pro:'', ipi:'', share:''}));
+}
+export function effectiveCue(cue, shared) {
+  return {...cue, category: cue.category ?? shared?.category ?? 'unknown', credits: cue.credits ?? shared?.credits ?? []};
+}
 export function cueDetails(track, previous = null) {
-  return {
-    category: previous?.category ?? track?.legacyCueCategory ?? 'unknown',
-    credits: structuredClone(previous?.credits ?? track?.credits ?? []),
-  };
+  const details = {};
+  if (previous?.category != null) details.category = previous.category;
+  if (previous?.credits != null) details.credits = structuredClone(previous.credits);
+  return details;
 }
 export function migrateCueDetails(state) {
-  for (const cue of state.cues) {
-    const track = state.tracks.find(t => t.id === cue.trackId);
-    cue.category ??= track?.category ?? 'unknown';
-    cue.credits ??= structuredClone(track?.credits ?? []);
+  state.sharedCueDetails ??= {category:'unknown', credits:blankCredits()};
+  if (state.cueDetailsVersion !== 2) {
+    // Never reinterpret historical cue edits as live inheritance.
+    for (const cue of [...state.cues, ...(state.cueDetailsArchive ?? [])]) {
+      const track = state.tracks.find(t => t.id === cue.trackId);
+      cue.category ??= track?.category ?? track?.legacyCueCategory ?? 'unknown';
+      cue.credits ??= structuredClone(track?.credits ?? blankCredits());
+    }
+    state.cueDetailsVersion = 2;
   }
-  // Legacy source credits remain a starting template, never an editable owner.
-  for (const track of state.tracks) {
-    if (track.category != null) track.legacyCueCategory ??= track.category;
-    delete track.category;
-  }
+  for (const track of state.tracks) delete track.category;
 }
 export function matchingCue(cues, trackId, method, match, mediaName) {
   const candidates = cues.filter(c => c.trackId === trackId && c.method === method &&
