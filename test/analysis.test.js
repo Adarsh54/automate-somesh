@@ -36,18 +36,19 @@ test("silence segmentation retains separated regions and rejects silence", () =>
   x.set(music(3, 2), sr * 12);
   const r = detectRegions(x);
   assert.equal(r.length, 2);
-  assert.ok(Math.abs(r[0].start - 2) <= 0.04);
-  assert.ok(Math.abs(r[1].end - 15) <= 0.04);
+  // The fixture has 100 ms fades; portions below the fixed floor are excluded.
+  assert.ok(r[0].start > 2 && r[0].start <= 2.1);
+  assert.ok(r[1].end >= 14.9 && r[1].end < 15);
   assert.equal(detectRegions(new Float32Array(sr * 5)).length, 0);
 });
-test("automatic silence detection retains quiet music and fades but splits silent and near-silent gaps", () => {
+test("fixed silence detection retains above-threshold audio and splits silent and below-threshold gaps", () => {
   const x = new Float32Array(sr * 12);
   for (let i = 0; i < x.length; i++) {
     const t = i / sr;
-    const db = t >= 1 && t < 3 ? -62
-      : t >= 3 && t < 5 ? -62 - 3 * (t - 3)
-      : (t >= 6 && t < 8) || (t >= 9 && t < 11) ? -64
-      : t >= 8 && t < 9 ? -75 : null;
+    const db = t >= 1 && t < 3 ? -12
+      : t >= 3 && t < 5 ? -12 - 3 * (t - 3)
+      : (t >= 6 && t < 8) || (t >= 9 && t < 11) ? -14
+      : t >= 8 && t < 9 ? -25 : null;
     if (db !== null)
       x[i] = Math.SQRT2 * 10 ** (db / 20) * Math.sin(2 * Math.PI * 200 * t);
   }
