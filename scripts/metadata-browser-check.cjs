@@ -122,9 +122,8 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
   await page.locator("#confirm-detections").click();
   for (const el of await page.locator('[data-field="usage"]').all())
     await el.selectOption("BI");
-  await page.locator('.nav[data-tab="library"]').click();
-  for (const track of await page.locator("[data-track]").all()) {
-    await track.click();
+  for (const cue of await page.locator("[data-cue]").all()) {
+    const cueId = await cue.getAttribute("data-cue");
     for (const [selector, value] of [
       ['[data-credit="0"] [data-field="last"]', "Writer"],
       ['[data-credit="0"] [data-field="pro"]', "BMI"],
@@ -133,7 +132,7 @@ const root = process.env.FIXTURES || "/tmp/cuebook-fixtures";
       ['[data-credit="1"] [data-field="pro"]', "BMI"],
       ['[data-credit="1"] [data-field="share"]', "100"],
     ])
-      await fill(selector, value);
+      await fill(`[data-cue="${cueId}"] ${selector}`, value);
   }
   await page.locator('.nav[data-tab="production"]').click();
   await fill('[data-field="title"]', "Audio-only project");

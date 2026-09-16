@@ -1,0 +1,44 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1100}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(process.env.CUEBOOK_URL||'http://127.0.0.1:5174/automate-somesh/');
+ const ready=()=>page.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
+ const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1')));
+ const nav=name=>page.getByRole('navigation').getByRole('button',{name,exact:true}).click();
+ const fill=async(el,value)=>{await el.fill(value);await el.dispatchEvent('change');};
+ await page.locator('[data-mode="offset"]').click();await page.locator('[data-upload]').first().setInputFiles(`${process.env.FIXTURES||'/tmp/cuebook-fixtures'}/score.wav`);await ready();
+ await fill(page.locator('[data-field="offset"]'),'01:00:00:00');await page.locator('[data-track]').click();
+ assert.equal(await page.locator('[data-editor] [data-field="category"]').count(),0);
+ assert.equal(await page.locator('[data-editor] [data-credit]').count(),0);
+ await page.locator('#analyze').click();await ready();await nav('Timings & usage');
+ assert.equal(await page.locator('[data-cue]').count(),2);
+ for(let i=0;i<2;i++){
+  const cue=page.locator('[data-cue]').nth(i);
+  await cue.locator('[data-field="category"]').selectOption(i?'sourced':'original');
+  await cue.locator('[data-field="usage"]').selectOption('BI');
+  await cue.locator('.credit-details').evaluate(e=>e.open=true);
+  await fill(cue.locator('[data-field="last"]'),i?'Licensed writer':'Score writer');
+  await fill(cue.locator('[data-field="name"]'),i?'Licensed publisher':'Score publisher');
+  for(const pro of await cue.locator('[data-field="pro"]').all()) await fill(pro,'BMI');
+  for(const share of await cue.locator('[data-field="share"]').all()) await fill(share,'100');
+ }
+ let before=(await saved()).cues;assert.deepEqual(before.map(c=>c.category),['original','sourced']);
+ assert.notEqual(before[0].credits[0].last,before[1].credits[0].last);
+ await page.reload();await nav('Timings & usage');assert.deepEqual((await saved()).cues,before);
+ await nav('Find your cues');await page.locator('[data-track]').click();await page.locator('[data-reattach]').setInputFiles(`${process.env.FIXTURES||'/tmp/cuebook-fixtures'}/score.wav`);await ready();
+ await page.locator('#analyze').click();await ready();
+ const details=s=>s.cues.map(c=>({category:c.category,credits:c.credits,usage:c.usage,title:c.title}));
+ assert.deepEqual(details(await saved()),details({cues:before}));
+ await page.locator('[data-clear-results="offset"]').click();await page.locator('#undo-clear').click();assert.deepEqual(details(await saved()),details({cues:before}));
+ await page.locator('[data-clear-results="offset"]').click();await page.locator('#analyze').click();await ready();assert.deepEqual(details(await saved()),details({cues:before}));
+ await nav('Timings & usage');await page.locator('#confirm-detections').click();
+ await page.screenshot({path:'/tmp/cuebook-cue-details.png',fullPage:true});
+ await nav('Production details');await fill(page.locator('[data-field="title"]'),'Cue-specific export');
+ await nav('Review & export');assert.match(await page.locator('.review-grid').textContent(),/1 original · 1 sourced/);
+ const download=page.waitForEvent('download');await page.locator('#export').click();await (await download).saveAs('/tmp/cuebook-cue-details.xlsx');
+ assert.deepEqual(errors,[]);
+ console.log('PASS two cues/one WAV: independent provenance+credits, reload, exact rerun, clear/undo/clear-rerun, no source-level controls, review/export download');
+ await browser.close();
+})();

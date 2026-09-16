@@ -17,9 +17,10 @@ await page.locator('[data-field="offset"]').fill('01:00:00:00');await page.locat
 assert.equal(await page.locator('#analyze').isEnabled(),true);
 await page.locator('[data-track]').click();
 await page.locator('[data-field="title"]').fill('Retained title');await page.locator('[data-field="title"]').dispatchEvent('change');
+await page.locator('[data-mode="manual"]').click();await page.locator('[data-add-cue]').click();
 await page.locator('.credit-details summary').click();
 await page.locator('[data-field="first"]').fill('Saved composer');await page.locator('[data-field="first"]').dispatchEvent('change');
-await page.locator('[data-mode="manual"]').click();await page.locator('[data-add-cue]').click();await library();
+await library();
 assert.equal(await page.locator('#analyze').count(),0);
 await page.locator('[data-clear-results="manual"]').click();assert.equal((await saved()).cues.length,0);await page.locator('#undo-clear').click();assert.equal((await saved()).cues.length,1);
 await page.locator('[data-mode="offset"]').click();const tracks=(await saved()).tracks;

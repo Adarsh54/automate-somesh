@@ -86,5 +86,5 @@ export function cueIssues(cue, track, production) {
     issues.push("Movie reattached or replaced; rerun matching");
   if (cue.method === "offset" && toFrames(track?.offset, rate) === null)
     issues.push("Correct this audio file’s starting film timecode");
-  return [...issues, ...(track ? creditIssues(track) : ["Track missing"])];
+  return [...issues, ...(track ? creditIssues(cue.credits ? cue : track) : ["Track missing"])];
 }

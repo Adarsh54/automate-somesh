@@ -1,3 +1,4 @@
+import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
 import { decodeMedia } from "./media.js";
 import { toFrames, atOffset } from "./timecode.js";
 import { applyMovieMetadata } from "./project.js";
@@ -48,7 +49,7 @@ export class Workflow {
         if (this.movie) URL.revokeObjectURL(this.movie.url);
         this.movie = { ...decoded, filename: file.name, url };
         applyMovieMetadata(this.state, file, decoded);
-        this.state.cues
+        [...this.state.cues, ...(this.state.cueDetailsArchive ?? [])]
           .filter((c) => c.method === "movie")
           .forEach((c) => {
             c.staleSource = true;
@@ -60,7 +61,6 @@ export class Workflow {
             id: crypto.randomUUID(),
             title: file.name.replace(/\.[^.]+$/, ""),
             filename: file.name,
-            category: "unknown",
             offset: "",
             duration: decoded.duration,
             credits: ["Composer", "Publisher"].map((role) => ({
@@ -176,16 +176,19 @@ export class Workflow {
           const start = atOffset(offset, match.start, rate),
             end = atOffset(offset, match.end, rate);
           if (!start || !end) return;
+          const mediaName = mode === "movie" ? this.movie.filename : track.filename;
+          const prior = matchingCue(s.cues, track.id, key, match, mediaName) ?? matchingCue(s.cueDetailsArchive ?? [], track.id, key, match, mediaName);
           cues.push({
+            ...cueDetails(track, prior),
             id: crypto.randomUUID(),
             trackId: track.id,
-            title:
+            title: prior?.title ?? (
               result.matches.length > 1 && mode === "offset"
                 ? `${track.title} · cue ${i + 1}`
-                : track.title,
+                : track.title),
             start,
             end,
-            usage: "",
+            usage: prior?.usage ?? "",
             method: key,
             reviewed: false,
             relativeStart: match.start,
@@ -198,6 +201,7 @@ export class Workflow {
           });
         });
       }
+      archiveCueDetails(s, key);
       s.cues = [...s.cues.filter((c) => c.method !== key), ...cues].sort(
         (a, b) =>
           (toFrames(a.start, rate) ?? Infinity) -
