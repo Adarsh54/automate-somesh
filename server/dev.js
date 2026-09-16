@@ -3,7 +3,8 @@ import health from "../api/health.js";
 import validate from "../api/validate.js";
 import auth from "../api/auth.js";
 import projects from "../api/projects.js";
-const routes = {"/api/auth":auth,"/api/projects":projects,"/api/health":health, "/api/validate":validate};
+import media from "../api/media.js";
+const routes = {"/api/media":media,"/api/auth":auth,"/api/projects":projects,"/api/health":health, "/api/validate":validate};
 createServer(async (req, res) => {
   res.status = status => { res.statusCode = status; return res; };
   res.json = body => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };

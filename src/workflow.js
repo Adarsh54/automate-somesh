@@ -7,6 +7,7 @@ import AnalysisWorker from "./analysis.worker.js?worker&inline";
 export class Workflow {
   constructor({ state, save, render, notify }) {
     Object.assign(this, { state, save, render, notify });
+    this.files = new Map();
     this.audio = new Map();
     this.urls = new Map();
     this.movie = null;
@@ -27,8 +28,8 @@ export class Workflow {
     this.notify("Analysis cancelled. Existing cues were kept.");
   }
 
-  async load(file, track = null, movie = false) {
-    if (this.busy) return;
+  async load(file, track = null, movie = false, restoring = false) {
+    if (this.busy || (this.restoring && !restoring)) return;
     this.busy = true;
     this.controller = new AbortController();
     this.progress = `Decoding ${file.name}…`;
@@ -48,13 +49,16 @@ export class Workflow {
       if (movie) {
         if (this.movie) URL.revokeObjectURL(this.movie.url);
         this.movie = { ...decoded, filename: file.name, url };
-        applyMovieMetadata(this.state, file, decoded);
-        [...this.state.cues, ...(this.state.cueDetailsArchive ?? [])]
-          .filter((c) => c.method === "movie")
-          .forEach((c) => {
-            c.staleSource = true;
-            c.reviewed = false;
-          });
+        if (!restoring) {
+          delete this.state.media?.movie;
+          applyMovieMetadata(this.state, file, decoded);
+          [...this.state.cues, ...(this.state.cueDetailsArchive ?? [])]
+            .filter((c) => c.method === "movie")
+            .forEach((c) => {
+              c.staleSource = true;
+              c.reviewed = false;
+            });
+        }
       } else {
         if (!track) {
           track = {
@@ -89,12 +93,14 @@ export class Workflow {
         this.audio.set(track.id, decoded.samples);
         track.duration = decoded.duration;
       }
-      this.save();
+      if (!movie && !restoring && this.state.media) delete this.state.media.tracks[track.id];
+      this.files.set(movie ? "movie" : track.id, file);
+      if (!restoring) this.save();
       this.notify(
         `${file.name} decoded locally. ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
         false,
       );
-      return track;
+      return movie ? this.movie : track;
     } catch (error) {
       if (error.name !== "AbortError")
         this.notify(`Could not read ${file.name}: ${error.message}`, false);

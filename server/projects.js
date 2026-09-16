@@ -1,5 +1,6 @@
 import {neon} from "@neondatabase/serverless";
 import {z} from "zod";
+import {createMediaRepository} from "./media.js";
 import {rates} from "../src/timecode.js";
 const sql=()=>neon(process.env.DATABASE_URL);
 export async function upsertUser(user) {
@@ -21,13 +22,14 @@ const stateSchema=z.object({
   movieMetadata:z.json().optional(),movieOverrides:z.json().optional(),movieProfiles:z.json().optional(),
   movieOriginEdited:z.boolean().optional(),movieRateEdited:z.boolean().optional(),rateEdited:z.boolean().optional(),
   analysisReport:z.json().optional(),
+  media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
 const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:stateSchema});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
   const ids=result.data.data.tracks.map(t=>t.id);
-  if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)))
+  if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)) || Object.keys(result.data.data.media?.tracks || {}).some(id=>!ids.includes(id)))
     throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
   return result.data;
 }
@@ -44,6 +46,7 @@ export function createProjectRepository(query) {
     },
     async save(userId,input) {
       const {id,revision,data}=parseProject(input), title=data.production.title.trim() || "Untitled production";
+      await createMediaRepository(query).validate(userId,data);
       const rows=revision===0
         ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,updated_at`
         : await query`UPDATE projects SET title=${title},data=${JSON.stringify(data)}::jsonb,revision=revision+1,updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${revision} RETURNING id,title,revision,updated_at`;

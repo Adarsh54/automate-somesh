@@ -1,3 +1,4 @@
+import {createCloudMedia} from "./cloud-media.js";
 import {migrateCueDetails} from "./cue-details.js";
 import {serverValidationEnabled} from "./api-client.js";
 export async function sessionInfo() {
@@ -8,7 +9,7 @@ export async function sessionInfo() {
     return await response.json();
   } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. Your local workspace is still available."};}
 }
-export function createCloudWorkspace(account,{state,storageKey,esc}) {
+export function createCloudWorkspace(account,{state,storageKey,esc,workflow}) {
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false;
   const metaKey=storageKey+":project";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=Boolean(localStorage.getItem(storageKey));} catch {}
@@ -26,9 +27,12 @@ export function createCloudWorkspace(account,{state,storageKey,esc}) {
     if(!response.ok) throw new Error("Could not reach your projects. Your draft is kept on this device; please retry.");
     return response.json();
   }
+  const report=text=>{status=text;update();};
+  const media=workflow?createCloudMedia({state,workflow,request,persist:()=>localStorage.setItem(storageKey,JSON.stringify(state))}):null;
   async function run(fn) {busy=true;update();try{await fn();}catch(e){status=e.message;}finally{busy=false;update();}}
   async function save(copy=false) {
     const version=changes, snapshot=structuredClone(state);
+    await media?.prepare(snapshot,report);
     const target=copy || !active?{id:crypto.randomUUID(),revision:0}:active;
     const {project}=await request("/api/projects",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...target,data:snapshot})});
     active={id:project.id,revision:project.revision};localStorage.setItem(metaKey,JSON.stringify(active));
@@ -37,12 +41,13 @@ export function createCloudWorkspace(account,{state,storageKey,esc}) {
   }
   function view() {
     if(!account.user) return account.configured
-      ? '<section class="panel account-panel"><div><strong>Keep your projects across devices</strong><p>Sign in to save private cue sheets. Audio stays on this device.</p></div><a class="primary" href="/api/auth?action=login">Sign in / Create account</a></section>'
+      ? '<section class="panel account-panel"><div><strong>Keep your projects across devices</strong><p>Sign in to save private cue sheets. Save audio and video privately with your projects.</p></div><a class="primary" href="/api/auth?action=login">Sign in / Create account</a></section>'
       : account.error?`<p class="notice">${esc(account.error)}</p>`:"";
     return `<section class="panel account-panel"><div><strong>${esc(account.user.email)}</strong><p id="cloud-status" role="status">${esc(status || (active ? "Cloud project · edits are saved locally until you click Save." : "New workspace · save to add it to your account."))}</p></div><div class="button-row">
     <button class="primary" id="cloud-save" ${busy?"disabled":""}>Save project</button>
     <button id="cloud-copy" ${busy?"disabled":""}>Save a copy</button>
     <button id="cloud-list" ${busy?"disabled":""}>My projects</button>
+    <button id="cloud-restore" ${busy?"disabled":""}>Restore media</button>
     <button id="cloud-new" ${busy?"disabled":""}>New project</button>
     <button id="cloud-import" ${busy?"disabled":""}>Import browser project</button>
     <button id="cloud-logout" ${busy?"disabled":""}>Sign out</button></div>
@@ -53,7 +58,8 @@ export function createCloudWorkspace(account,{state,storageKey,esc}) {
     const el=document.querySelector("#cloud-workspace");if(!el || !account.user)return;
     el.querySelector("#cloud-save").onclick=()=>run(()=>save());
     el.querySelector("#cloud-copy").onclick=()=>run(()=>save(true));
-    el.querySelector("#cloud-list").onclick=()=>run(async()=>{projects=(await request("/api/projects")).projects;status=projects.length?"Choose a saved project. Reattach media after opening.":"No saved projects yet. Click Save project to create one.";});
+    el.querySelector("#cloud-list").onclick=()=>run(async()=>{projects=(await request("/api/projects")).projects;status=projects.length?"Choose a saved project. Its saved media will load automatically.":"No saved projects yet. Click Save project to create one.";});
+    el.querySelector("#cloud-restore").onclick=()=>run(()=>media?.restore(report));
     el.querySelector("#cloud-new").onclick=()=>{if(confirmSwitch()){stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);location.reload();}};
     el.querySelector("#cloud-import").onclick=()=>run(async()=>{
       const legacy=localStorage.getItem("cuebook-v1");
@@ -67,5 +73,5 @@ export function createCloudWorkspace(account,{state,storageKey,esc}) {
     el.querySelector("#cloud-logout").onclick=()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});location.reload();});
     el.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{if(confirmSwitch())replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {view,bind,changed(){changes++;dirty=true;status="Unsaved cloud changes · draft kept on this device.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {view,bind,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved cloud changes · draft kept on this device.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }
