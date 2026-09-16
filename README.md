@@ -29,6 +29,8 @@ The UI requires core production details, valid placements/usages and complete co
 
 Vite is configured for `/automate-somesh/`. `.github/workflows/pages.yml` builds, tests and deploys the static output on pushes to `master` or manual dispatch.
 
-**Deployment currently blocked:** GitHub's Pages API returned HTTP 422: “Your current plan does not support GitHub Pages for this repository.” The repository remains private. The owner must choose an eligible GitHub plan or explicitly authorize making the repository public. No purchase or visibility change has been made.
+The repository is public with the owner’s explicit authorization, and Pages uses GitHub Actions as the build source. Site URL: https://adarsh54.github.io/automate-somesh/
 
-After eligibility is resolved, enable Pages with GitHub Actions as the build source and rerun the workflow. Expected URL after successful deployment: `https://adarsh54.github.io/automate-somesh/` (not live until deployment succeeds). GitHub Pages websites are normally public even when their source repository is private; uploaded audio stays local in this app.
+This published demo uses manual cue placement. Automatic detection of music start/stop positions in a final film is not implemented and remains required for the intended product.
+
+GitHub Pages serves the static application publicly. Uploaded audio and entered metadata stay local in this app.
