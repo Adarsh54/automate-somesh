@@ -8,7 +8,13 @@ const assert=require('node:assert/strict');
  const jump=n=>p.locator('#sidebar-nav').getByRole('button',{name:n,exact:true}).evaluate(e=>e.click()); // no blur: regression for model updates on input
  const saved=()=>p.evaluate(()=>JSON.parse(localStorage.getItem('cuebook-v1')));
  const ready=()=>p.waitForFunction(()=>!document.querySelector('#cancel-analysis'));
- await nav('Shared cue details');
+ assert.equal(await p.locator('#shared-details').count(),1);
+ assert.equal(await p.locator('#shared-details [data-field="last"]').isVisible(),true);
+ assert.equal(await p.locator('#shared-details [data-field="name"]').isVisible(),true);
+ assert.equal(await p.locator('[data-track]').count(),0);
+ assert.equal(await p.evaluate(()=>document.querySelector('#shared-details').getBoundingClientRect().top < document.querySelector('.workflow-modes').getBoundingClientRect().top),true);
+ await p.locator('#sidebar-toggle').click();assert.equal(await p.locator('#shared-details [data-field="last"]').isVisible(),true);
+ // Fill directly on the initial main page, with no sidebar navigation.
  // Removing a focused contributor must not redirect a pending blur into its neighbor.
  await p.locator('[data-add-credit="Composer"]').click();
  await p.locator('[data-credit="2"] [data-field="last"]').fill('Keep writer');
@@ -28,8 +34,8 @@ const assert=require('node:assert/strict');
  await p.locator('[data-remove-credit="2"]').click();
  await p.locator('[data-field="last"]').fill('Common writer');
  assert.equal(await p.locator('[data-field="last"]').evaluate(e=>e===document.activeElement),true);
- await jump('Find your cues');await nav('Shared cue details');assert.equal(await p.locator('[data-field="last"]').inputValue(),'Common writer');
- await p.locator('[data-field="last"]').fill('Common writer');await p.reload();await nav('Shared cue details');assert.equal(await p.locator('[data-field="last"]').inputValue(),'Common writer');
+ await jump('Find your cues');await nav('Shared cue details');assert.equal(await p.locator('#shared-details').count(),1);assert.equal(await p.locator('.workflow-modes').count(),1);assert.equal(await p.locator('[data-field="last"]').inputValue(),'Common writer');
+ await p.locator('[data-field="last"]').fill('Common writer');await p.reload();await nav('Shared cue details');assert.equal(await p.locator('#shared-details').count(),1);assert.equal(await p.locator('.workflow-modes').count(),1);assert.equal(await p.locator('[data-field="last"]').inputValue(),'Common writer');
  await p.locator('#sidebar-toggle').click();assert.equal(await p.locator('[data-field="last"]').inputValue(),'Common writer');
  await p.screenshot({path:'/tmp/cuebook-shared-form.png',fullPage:true});
  await nav('Find your cues');await p.locator('[data-mode="offset"]').click();await p.locator('[data-upload]').first().setInputFiles(`${process.env.FIXTURES||'/tmp/cuebook-fixtures'}/score.wav`);await ready();
