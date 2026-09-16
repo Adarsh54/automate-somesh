@@ -1,6 +1,7 @@
 import { decodeMedia } from "./media.js";
 import { toFrames, atOffset } from "./timecode.js";
 import { applyMovieMetadata } from "./project.js";
+import AnalysisWorker from "./analysis.worker.js?worker&inline";
 
 export class Workflow {
   constructor({ state, save, render, notify }) {
@@ -126,21 +127,31 @@ export class Workflow {
     this.worker?.terminate();
     this.busy = true;
     this.progress = "Starting audio analysis…";
-    this.worker = new Worker(new URL("./analysis.worker.js", import.meta.url), {
-      type: "module",
-    });
-    const worker = this.worker;
-    this.render();
-    this.worker.onerror = (event) => {
-      if (this.worker !== worker) return;
+    const fail = (detail) => {
       this.worker?.terminate();
       this.worker = null;
       this.busy = false;
       this.progress = "";
-      this.notify(
-        `Analysis failed: ${event.message}. Existing cues were kept.`,
-      );
+      this.notify(`${detail} Existing cues were kept.`);
     };
+    try {
+      // Keep the worker with this app version: Pages removes old hashed assets
+      // on deploy, but an already-open tab must still be able to start analysis.
+      this.worker = new AnalysisWorker();
+    } catch {
+      return fail("The browser could not start audio analysis. Try again in a current Chrome window; if it persists, reload and reattach your media.");
+    }
+    const worker = this.worker;
+    this.render();
+    this.worker.onerror = (event) => {
+      if (this.worker !== worker) return;
+      event.preventDefault();
+      fail("Audio analysis stopped unexpectedly. Retry; if it happens again, try a shorter audio export or reload and reattach your media.");
+    };
+    this.worker.addEventListener("messageerror", () => {
+      if (this.worker !== worker) return;
+      fail("The browser could not read the analysis result. Retry or use a shorter audio export.");
+    });
     this.worker.onmessage = ({ data }) => {
       if (this.worker !== worker) return;
       if (data.type === "progress") {
@@ -155,7 +166,7 @@ export class Workflow {
       this.progress = "";
       if (data.type === "error")
         return this.notify(
-          `Analysis failed: ${data.message}. Existing cues were kept.`,
+          "The audio could not be analyzed. Try a shorter audio export or reattach the source files and retry. Existing cues were kept.",
         );
       const cues = [];
       for (const result of data.results) {
@@ -203,12 +214,17 @@ export class Workflow {
         count: cues.length,
       };
       this.save();
+      if (!cues.length) {
+        return this.notify(mode === "offset"
+          ? "Analysis completed: no music regions met the detection level and minimum duration. Soft audio or clips shorter than 0.5 seconds may produce no cues. Previous detections for this workflow were replaced; use manual timings if needed."
+          : "Analysis completed: no matching recordings were found. Check that the supplied cues use the same recording and speed as the movie, or use manual timings. Previous detections for this workflow were replaced.");
+      }
       this.notify(
         `${cues.length} ${mode === "movie" ? "matching placements" : "sound regions"} detected in ${data.elapsed.toFixed(1)}s of analysis. Review the results and add usage/credits before export.`,
       );
     };
     // Structured cloning leaves low-rate PCM cached for re-analysis and previews.
-    this.worker.postMessage({
+    try { this.worker.postMessage({
       mode,
       movie: this.movie?.samples,
       tracks: s.tracks.map((t) => ({
@@ -223,7 +239,9 @@ export class Workflow {
               minimum: 0.5,
             }
           : { threshold: Number(s.matchThreshold) },
-    });
+    }); } catch {
+      fail("The browser could not send the audio for analysis. Try a shorter audio export or reload and reattach your media.");
+    }
   }
 }
 
