@@ -108,11 +108,11 @@ Verified after migration: HTTPS, domain redirects, production health endpoint, G
 
 Files <=100,000,000 bytes remain local. Larger files use `/api/analysis`, including in guest mode. `VITE_BROWSER_MAX_MB` can change the cutoff at build time. A movie/reference pair uses the server if either file is large, so its small counterpart also uploads. Audio-only projects route each track independently. Existing 20-minute/2 GiB file limits still apply.
 
-Before production rollout:
+For a new deployment environment:
 
 1. Apply `003_analysis.sql` using `npm run db:migrate` against the intended Neon database.
 2. Configure `CRON_SECRET` and enable Fluid Compute; `vercel.json` sets the analysis route to 300 seconds and includes native FFmpeg/ffprobe and the Node worker.
-3. Use isolated preview credentials/storage to verify real guest upload/decode/detection and signed-in save/restore. Production WorkOS/Neon credentials are not currently shared with previews.
+3. Verify guest upload/decode/detection on an isolated preview or an unpromoted production-target deployment (`vercel deploy --prod --skip-domain`). Production credentials are not shared with Git previews. Use the production Origin for API smoke tests against an unpromoted production target, since APP_URL still points at the live domain.
 4. Verify the daily `GET /api/analysis` cleanup with `Authorization: Bearer <CRON_SECRET>`. Vercel Cron supplies this automatically in production. Preview deployments need explicit cleanup testing; production schedules do not run there.
 
 `analysis_assets` holds temporary media ownership/metadata, `analysis_limits` enforces daily quotas and `analysis_leases` prevents concurrent processing in one browser session. A sealed HttpOnly cookie identifies temporary guest assets; saved projects/media still require WorkOS account ownership. Clients send owned IDs, never arbitrary source URLs or PCM payloads. Files upload directly to private Blob, avoiding the function body-size limit.
@@ -120,3 +120,9 @@ Before production rollout:
 Temporary originals and PCM expire 24 hours after reservation and are deleted by daily cleanup (allow one additional scheduling interval for physical deletion). Saved permanent media uses separate paths. The current save flow may upload a second permanent copy; restoration downloads for playback and may create a new temporary analysis upload. Monitor storage and cron failures.
 
 Limits per UTC day: 40 upload reservations/150 processing attempts per session and 100 reservations/300 attempts per trusted Vercel client IP. These are abuse controls, not billing caps. A request has a 260-second processing deadline; cancelled requests may retain their lease briefly. A retry may therefore ask the user to wait. Expired analysis assets require reattachment. An unavailable server does not silently force large files onto the browser.
+
+### Release verification — September 16, 2026
+
+Migration 003 was applied transactionally to the production Neon branch; all three analysis tables were verified. CRON_SECRET is configured as a Vercel Production secret. An unpromoted production-target deployment verified actual private multipart uploads, native decode and cue detection for 640,044-byte and 105,840,044-byte synthetic WAVs. Both yielded the expected regions. A ten-minute MP4 and reference recording also decoded and matched all four expected repeated/trimmed placements on Vercel. A second guest session was denied access to the first session's asset (404), and authenticated cleanup returned success.
+
+The >100 MB test took about 96 seconds end to end on this connection, including upload and CLI request overhead; this is not a server-compute benchmark. Synthetic test assets use normal 24-hour expiration and daily cleanup. Local tests separately cover browser Wasm, mixed routing, failures/cancellation and saved-media ownership. Live account sign-in/save/restore was verified before this change; this release's hosted smoke tests used guest sessions.
