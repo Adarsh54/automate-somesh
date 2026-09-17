@@ -50,11 +50,13 @@ export function createProjectRepository(query) {
       if(!rows[0]) throw Object.assign(new Error("NOT_FOUND"),{status:404});
       return rows[0];
     },
-    async deleteReel(userId,input) {
+    async deleteProject(userId,input) {
       const parsed=z.object({id:z.uuid(),revision:z.number().int().positive()}).safeParse(input);
       if(!parsed.success)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
       const {id,revision}=parsed.data;
-      const rows=await query`DELETE FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND data->>'type'='reel' RETURNING id`;
+      // No type filter: a cue sheet has no dependent tables to clean up, and every reel-specific
+      // table (reel_publications, reel_share_links, reel_listens, ...) cascades via its own FK.
+      const rows=await query`DELETE FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} RETURNING id`;
       if(!rows[0])throw Object.assign(new Error("PROJECT_CONFLICT"),{status:409});
       return rows[0];
     },
@@ -73,4 +75,4 @@ export const listProjects = userId => createProjectRepository(sql()).list(userId
 export const getProject = (userId,id) => createProjectRepository(sql()).get(userId,id);
 export const saveProject = (userId,input) => createProjectRepository(sql()).save(userId,input);
 
-export const deleteReel = (userId,input) => createProjectRepository(sql()).deleteReel(userId,input);
+export const deleteProject = (userId,input) => createProjectRepository(sql()).deleteProject(userId,input);

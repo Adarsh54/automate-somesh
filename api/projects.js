@@ -1,5 +1,5 @@
 import {authenticate,requireOrigin,apiError} from "../server/auth.js";
-import {listProjects,getProject,saveProject,deleteReel} from "../server/projects.js";
+import {listProjects,getProject,saveProject,deleteProject} from "../server/projects.js";
 import {reelRepository} from "../server/reels.js";
 import {readJson,reply} from "../server/http.js";
 export default async function handler(req,res) {
@@ -9,7 +9,7 @@ export default async function handler(req,res) {
     if(!session) return reply(res,401,{error:"SIGN_IN_REQUIRED"});
     if(req.method==="DELETE") {
       requireOrigin(req);
-      return reply(res,200,{deleted:await deleteReel(session.user.id,await readJson(req))});
+      return reply(res,200,{deleted:await deleteProject(session.user.id,await readJson(req))});
     }
     if(req.method==="POST") {
       requireOrigin(req);

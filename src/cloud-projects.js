@@ -3,6 +3,7 @@ import {filterProjects,projectDates} from './project-list.js';
 import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {openProfile} from "./user-profile.js";
 import {reviewProject} from "./domain/review.js";
+import {confirmDialog} from "./confirm-dialog.js";
 
 import {authActions} from "./auth-actions.js";
 import {createCloudMedia} from "./cloud-media.js";
@@ -17,7 +18,8 @@ export async function sessionInfo() {
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete,beforeNewProject,chooseType,onNewReel,onOpenReel,isProjectBusy=()=>false,saveAudio}) {
   let projectType="all",projectSort="created-desc";
-  let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="",autosaveTimer=null;
+  let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="",deleteStatus="",autosaveTimer=null;
+  const selectedProjects=new Set();
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
   const update=()=>{document.querySelectorAll("[data-new-project]").forEach(button=>button.disabled=busy || isProjectBusy());const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const completionStatus=document.querySelector("#completion-status");if(completionStatus)completionStatus.textContent=status;const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
@@ -78,9 +80,32 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   async function loadProjects() {
     if(!account.user || loadingProjects)return;
     loadingProjects=true;projectsError="";update();
-    try {projects=(await request("/api/projects")).projects;}
+    try {projects=(await request("/api/projects")).projects;for(const id of [...selectedProjects])if(!projects.some(p=>p.id===id))selectedProjects.delete(id);}
     catch(error){projectsError=error.message;}
     finally {loadingProjects=false;update();}
+  }
+  async function removeProjects(ids) {
+    const targets=ids.map(id=>projects.find(p=>p.id===id)).filter(Boolean);
+    if(!targets.length)return;
+    const multiple=targets.length>1;
+    let deletedActive=false;
+    await confirmDialog({
+      title:multiple?`Delete ${targets.length} projects?`:`Delete "${targets[0].title || 'Untitled production'}"?`,
+      message:`This permanently deletes the selected ${multiple?'projects':targets[0].type==='reel'?'reel':'cue sheet'}. A reel's share links, embeds and analytics stop working immediately. Audio Library files will remain.`,
+      confirmLabel:multiple?`Delete ${targets.length} projects`:'Delete project',
+      onConfirm:async()=>{
+        const failed=[];
+        for(const target of targets){
+          try{
+            await request('/api/projects',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:target.id,revision:target.revision})});
+            projects=projects.filter(p=>p.id!==target.id);selectedProjects.delete(target.id);
+            if(active?.id===target.id)deletedActive=true;
+          }catch(e){failed.push(target.title || 'Untitled production');}
+        }
+        deleteStatus=failed.length?`Deleted ${targets.length-failed.length} of ${targets.length}. Couldn't delete: ${failed.join(', ')}. Reload and try again.`:`Deleted ${targets.length} project${multiple?'s':''}.`;
+      },
+    });
+    if(deletedActive){stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);localStorage.removeItem(dirtyKey);location.reload();}
   }
   function createButton() {return `<button class="new-project-fab" data-new-project ${busy || isProjectBusy()?"disabled":""} aria-label="New project" title="Create a new project"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>`;}
   function projectsPage() {
@@ -88,8 +113,11 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     if(!account.user)return collectionPage({...options,body:`<div class="empty"><h3>Sign in to see your projects</h3><p>Saved projects are linked to your account.</p><div class="button-row">${authActions(account)}</div></div>`});
     const visible=filterProjects(projects,projectType,projectSort);
     const controls=`<div class="project-filters"><label>Type<select id="project-type-filter">${[["all","All types"],["cue","Cues"],["reel","Reels"]].map(([value,label])=>`<option value="${value}" ${projectType===value?"selected":""}>${label}</option>`).join("")}</select></label><label>Sort by<select id="project-date-sort">${[["created-desc","Created: newest first"],["created-asc","Created: oldest first"],["updated-desc","Updated: newest first"],["updated-asc","Updated: oldest first"]].map(([value,label])=>`<option value="${value}" ${projectSort===value?"selected":""}>${label}</option>`).join("")}</select></label></div>`;
-    const rows=visible.map(p=>collectionRow({title:`<button class="project-title-link" data-cloud-open="${esc(p.id)}">${esc(p.title || 'Untitled production')}</button>`,detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'}`,icon:p.type==='reel'?'▷':'♫',metadata:projectDates(p,esc),actions:`${p.type==='reel'||p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="${p.type==='reel'?'Download reel':'Download cue sheet'}" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
-    const body=`${controls}${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:visible.length?`<div class="collection-list saved-projects">${rows}</div>`:projects.length?'<div class="empty"><h3>No projects of this type</h3><p>Choose another type or create a project.</p></div>':'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>'}`;
+    const selectedCount=[...selectedProjects].filter(id=>visible.some(p=>p.id===id)).length;
+    const allSelected=visible.length>0 && selectedCount===visible.length;
+    const bulkBar=visible.length?`<div class="collection-bulk-actions"><label class="checkbox-control"><input type="checkbox" id="select-all-projects" ${allSelected?"checked":""}>Select all</label>${selectedCount?`<button data-delete-selected-projects ${busy?"disabled":""}>Delete selected (${selectedCount})</button>`:""}</div>`:"";
+    const rows=visible.map(p=>collectionRow({title:`<label class="row-select"><input type="checkbox" data-select-project="${esc(p.id)}" aria-label="Select ${esc(p.title || 'Untitled production')}" ${selectedProjects.has(p.id)?"checked":""}></label><button class="project-title-link" data-cloud-open="${esc(p.id)}">${esc(p.title || 'Untitled production')}</button>`,detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'}`,icon:p.type==='reel'?'▷':'♫',metadata:projectDates(p,esc),actions:`<button data-delete-project="${esc(p.id)}" ${busy?'disabled':''} aria-label="Delete ${esc(p.title || 'Untitled production')}">Delete</button>${p.type==='reel'||p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="${p.type==='reel'?'Download reel':'Download cue sheet'}" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
+    const body=`${controls}${deleteStatus?`<p class="muted" role="status">${esc(deleteStatus)}</p>`:''}${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:visible.length?`${bulkBar}<div class="collection-list saved-projects">${rows}</div>`:projects.length?'<div class="empty"><h3>No projects of this type</h3><p>Choose another type or create a project.</p></div>':'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>'}`;
     return collectionPage({...options,summary:loadingProjects?'Loading projects…':`${visible.length} of ${projects.length} projects`,body});
   }
 
@@ -113,6 +141,18 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     if(typeFilter)typeFilter.onchange=()=>{projectType=typeFilter.value;update();};
     if(dateSort)dateSort.onchange=()=>{projectSort=dateSort.value;update();};
     const on=(selector,handler)=>{const button=document.querySelector(selector);if(button)button.onclick=handler;};
+    on("#select-all-projects",event=>{
+      const visible=filterProjects(projects,projectType,projectSort);
+      if(event.target.checked)visible.forEach(p=>selectedProjects.add(p.id));else visible.forEach(p=>selectedProjects.delete(p.id));
+      update();
+    });
+    document.querySelectorAll("[data-select-project]").forEach(input=>input.onchange=()=>{
+      const id=input.dataset.selectProject;
+      if(input.checked)selectedProjects.add(id);else selectedProjects.delete(id);
+      update();
+    });
+    document.querySelectorAll("[data-delete-project]").forEach(button=>button.onclick=()=>run(()=>removeProjects([button.dataset.deleteProject])));
+    on("[data-delete-selected-projects]",()=>run(()=>removeProjects([...selectedProjects])));
     document.querySelectorAll("[data-cloud-download]").forEach(button=>button.onclick=()=>run(async()=>{const {project}=await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudDownload));if(project.data.type==='reel')await openReelDownloads(project,esc);else await download(project.data);}));
     on("#edit-user-profile",()=>openProfile(account,update));
     on("#cloud-finish",()=>run(async()=>{
