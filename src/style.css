@@ -507,11 +507,11 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .new-project-fab { position: fixed; right: 24px; bottom: 24px; z-index: 21; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border-radius: 50%; background: #1ed760; border-color: #1ed760; color: #000; box-shadow: 0 6px 24px #0003; }
 .new-project-fab:not(:disabled):hover { background: #3be477; border-color: #3be477; }
 #projects-page { padding-bottom: 90px; }
-#app:has(#projects-page) .faq { right: 30px; bottom: 88px; }
-#app:has(#projects-page) .faq-panel { max-height: calc(100dvh - 160px); width: min(360px,calc(100vw - 48px)); }
+#app .faq { right: 30px; bottom: 88px; }
+#app .faq-panel { max-height: calc(100dvh - 160px); width: min(360px,calc(100vw - 48px)); }
 @media(max-width:720px) {
  .new-project-fab { right: 18px; bottom: 18px; }
- #app:has(#projects-page) .faq { right: 24px; bottom: 82px; }
+ #app .faq { right: 24px; bottom: 82px; }
  .page-breadcrumb { gap: 6px; flex-wrap: wrap; }
 }
 

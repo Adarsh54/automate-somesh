@@ -225,7 +225,7 @@ function render() {
     $("#cloud-workspace")?.remove();
     document.querySelector(".stats")?.remove();
   }
-  $("#app").insertAdjacentHTML("beforeend", faq());
+  $("#app").insertAdjacentHTML("beforeend", faq() + (cloudWorkspace?.createButton() || ""));
   bind();
   bindFAQ();
   bindSidebar();
@@ -800,7 +800,7 @@ function bindWorkflows() {
       };
   });
 }
-cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,onComplete:()=>{render();openDownloads(state);}});
+cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,beforeNewProject:()=>steps.some(([key])=>key===tab) && cloudWorkspace.hasUnsavedChanges()?askToLeave():Promise.resolve(true),onComplete:()=>{render();openDownloads(state);}});
 const pageRoutes={projects:'#/projects',settings:'#/credit-profiles',team:'#/team',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
 let workspaceTab='library';
 try {const saved=sessionStorage.getItem(storageKey+':step');if(steps.some(([key])=>key===saved))workspaceTab=saved;}catch{}
@@ -810,6 +810,11 @@ function navigate(page){
  routePage();
 }
 let routeInitialized=false,leavePromptOpen=false;
+async function askToLeave(){
+ if(leavePromptOpen)return false;
+ leavePromptOpen=true;
+ try{return await confirmDialog({title:'Save before leaving?',message:account.user?'Your cue sheet has unsaved changes. Save them before returning to the rest of the app.':'Your draft is saved in this browser. Sign in from the workspace to save it to your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>cloudWorkspace.saveBeforeLeaving():undefined});}finally{leavePromptOpen=false;}
+}
 function routePage(){
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
@@ -818,9 +823,7 @@ function routePage(){
  if(routeInitialized && steps.some(([key])=>key===tab) && !steps.some(([key])=>key===page) && cloudWorkspace.hasUnsavedChanges()){
    history.replaceState(null,'',pageRoutes[tab]);
    if(leavePromptOpen)return;
-   leavePromptOpen=true;
-   confirmDialog({title:'Save before leaving?',message:account.user?'Your cue sheet has unsaved changes. Save them before returning to the rest of the app.':'Your draft is saved in this browser. Sign in from the workspace to save it to your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>cloudWorkspace.saveBeforeLeaving():undefined}).then(leave=>{
-     leavePromptOpen=false;
+   askToLeave().then(leave=>{
      if(leave){history.pushState(null,'',pageRoutes[page]);showPage(page);}
    });
    return;

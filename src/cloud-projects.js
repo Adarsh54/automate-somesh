@@ -12,11 +12,11 @@ export async function sessionInfo() {
     return await response.json();
   } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. You can still continue as a guest."};}
 }
-export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete}) {
+export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete,beforeNewProject}) {
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="";
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
-  const update=()=>{const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
+  const update=()=>{document.querySelectorAll("[data-new-project]").forEach(button=>button.disabled=busy);const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
   const stash=()=>{try {localStorage.setItem(storageKey+":backup",JSON.stringify(state));} catch {}};
   const replace=(project)=>{
     stash();localStorage.setItem(storageKey,JSON.stringify(project.data));
@@ -72,8 +72,9 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     catch(error){projectsError=error.message;}
     finally {loadingProjects=false;update();}
   }
+  function createButton() {return `<button class="new-project-fab" data-new-project ${busy?"disabled":""} aria-label="New project" title="Create a new project"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>`;}
   function projectsPage() {
-    const heading=`<div class="heading"><div><div class="eyebrow">YOUR LIBRARY</div><h1>Projects</h1><p>Your saved cue sheets, ready to pick up where you left off.</p></div><button class="primary create-project-button" data-new-project ${busy?"disabled":""}><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Create project</button></div><button class="new-project-fab" data-new-project ${busy?"disabled":""} aria-label="New project" title="Create a new project"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>`;
+    const heading=`<div class="heading"><div><div class="eyebrow">YOUR LIBRARY</div><h1>Projects</h1><p>Your saved cue sheets, ready to pick up where you left off.</p></div><button class="primary create-project-button" data-new-project ${busy?"disabled":""}><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Create project</button></div>`;
     if(!account.user)return heading+`<div class="empty"><h3>Sign in to see your projects</h3><p>Saved projects are linked to your account.</p><div class="button-row">${authActions(account)}</div></div>`;
     return heading+`<div class="section-title"><span class="muted">${loadingProjects ? "Loading projects…" : `${projects.length} saved project${projects.length===1?"":"s"}`}</span></div>
       ${status?`<p class="notice" role="status">${esc(status)}</p>`:""}
@@ -85,7 +86,9 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><svg class="profile-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong>${account.user?`<button class="account-menu-item" id="edit-user-profile"><span aria-hidden="true">♙</span>Profile</button>`:""}<button class="account-menu-item" aria-label="Appearance" data-theme-toggle><span aria-hidden="true">◐</span>Appearance</button>${account.user?`<button class="account-menu-item" id="cloud-logout" ${busy?"disabled":""}><span aria-hidden="true">↪</span>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
   }
   function bind() {
-    document.querySelectorAll("[data-new-project]").forEach(button=>button.onclick=()=>{
+    document.querySelectorAll("[data-new-project]").forEach(button=>button.onclick=async()=>{
+      if(busy || workflow?.busy)return;
+      if(beforeNewProject && !await beforeNewProject())return;
       if(busy || workflow?.busy)return;
       stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);localStorage.removeItem(dirtyKey);
       history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();
@@ -103,7 +106,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     on("#projects-retry",loadProjects);
     document.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {saveBeforeLeaving:async()=>{if(busy || workflow?.busy)throw new Error("Wait for the current operation to finish, then try again.");busy=true;update();try{await save();if(dirty)throw new Error("There are newer edits. Save again before leaving.");}finally{busy=false;update();}},hasUnsavedChanges:()=>dirty,onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;localStorage.setItem(dirtyKey,"true");status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {saveBeforeLeaving:async()=>{if(busy || workflow?.busy)throw new Error("Wait for the current operation to finish, then try again.");busy=true;update();try{await save();if(dirty)throw new Error("There are newer edits. Save again before leaving.");}finally{busy=false;update();}},hasUnsavedChanges:()=>dirty,onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,createButton,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;localStorage.setItem(dirtyKey,"true");status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }
 
 document.addEventListener('click',event=>{if(!event.target.closest('.profile-menu'))document.querySelector('.profile-menu[open]')?.removeAttribute('open');});
