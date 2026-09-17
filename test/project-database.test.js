@@ -18,11 +18,20 @@ test("Postgres enforces ownership, atomic revisions and full JSON cue detail rou
     await assert.rejects(repo.get("bob",id),{status:404});
     await assert.rejects(repo.save("bob",{id,revision:1,data}),{status:409});
     await assert.rejects(repo.save("bob",{id,revision:0,data}),{status:409});
+    assert.equal((await repo.list("alice"))[0].status,"draft");
+    await assert.rejects(repo.save("alice",{id,revision:1,data:{...data,status:"completed"}}),{message:"PROJECT_NOT_READY"});
     const stored=await repo.get("alice",id);
     assert.deepEqual(stored.data,data);
     const writes=await Promise.allSettled([repo.save("alice",{id,revision:1,data:{...data,production:{title:"Edit A",rate:"24"}}}),repo.save("alice",{id,revision:1,data:{...data,production:{title:"Edit B",rate:"24"}}})]);
     assert.equal(writes.filter(r=>r.status==="fulfilled").length,1);
     assert.equal(writes.filter(r=>r.status==="rejected" && r.reason.status===409).length,1);
     assert.equal((await repo.get("alice",id)).revision,2);
+    const complete={...data,status:"completed",tracks:[{id:"t",title:"Score",filename:"score.wav",offset:""}],cues:[{id:"c",trackId:"t",title:"Score",start:"00:00:01:00",end:"00:00:02:00",usage:"BI"}],sharedCueDetails:{category:"original",credits:[...data.sharedCueDetails.credits,{role:"Publisher",name:"Publisher",pro:"BMI",share:100}]}};
+    const completed=await repo.save("alice",{id,revision:2,data:complete});
+    assert.equal(completed.status,"completed");
+    assert.equal((await repo.list("alice"))[0].status,"completed");
+    assert.equal((await repo.get("alice",id)).data.status,"completed");
+    await repo.save("alice",{id,revision:3,data:{...complete,status:"draft",cues:[]}});
+    assert.equal((await repo.list("alice"))[0].status,"draft");
   } finally {await db.close();}
 });
