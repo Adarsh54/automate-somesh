@@ -894,6 +894,7 @@ function showPage(page,route=pageRoutes[page]){
 }
 window.addEventListener('hashchange',routePage);
 window.addEventListener('popstate',routePage);
+window.addEventListener('beforeunload',event=>{if(account.user&&hasOpenEdits()){event.preventDefault();event.returnValue='';}});
 routePage();
 cloudWorkspace.restore();
 if(!account.user){

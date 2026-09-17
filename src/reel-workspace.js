@@ -10,18 +10,28 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
  const key=account.user?`cuestamp-user:${account.user.id}:reel-draft`:'cuestamp-guest:reel-draft';
  const blank=()=>({type:'reel',title:'',status:'draft',audioIds:[],trackTitles:{}});
  let data=blank(),active=null,dirty=false,busy=false,error='',notice='',preview=null,player=null,publication=null,publicationLoaded=null,progress='',uploading=false;
- let localUrls=[],publicationEpoch=0,pendingUploads=[],savedReels=[],reelsLoaded=false,reelsLoading=false;
+ let localUrls=[],publicationEpoch=0,pendingUploads=[],savedReels=[],reelsLoaded=false,reelsLoading=false,autosaveTimer=null;
  try{const saved=JSON.parse(localStorage.getItem(key));if(saved?.data?.type==='reel'){data=saved.data;active=saved.active;dirty=Boolean(saved.dirty);}}catch{}
  const persist=()=>localStorage.setItem(key,JSON.stringify({data,active,dirty}));
  const dispose=()=>{player?.destroy();player=null;};
  const clearPreview=()=>{dispose();document.querySelector("#reel-preview")?.remove();preview=null;localUrls.forEach(url=>URL.revokeObjectURL(url));localUrls=[];};
- const changed=()=>{dirty=true;notice='';clearPreview();persist();};
+ const setAutosaveStatus=text=>{const el=document.querySelector('#reel-autosave-status');if(el)el.textContent=text;};
+ const scheduleAutosave=()=>{
+  if(autosaveTimer)clearTimeout(autosaveTimer);
+  if(!account.user)return;
+  autosaveTimer=setTimeout(async()=>{
+   autosaveTimer=null;
+   if(!dirty || busy || uploading || audioLibrary.isBusy() || !data.title.trim())return;
+   try{await save(true);}catch(e){error=e.message;setAutosaveStatus('');}
+  },2500);
+ };
+ const changed=()=>{dirty=true;notice='';clearPreview();persist();scheduleAutosave();};
  const titleFor=id=>data.trackTitles?.[id] || audioLibrary.entries().find(a=>a.id===id)?.filename?.replace(/\.[^.]+$/,'') || 'Untitled track';
- async function save(){
+ async function save(silent=false){
   if(busy || uploading || audioLibrary.isBusy())throw new Error('Wait for your audio upload to finish.');
   if(!data.title.trim())throw new Error('Enter a reel title before saving.');
-  if(!account.user){dirty=false;persist();notice='Reel draft saved on this device.';onChange();return;}
-  busy=true;error='';onChange();
+  if(!account.user){dirty=false;persist();notice='Reel draft saved on this device.';if(!silent)onChange();return;}
+  busy=true;error='';if(silent)setAutosaveStatus('Saving…');else onChange();
   try{
    const snapshot=structuredClone(data);snapshot.title=snapshot.title.trim();
    for(let i=0;i<snapshot.audioIds.length;i++){
@@ -32,7 +42,8 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
    const target=active || {id:crypto.randomUUID(),revision:0};
    const {project}=await libraryRequest('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...target,data:snapshot})});
    active={id:project.id,revision:project.revision};data=snapshot;dirty=false;persist();onSaved?.(active.id);notice='Reel draft saved to Projects.';reelsLoaded=false;
-  }catch(e){error=e.message;throw e;}finally{busy=false;onChange();}
+  }catch(e){error=e.message;throw e;}
+  finally{busy=false;if(silent)setAutosaveStatus(error?'':'Saved');else onChange();}
  }
  async function post(action,body){
   const response=await fetch(`/api/reels?action=${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(280000)});
@@ -82,7 +93,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
   if(error.startsWith('Upload canceled.'))return `<div class="reel-upload-notice" role="status"><div><strong>Upload canceled</strong><span>Your file is still available on this device.</span></div>${pendingUploads.length?'<button id="retry-reel-upload">Retry upload</button>':''}</div>`;
   return `<div class="project-error" role="alert"><span>${esc(error)}</span>${pendingUploads.length?'<button id="retry-reel-upload">Retry upload</button>':''}</div>`;
  }
- function view(){dispose();return `<section class="reel-workspace"><div class="heading"><div><div class="eyebrow">REEL PROJECT</div><h1>${active?'Edit Reel':'New Reel'}</h1><p>Build a playlist, preview your reel, then share it anywhere.</p></div><button class="primary" id="save-reel" ${busy||uploading?'disabled':''}>${active?'Save changes':'Save draft'}</button></div><div class="project-title-editor"><label for="reel-title">Project title</label><input id="reel-title" maxlength="300" value="${esc(data.title)}" placeholder="Name your reel…" ${busy?'disabled':''}></div>${errorView()}${audioLibrary.progressView('id="cancel-reel-upload"')}${notice?`<p class="muted" role="status">${esc(notice)}</p>`:''}<section class="panel"><div class="section-title"><h2>Tracks</h2><div class="button-row"><button id="reel-library" ${busy?'disabled':''}>Choose from audio library</button>${audioUploadButton({id:'reel-upload',disabled:busy||uploading})}</div></div><p class="muted">${uploading?'Uploading in the background. You can edit track names and order while you wait. Keep this page open.':'Name your tracks and arrange the order listeners will hear them.'}</p>${data.audioIds.length?`<ol class="reel-audio-list">${data.audioIds.map((id,i)=>`<li><label class="reel-track-edit"><span class="sr-only">Track ${i+1} title</span><input aria-label="Track ${i+1} title" data-reel-title="${esc(id)}" maxlength="300" value="${esc(titleFor(id))}" ${busy?'disabled':''}></label><div class="reel-order"><button data-reel-up="${i}" aria-label="Move track ${i+1} up" ${busy||!i?'disabled':''}>↑</button><button data-reel-down="${i}" aria-label="Move track ${i+1} down" ${busy||i===data.audioIds.length-1?'disabled':''}>↓</button></div><button data-remove-reel-audio="${esc(id)}" ${busy?'disabled':''}>Remove</button></li>`).join('')}</ol>`:'<p class="empty">Add audio to start your reel.</p>'}</section><div class="reel-publish-actions"><button id="preview-reel" ${busy||!data.audioIds.length?'disabled':''}>Preview reel</button>${account.user?`<button class="primary" id="publish-reel" ${busy||uploading||!data.audioIds.length?'disabled':''}>${publication?'Update published reel':'Publish reel'}</button>`:'<span class="muted">Sign in to publish and embed your reel.</span>'}${publication?`<button id="share-reel" ${busy?'disabled':''}>Share & embed</button>`:''}</div>${progress?`<p role="status" class="muted">${esc(progress)}</p>`:''}${preview?'<div id="reel-preview"></div>':''}${publication?'<p class="muted">Draft changes stay private until you update the published reel.</p>':''}${reelsView()}</section>`;}
+ function view(){dispose();return `<section class="reel-workspace"><div class="heading"><div><div class="eyebrow">REEL PROJECT</div><h1>${active?'Edit Reel':'New Reel'}</h1><p>Build a playlist, preview your reel, then share it anywhere.</p></div><button class="primary" id="save-reel" ${busy||uploading?'disabled':''}>${active?'Save changes':'Save draft'}</button>${account.user?`<span id="reel-autosave-status" class="muted" role="status"></span>`:''}</div><div class="project-title-editor"><label for="reel-title">Project title</label><input id="reel-title" maxlength="300" value="${esc(data.title)}" placeholder="Name your reel…" ${busy?'disabled':''}></div>${errorView()}${audioLibrary.progressView('id="cancel-reel-upload"')}${notice?`<p class="muted" role="status">${esc(notice)}</p>`:''}<section class="panel"><div class="section-title"><h2>Tracks</h2><div class="button-row"><button id="reel-library" ${busy?'disabled':''}>Choose from audio library</button>${audioUploadButton({id:'reel-upload',disabled:busy||uploading})}</div></div><p class="muted">${uploading?'Uploading in the background. You can edit track names and order while you wait. Keep this page open.':'Name your tracks and arrange the order listeners will hear them.'}</p>${data.audioIds.length?`<ol class="reel-audio-list">${data.audioIds.map((id,i)=>`<li><label class="reel-track-edit"><span class="sr-only">Track ${i+1} title</span><input aria-label="Track ${i+1} title" data-reel-title="${esc(id)}" maxlength="300" value="${esc(titleFor(id))}" ${busy?'disabled':''}></label><div class="reel-order"><button data-reel-up="${i}" aria-label="Move track ${i+1} up" ${busy||!i?'disabled':''}>↑</button><button data-reel-down="${i}" aria-label="Move track ${i+1} down" ${busy||i===data.audioIds.length-1?'disabled':''}>↓</button></div><button data-remove-reel-audio="${esc(id)}" ${busy?'disabled':''}>Remove</button></li>`).join('')}</ol>`:'<p class="empty">Add audio to start your reel.</p>'}</section><div class="reel-publish-actions"><button id="preview-reel" ${busy||!data.audioIds.length?'disabled':''}>Preview reel</button>${account.user?`<button class="primary" id="publish-reel" ${busy||uploading||!data.audioIds.length?'disabled':''}>${publication?'Update published reel':'Publish reel'}</button>`:'<span class="muted">Sign in to publish and embed your reel.</span>'}${publication?`<button id="share-reel" ${busy?'disabled':''}>Share & embed</button>`:''}</div>${progress?`<p role="status" class="muted">${esc(progress)}</p>`:''}${preview?'<div id="reel-preview"></div>':''}${publication?'<p class="muted">Draft changes stay private until you update the published reel.</p>':''}${reelsView()}</section>`;}
  function showShare(){
   const url=shareUrl(),embed=`<iframe src="${url}&embed=1" width="100%" height="${Math.min(900,330+data.audioIds.length*58)}" title="${esc(data.title)}" frameborder="0" loading="lazy" allow="autoplay"></iframe>`;
   const dialog=document.createElement('dialog');dialog.className='resume-workspace reel-share-dialog';dialog.innerHTML=`<div class="dialog-heading"><h2>Share your reel</h2><button data-close aria-label="Close">×</button></div><p class="muted">Anyone with this link can listen. Use Stop sharing to revoke access.</p><div class="reel-share-fields"><label>Share link<input readonly value="${esc(url)}"></label><button data-copy-link>Copy link</button><label>Embed on your website<textarea rows="4" readonly>${esc(embed)}</textarea></label><button data-copy-embed>Copy embed code</button></div><p role="status"></p>`;
