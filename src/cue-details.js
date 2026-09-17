@@ -5,7 +5,7 @@ export function effectiveCue(cue, shared) {
   return {...cue, category: cue.category ?? shared?.category ?? 'unknown', credits: cue.credits ?? shared?.credits ?? []};
 }
 export function cueDetails(track, previous = null) {
-  const details = {};
+  const details = track?.cueProfile ? structuredClone(track.cueProfile) : {};
   if (previous?.category != null) details.category = previous.category;
   if (previous?.credits != null) details.credits = structuredClone(previous.credits);
   return details;

@@ -11,7 +11,8 @@ for(let i=rate*2;i<rate*6;i++)b.writeInt16LE(Math.round(14000*Math.sin(i*2*Math.
   await page.locator('#score-start-timecode').fill('02:00:00:12');
   await page.locator('[data-upload="unknown"]').setInputFiles({name:'full-score.wav',mimeType:'audio/wav',buffer:b});
   await page.waitForFunction(()=>document.querySelector('#analyze') && !document.querySelector('#analyze').disabled);
-  assert.equal(await page.locator('[data-track-offset] [data-field="offset"]').inputValue(),'02:00:00:12');
+  assert.equal(await page.locator('[data-track-offset] [data-field="offset"]').count(),0);
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).tracks[0].offset),'02:00:00:12');
   await page.locator('#analyze').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).cues.length===1);
   const original=await page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).cues[0]);
   assert.equal(original.start,'02:00:02:12');assert.equal(original.end,'02:00:06:12');
@@ -22,9 +23,19 @@ for(let i=rate*2;i<rate*6;i++)b.writeInt16LE(Math.round(14000*Math.sin(i*2*Math.
   await page.locator('#score-start-timecode').fill('03:15:00:06');
   await page.screenshot({path:'/tmp/cuestamp-score-offset.png',fullPage:true});
   await page.locator('.workflow-tabs [data-tab="cues"]').click();
+  await page.setViewportSize({width:1440,height:600});
+  await page.locator('[data-cue-title]').fill('Opening theme');
+  assert.equal(await page.locator('.cue-navigation strong').first().textContent(), 'Opening theme');
+  assert.equal(await page.locator('.cue-fields [data-field="title"]').count(), 0);
+  const cueRoute = new URL(page.url()).hash;
+  await page.locator('.cue-navigation a').first().click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-cue]'));
+  assert.equal(new URL(page.url()).hash, cueRoute, 'Cue navigation must not change the workflow route');
+  await page.waitForFunction(() => Math.abs(document.querySelector('[data-cue]').getBoundingClientRect().top - 24) < 5);
   assert.equal(await page.locator('[data-cue] [data-field="start"]').inputValue(),'03:15:02:06');
   assert.equal(await page.locator('[data-cue] [data-field="end"]').inputValue(),'03:15:06:06');
   await page.locator('.workflow-tabs [data-tab="library"]').click();await page.reload();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('cuestamp-v1')).cues[0].title), 'Opening theme');
   await page.locator('#score-start-timecode').waitFor();assert.equal(await page.locator('#score-start-timecode').inputValue(),'03:15:00:06');
   assert.deepEqual(errors,[]);console.log('PASS: start offset before upload, frame-accurate detection, existing-cue rebasing, invalid input, Timings & usage, and reload.');
  }finally{await browser.close();}

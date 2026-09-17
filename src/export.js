@@ -45,8 +45,8 @@ export async function exportWorkbook(production, tracks, cues, shared) {
   const p = production;
   const show = seconds(p.duration);
   const fields = {
-    A1: p.title,
-    A2: "Music Cue Sheet — review draft",
+    A1: [p.title, p.episode].filter(Boolean).join(", "),
+    A2: "Music Cue Sheet",
     D4: p.classification,
     D5: new Date().toISOString().slice(0, 10),
     D8: p.airdate,
