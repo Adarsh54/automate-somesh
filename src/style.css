@@ -104,7 +104,6 @@ aside { position: fixed; inset: 0 auto 0 0; width: 224px; padding: 24px 14px 20p
 .nav.active .nav-icon { color: var(--accent); }
 .nav-label { font-size: 12px; }
 .nav-icon { width: 17px; height: 17px; flex-shrink: 0; }
-.credits-nav { margin-top: 8px; }
 .team-link { margin-top: 8px; padding-top: 13px; }
 .source-link, .nav.team-link { font-size: 11px; font-weight: 400; line-height: 1.5; }
 .source-link { font-size: 11px; padding: 12px 10px 0; text-decoration: none; color: var(--muted); border-top: 1px solid var(--line); }
@@ -414,7 +413,8 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 @media (max-width:720px) { #projects-page .heading > .account-login { margin-top: 16px; } }
 
 .app-navigation { margin-top: 32px; }
-.app-navigation .nav { text-decoration: none; border-radius: 6px; }
+.app-navigation .nav { text-decoration: none; border-radius: 6px; min-height: 40px; margin: 0; padding: 10px; }
+.app-navigation { display: grid; gap: 3px; }
 #sidebar-profile { margin-top: auto; padding-top: 16px; }
 .profile-menu { position: relative; }
 .profile-menu summary { display: flex; align-items: center; gap: 9px; padding: 9px 5px; cursor: pointer; list-style: none; border-radius: 6px; }
@@ -435,7 +435,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .workflow-tabs button span { display: grid; place-items: center; width: 19px; height: 19px; background: var(--raised); border-radius: 50%; font-size: 10px; }
 .workflow-tabs button.active span { background: var(--tint); color: var(--accent); }
 @media(max-width:720px) {
-  .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
   #sidebar-profile { margin-top: 10px; padding-top: 0; }
   .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: inline; }
   .sidebar-collapsed .profile-menu[open] .profile-options { position: static; width: 100%; }
