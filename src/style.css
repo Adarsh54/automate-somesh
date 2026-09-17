@@ -436,7 +436,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .workflow-tabs button span { display: grid; place-items: center; width: 19px; height: 19px; background: var(--raised); border-radius: 50%; font-size: 10px; }
 .workflow-tabs button.active span { background: var(--tint); color: var(--accent); }
 @media(max-width:720px) {
-  .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(3,minmax(0,1fr)); }
   #sidebar-profile { margin-top: 10px; padding-top: 0; }
   .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: inline; }
   .sidebar-collapsed .profile-menu[open] .profile-options { position: absolute; left: 0; bottom: calc(100% + 8px); width: 100%; }
@@ -499,4 +499,18 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   :where(button, .nav, .account-login, .welcome-action, .welcome-login, summary, input, select, textarea) { transition: none; }
+}
+
+.page-breadcrumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.page-breadcrumb a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+.page-breadcrumb a:hover { color: var(--accent); }
+.page-breadcrumb b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.new-project-fab { position: fixed; right: 24px; bottom: 24px; z-index: 21; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 12px 20px; border-radius: 999px; background: #1ed760; border-color: #1ed760; color: #07150b; box-shadow: 0 6px 24px #0003; }
+.new-project-fab:not(:disabled):hover { background: #3be477; border-color: #3be477; }
+.new-project-fab > span { font-size: 24px; line-height: 1; }
+#projects-page { padding-bottom: 90px; }
+#app:has(#projects-page) .cuey { right: 210px; }
+@media(max-width:720px) {
+ .new-project-fab { right: 18px; bottom: 18px; }
+ .page-breadcrumb { gap: 6px; flex-wrap: wrap; }
 }
