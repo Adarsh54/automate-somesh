@@ -199,3 +199,49 @@ node scripts/benchmark-browser-flac.mjs input.wav /tmp/flac-benchmark
 The browser script serves only the benchmark runtime on an ephemeral
 loopback port; it never sends source audio to an external service. Its
 output should be independently decoded and compared before adoption.
+
+## Alternative lossless codec benchmark
+
+`scripts/benchmark-lossless-codecs.mjs` compares native FLAC, WavPack, and
+Monkey's Audio on the same integer PCM WAV. It runs each setting three times,
+uses one codec thread, reports the median wall time, and independently
+FFmpeg-decodes each setting's first output to compare full PCM byte count and
+SHA-256 against the source. No source audio is uploaded. It requires a new
+output directory and never overwrites the input.
+
+Install WavPack with Homebrew (`brew install wavpack`). Build the official
+[Monkey's Audio SDK](https://www.monkeysaudio.com/developers.html) locally with
+CMake in Release mode, then point `MONKEY_AUDIO_BIN` at its `mac` executable:
+
+```sh
+MONKEY_AUDIO_BIN=/path/to/build/mac \
+node scripts/benchmark-lossless-codecs.mjs input.wav /tmp/new-codec-results
+```
+
+These are native benchmarks, not browser/WASM timing predictions. WavPack
+and APE may preserve additional WAV metadata; this comparison uses actual
+output file sizes, without stripping metadata to improve their scores.
+
+### Measured results: 190,115,616-byte music WAV
+
+Apple M5 Pro; WavPack 5.9.0; official Monkey's Audio SDK 13.26 (Release);
+FFmpeg 6.0 FLAC encoder. Stereo 48 kHz, 24-bit PCM, approximately 11 minutes.
+All eight outputs passed independent PCM SHA-256 and byte-count verification.
+Sizes below are decimal MB; time is the median of three runs.
+
+| Setting | Size (MB) | Encode (seconds) | Encode + upload at 1 MB/s (estimated seconds) |
+| --- | ---: | ---: | ---: |
+| flac-5 | 39.73 | 0.86 | 40.59 |
+| flac-8 | 39.70 | 1.11 | 40.80 |
+| wavpack-normal | 40.55 | 0.84 | 41.39 |
+| wavpack-high | 40.01 | 1.60 | 41.61 |
+| wavpack-extra | 39.33 | 67.81 | 107.15 |
+| ape-normal | 45.45 | 0.98 | 46.44 |
+| ape-high | 45.27 | 1.09 | 46.36 |
+| ape-insane | 44.30 | 7.83 | 52.13 |
+
+Conclusion for this recording: keep FLAC level 5. WavPack `-hh -x6` saves
+only about 0.39 MB versus FLAC 5, while adding approximately 67 seconds of
+native encoding. Even the strongest tested Monkey's Audio setting is larger.
+Other recordings can produce different results. These measurements do not
+change the production codec or establish browser performance for alternatives.
