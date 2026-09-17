@@ -50,6 +50,14 @@ export function createProjectRepository(query) {
       if(!rows[0]) throw Object.assign(new Error("NOT_FOUND"),{status:404});
       return rows[0];
     },
+    async deleteReel(userId,input) {
+      const parsed=z.object({id:z.uuid(),revision:z.number().int().positive()}).safeParse(input);
+      if(!parsed.success)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+      const {id,revision}=parsed.data;
+      const rows=await query`DELETE FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND data->>'type'='reel' RETURNING id`;
+      if(!rows[0])throw Object.assign(new Error("PROJECT_CONFLICT"),{status:409});
+      return rows[0];
+    },
     async save(userId,input) {
       const {id,revision,data}=parseProject(input), title=data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
       await createMediaRepository(query).validate(userId,data);
@@ -64,3 +72,5 @@ export function createProjectRepository(query) {
 export const listProjects = userId => createProjectRepository(sql()).list(userId);
 export const getProject = (userId,id) => createProjectRepository(sql()).get(userId,id);
 export const saveProject = (userId,input) => createProjectRepository(sql()).save(userId,input);
+
+export const deleteReel = (userId,input) => createProjectRepository(sql()).deleteReel(userId,input);
