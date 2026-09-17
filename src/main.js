@@ -1,3 +1,4 @@
+import {confirmDialog} from "./confirm-dialog.js";
 import {creditProfilesRequest} from "./account-credit-profiles.js";
 import {editCreditProfile} from "./credit-profile-editor.js";
 import {showDownloadDialog} from "./download-dialog.js";
@@ -377,7 +378,7 @@ function bind() {
   if($('#create-workspace-profile'))$('#create-workspace-profile').onclick=()=>editCreditProfile(null,{esc,applyOnSave:true,onSave:async draft=>{const saved=await storeCreditProfile(draft);applyCreditProfile(saved.id);}});
   if($('#new-credit-profile'))$('#new-credit-profile').onclick=()=>editCreditProfile(null,{esc,onSave:storeCreditProfile});
   document.querySelectorAll('[data-edit-credit-profile]').forEach(button=>button.onclick=()=>editCreditProfile(creditProfiles.find(p=>p.id===button.dataset.editCreditProfile),{esc,onSave:storeCreditProfile}));
-  document.querySelectorAll('[data-delete-credit-profile]').forEach(button=>button.onclick=async()=>{if(!confirm('Delete this saved credit profile? Credits already applied to cue sheets are kept.'))return;const profile=creditProfiles.find(p=>p.id===button.dataset.deleteCreditProfile);button.disabled=true;try{await creditProfilesRequest('DELETE',{id:profile.id,revision:profile.revision});creditProfiles=creditProfiles.filter(p=>p.id!==profile.id);render();}catch(error){creditProfilesError=error.message;render();}});
+  document.querySelectorAll('[data-delete-credit-profile]').forEach(button=>button.onclick=async()=>{if(!await confirmDialog({title:'Delete credit profile?',message:'Credits already applied to cue sheets are kept.',confirmLabel:'Delete profile'}))return;const profile=creditProfiles.find(p=>p.id===button.dataset.deleteCreditProfile);button.disabled=true;try{await creditProfilesRequest('DELETE',{id:profile.id,revision:profile.revision});creditProfiles=creditProfiles.filter(p=>p.id!==profile.id);render();}catch(error){creditProfilesError=error.message;render();}});
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -533,8 +534,8 @@ function bind() {
   );
   document.querySelectorAll("[data-remove-track]").forEach(
     (b) =>
-      (b.onclick = () => {
-        if (!confirm("Remove this track and all its cue placements?")) return;
+      (b.onclick = async () => {
+        if (!await confirmDialog({title:"Remove track?",message:"This removes the track and all its cue placements.",confirmLabel:"Remove track"})) return;
         const key = b.dataset.removeTrack;
         URL.revokeObjectURL(urls.get(key));
         urls.delete(key);
@@ -653,13 +654,11 @@ function rebaseDetections(predicate, offset) {
     c.reviewed = false;
   });
 }
-function changeRate(rate) {
+async function changeRate(rate) {
   forgetClearUndo();
   if (
     state.cues.length &&
-    !confirm(
-      "Change the shared frame rate? Existing placements will retain elapsed positions and detected timings will need review.",
-    )
+    !await confirmDialog({title:"Change frame rate?",message:"Existing placements will retain elapsed positions and detected timings will need review.",confirmLabel:"Change frame rate"})
   ) {
     render();
     return;
@@ -811,16 +810,25 @@ function navigate(page){
  if(location.hash!==target)history.pushState(null,'',target);
  routePage();
 }
-let routeInitialized=false;
+let routeInitialized=false,leavePromptOpen=false;
 function routePage(){
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
  let page=Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
  if(!page)page=account.user?'projects':'library';
  if(routeInitialized && steps.some(([key])=>key===tab) && !steps.some(([key])=>key===page) && cloudWorkspace.hasUnsavedChanges()){
-   const warning=account.user ? "This cue sheet has unsaved changes. Cancel to stay and save your project, or OK to leave without saving." : "This cue sheet is only saved in this browser. Cancel to stay and sign in to save it to your account, or OK to leave.";
-   if(!confirm(warning)){history.replaceState(null,'',pageRoutes[tab]);return;}
+   history.replaceState(null,'',pageRoutes[tab]);
+   if(leavePromptOpen)return;
+   leavePromptOpen=true;
+   confirmDialog({title:'Save before leaving?',message:account.user?'Your cue sheet has unsaved changes. Save them before returning to the rest of the app.':'Your draft is saved in this browser. Sign in from the workspace to save it to your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>cloudWorkspace.saveBeforeLeaving():undefined}).then(leave=>{
+     leavePromptOpen=false;
+     if(leave){history.pushState(null,'',pageRoutes[page]);showPage(page);}
+   });
+   return;
  }
+ showPage(page);
+}
+function showPage(page){
  routeInitialized=true;
  if(location.hash!==pageRoutes[page])history.replaceState(null,'',pageRoutes[page]);
  tab=page;
@@ -830,7 +838,6 @@ function routePage(){
  if(page==='settings')loadAccountCreditProfiles();
  window.scrollTo({top:0});
 }
-window.addEventListener('beforeunload',event=>{if(steps.some(([key])=>key===tab) && cloudWorkspace.hasUnsavedChanges()){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',routePage);
 window.addEventListener('popstate',routePage);
 routePage();
