@@ -58,7 +58,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button, a, input, select, summary { -webkit-tap-highlight-color: transparent; outline-offset: 4px; }
 :focus-visible { outline: 2px solid var(--accent); }
 button, .account-login, .welcome-action {
@@ -201,10 +201,11 @@ footer span:first-child { letter-spacing: 1px; }
 .badge { margin-left: auto; font-size: 10px; color: var(--success); }
 .badge.pending { color: var(--warning); }
 .panel label,.editor > label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: var(--muted); }
-input,select { width: 100%; min-width: 0; border: 1px solid var(--strong-line); border-radius: 5px; background: var(--bg); padding: 9px 10px; color: var(--text); font-size: 13px; }
+/* Text fields do not define the geometry of checkboxes, sliders, or file inputs. */
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])),select,textarea { width: 100%; min-width: 0; border: 1px solid var(--strong-line); border-radius: 5px; background: var(--bg); padding: 9px 10px; color: var(--text); font-size: 13px; }
 select { appearance: none; padding-right: 38px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; }
 input::placeholder { color: var(--muted); opacity: .75; }
-input:focus,select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])):focus,select:focus,textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 input[type="checkbox"],input[type="range"] { accent-color: var(--accent); }
 .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .wide { gap: 24px; }
@@ -550,7 +551,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .audio-picker-header { padding: 24px 24px 16px; flex-shrink: 0; }
 .audio-picker-header h2 { margin: 0; font-size: 20px; }
 .audio-picker-header p { margin: 8px 0 16px; font-size: 13px; }
-.audio-picker-list { display: grid; gap: 8px; padding: 0 24px 20px; overflow-y: auto; min-height: 0; }
+.audio-picker-list { display: grid; gap: 8px; padding: 12px 24px 20px; overflow-y: auto; min-height: 0; }
 .audio-choice { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; text-align: left; }
 .audio-choice[aria-pressed="true"] { background: var(--tint); border-color: var(--accent); }
 .audio-choice-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 6px; background: var(--raised); color: var(--accent); font-size: 20px; }
@@ -562,4 +563,18 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .audio-picker-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
 .audio-picker-footer > span { font-size: 12px; }
 .audio-picker-footer .button-row { margin: 0; flex-wrap: nowrap; }
-@media(max-width:480px) { .audio-picker-header { padding: 20px 16px 16px; } .audio-picker-list { padding: 0 16px 16px; } .audio-picker-footer { padding: 16px; flex-wrap: wrap; } }
+@media(max-width:480px) { .audio-picker-header { padding: 20px 16px 16px; } .audio-picker-list { padding: 12px 16px 16px; } .audio-picker-footer { padding: 16px; flex-wrap: wrap; } }
+
+/* Shared checkbox row: label, mark and keyboard focus are one consistent control. */
+.checkbox-control { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; margin: 0; padding: 8px 0; color: var(--text); font-size: 13px; line-height: 20px; cursor: pointer; }
+.checkbox-control input[type="checkbox"] { appearance: none; display: grid; place-content: center; flex: 0 0 17px; width: 17px; height: 17px; margin: 0; padding: 0; border: 1px solid var(--strong-line); border-radius: 4px; background: var(--surface); cursor: pointer; }
+.checkbox-control input[type="checkbox"]:checked { background: var(--action); border-color: var(--action); }
+.checkbox-control input[type="checkbox"]:checked::after { content: ""; width: 8px; height: 5px; border-left: 2px solid var(--action-text); border-bottom: 2px solid var(--action-text); transform: translateY(-1px) rotate(-45deg); }
+.checkbox-control input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.checkbox-control:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.checkbox-control input:disabled { cursor: not-allowed; }
+/* Scrollable option rows keep their borders and interaction rings inside the row. */
+.audio-picker .audio-choice { outline-offset: -4px; flex-shrink: 0; border-color: var(--strong-line); }
+.audio-picker .audio-choice[aria-pressed="true"] { border-color: var(--accent); }
+.audio-picker .audio-choice:not(:disabled):hover { border-color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.audio-picker .audio-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
