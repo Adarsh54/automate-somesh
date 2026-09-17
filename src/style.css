@@ -422,13 +422,14 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .profile-menu summary:hover { background: var(--hover); }
 .profile-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--tint); color: var(--accent); flex-shrink: 0; font-size: 12px; }
 .profile-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.profile-chevron { color: var(--muted); }
-.profile-options { padding: 12px; border: 1px solid var(--strong-line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.profile-chevron { color: var(--muted); flex-shrink: 0; transition: transform 150ms ease; }
+.profile-menu[open] .profile-chevron { transform: rotate(180deg); }
+.profile-options { position: absolute; bottom: calc(100% + 8px); left: 0; width: 100%; z-index: 30; padding: 12px; border: 1px solid var(--strong-line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
 .profile-options > strong { display: block; font-size: 11px; font-weight: 500; overflow-wrap: anywhere; margin-bottom: 12px; }
 .profile-theme { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 12px; }
 .profile-options #cloud-logout { width: 100%; text-align: left; }
 .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: none; }
-.sidebar-collapsed .profile-menu[open] .profile-options { position: fixed; left: 76px; bottom: 32px; width: 220px; z-index: 30; }
+.sidebar-collapsed .profile-menu[open] .profile-options { position: fixed; left: 76px; bottom: 80px; width: 220px; z-index: 30; }
 .workflow-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 28px; overflow-x: auto; }
 .workflow-tabs button { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .workflow-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -438,7 +439,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
   .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
   #sidebar-profile { margin-top: 10px; padding-top: 0; }
   .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: inline; }
-  .sidebar-collapsed .profile-menu[open] .profile-options { position: static; width: 100%; }
+  .sidebar-collapsed .profile-menu[open] .profile-options { position: absolute; left: 0; bottom: calc(100% + 8px); width: 100%; }
   .workflow-tabs { flex-wrap: wrap; }
   .workflow-tabs button { flex: 1 1 45%; padding: 12px 5px; font-size: 11px; }
 }
@@ -471,3 +472,8 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .credit-profile-list { display:grid; gap:16px; margin-top:24px; }
 
 .nav.team-link { text-decoration: none; }
+@media(max-width:720px) {
+  .profile-options,.sidebar-collapsed .profile-menu[open] .profile-options { top: calc(100% + 8px); bottom: auto; }
+  .profile-chevron { transform: rotate(180deg); }
+  .profile-menu[open] .profile-chevron { transform: rotate(0); }
+}

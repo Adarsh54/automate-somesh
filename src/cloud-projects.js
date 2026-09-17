@@ -75,7 +75,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   function header() {return account.user ? "" : authActions(account);}
   function profile() {
     const name=account.profile?.name || account.user?.firstName || account.user?.email || "Guest";
-    return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><span class="profile-chevron" aria-hidden="true">⌄</span></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong>${account.user?`<button class="account-menu-item" id="edit-user-profile"><span aria-hidden="true">♙</span>Profile</button>`:""}<button class="account-menu-item" aria-label="Appearance" data-theme-toggle><span aria-hidden="true">◐</span>Appearance</button>${account.user?`<button class="account-menu-item" id="cloud-logout" ${busy?"disabled":""}><span aria-hidden="true">↪</span>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
+    return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><svg class="profile-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong>${account.user?`<button class="account-menu-item" id="edit-user-profile"><span aria-hidden="true">♙</span>Profile</button>`:""}<button class="account-menu-item" aria-label="Appearance" data-theme-toggle><span aria-hidden="true">◐</span>Appearance</button>${account.user?`<button class="account-menu-item" id="cloud-logout" ${busy?"disabled":""}><span aria-hidden="true">↪</span>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
   }
   const confirmSwitch=()=>!dirty || confirm("Your current cue sheet has unsaved changes. Leave it and continue?");
   function bind() {
@@ -109,3 +109,6 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   }
   return {onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }
+
+document.addEventListener('click',event=>{if(!event.target.closest('.profile-menu'))document.querySelector('.profile-menu[open]')?.removeAttribute('open');});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){const menu=document.querySelector('.profile-menu[open]');if(menu){menu.removeAttribute('open');menu.querySelector('summary')?.focus();}}});
