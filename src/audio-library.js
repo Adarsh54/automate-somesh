@@ -9,8 +9,9 @@ export async function libraryRequest(url,options) {
  if(!response.ok)throw new Error(response.status===401?'Sign in again to access your saved files.':response.status===409?'This project changed elsewhere. Reopen it before saving again.':'Could not save or load your data. Please try again.');
  return response.json();
 }
-function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',1);req.onupgradeneeded=()=>req.result.createObjectStore('files',{keyPath:'localId'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
-async function localOperation(mode,fn){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('files',mode),request=fn(tx.objectStore('files'));tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
+function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',2);req.onupgradeneeded=()=>{for(const name of ['files','uploadState'])if(!req.result.objectStoreNames.contains(name))req.result.createObjectStore(name,{keyPath:'localId'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function localOperation(mode,fn,storeName='files'){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(storeName,mode),request=fn(tx.objectStore(storeName));tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
+async function persistUploadState({localId,reservation,uploaded,assetId}){await localOperation('readwrite',store=>store.put({localId,reservation,uploaded,assetId}),'uploadState');}
 export function createAudioLibrary({account,esc,onChange,request=libraryRequest,uploadFile=upload}) {
  const post=(url,data)=>request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
  const scope=account.user?.id || 'guest',known=new WeakMap();
@@ -18,23 +19,24 @@ export function createAudioLibrary({account,esc,onChange,request=libraryRequest,
  function showProgress(text,percentage=null,filename=''){progress=text;uploadDetail={text,percentage,filename};if(!updateAudioUploadStatus(uploadDetail))onChange();}
  function progressView(cancelAttribute){return progress?audioUploadStatus(uploadDetail,Boolean(uploadController),cancelAttribute,esc):'';}
  const entries=()=>{const items=new Map(remote.map(a=>[a.id,{id:a.id,filename:a.filename,size:Number(a.size),saved:true}]));for(const a of local)items.set(a.assetId || a.localId,{id:a.assetId || a.localId,filename:a.file.name,size:a.file.size,saved:Boolean(a.assetId)});return [...items.values()];};
- async function load(){if(loadPromise)return loadPromise;loading=true;error='';onChange();loadPromise=(async()=>{try{local=(await localOperation('readonly',store=>store.getAll())).filter(a=>a.scope===scope);if(account.user)remote=(await request('/api/media?action=list')).assets;loaded=true;}catch(e){error=e.message || 'Could not load your audio library.';}finally{loading=false;loadPromise=null;onChange();}})();return loadPromise;}
+ async function load(){if(loadPromise)return loadPromise;loading=true;error='';onChange();loadPromise=(async()=>{try{const [files,states]=await Promise.all([localOperation('readonly',store=>store.getAll()),localOperation('readonly',store=>store.getAll(),'uploadState')]);const stateById=new Map(states.map(state=>[state.localId,state]));local=files.filter(a=>a.scope===scope).map(a=>({...a,...stateById.get(a.localId)}));if(account.user)remote=(await request('/api/media?action=list')).assets;loaded=true;}catch(e){error=e.message || 'Could not load your audio library.';}finally{loading=false;loadPromise=null;onChange();}})();return loadPromise;}
 
  async function add(file){try{return await addFile(file);}catch(e){error=e.message;throw e;}finally{progress='';onChange();}}
  async function addFile(file){
   if(!mediaType(file.name)?.startsWith('audio/') || !file.size || file.size>MAX_MEDIA_BYTES)throw new Error('Choose an audio file up to 2 GB (WAV, MP3, M4A, AAC, AIFF, FLAC, OGG or Opus).');
+  showProgress('Preparing upload…',null,file.name);
   if(!loaded)await load();
   let item=known.get(file);
   if(!item){item={localId:crypto.randomUUID(),scope,file};await localOperation('readwrite',store=>store.put(item));local.push(item);known.set(file,item);onChange();}
   if(account.user && !item.assetId){
    showProgress('Starting upload…',null,file.name);
    item.reservation ??= (await post('/api/media?action=reserve',{filename:file.name,size:file.size})).asset;
-   await localOperation('readwrite',store=>store.put(item));
+   await persistUploadState(item);
    const asset=item.reservation;
-   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,file,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(file)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const value=Math.floor(percentage);if(uploadDetail?.percentage!==value){showProgress('Uploading',value,file.name);}}});item.uploaded=true;await localOperation('readwrite',store=>store.put(item));}
+   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,file,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(file)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const value=Math.floor(percentage);if(uploadDetail?.percentage!==value){showProgress('Uploading',value,file.name);}}});item.uploaded=true;await persistUploadState(item);}
    showProgress('Finishing upload…',100,file.name);
    await post('/api/media?action=complete',{id:asset.id});item.assetId=asset.id;
-   await localOperation('readwrite',store=>store.put(item));
+   await persistUploadState(item);
   }
   progress='';onChange();return {id:item.assetId || item.localId,assetId:item.assetId,filename:file.name};
  }
