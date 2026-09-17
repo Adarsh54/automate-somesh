@@ -50,9 +50,10 @@ export function createReelRepository(query){
     const rows=await query`SELECT * FROM reel_audio WHERE asset_id=${assetId}`;
     if(!rows[0]?.pathname)throw fail('Prepare every track before publishing.',409);
     const audio=rows[0];
-    tracks.push({id:assetId,title:project.data.trackTitles?.[assetId]?.trim() || asset.filename.replace(/\.[^.]+$/,''),duration:audio.duration,peaks:audio.peaks,pathname:audio.pathname});
+    tracks.push({id:assetId,color:project.data.trackColors?.[assetId],title:project.data.trackTitles?.[assetId]?.trim() || asset.filename.replace(/\.[^.]+$/,''),duration:audio.duration,peaks:audio.peaks,pathname:audio.pathname});
    }
-   const manifest={title:project.title,allowDownloads:true,tracks};
+   const resume=project.data.resumeId?await media.get(userId,project.data.resumeId):null;
+   const manifest={title:project.title,allowDownloads:true,tracks,profile:project.data.profile,appearance:project.data.appearance,...(resume?{resumePath:resume.pathname,resumeName:resume.filename}:{})};
    // Read the revision again inside the write so an overlapping save cannot publish a stale draft.
    const rows=await query`INSERT INTO reel_publications(project_id,token,manifest) SELECT id,${randomUUID()}::uuid,${JSON.stringify(manifest)}::jsonb FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} ON CONFLICT(project_id) DO UPDATE SET manifest=EXCLUDED.manifest,updated_at=now() RETURNING token`;
    if(!rows[0])throw fail('PROJECT_CONFLICT',409);

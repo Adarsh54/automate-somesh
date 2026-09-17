@@ -27,7 +27,7 @@ const stateSchema=z.object({
   status:z.enum(["draft","completed"]).optional(),
   media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
-const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional()})])});
+const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional(),trackColors:z.record(z.uuid(),z.string().regex(/^#[0-9a-f]{6}$/i)).optional(),appearance:z.object({accent:z.string().regex(/^#[0-9a-f]{6}$/i),theme:z.enum(['dark','light']),description:z.string().max(1000)}).optional(),profile:z.object({name:z.string().max(120),email:z.union([z.email(),z.literal('')]),occupation:z.string().max(120),bio:z.string().max(2000)}).optional(),resumeId:z.uuid().optional(),resumeName:z.string().max(255).optional()})])});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});

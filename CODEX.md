@@ -235,3 +235,24 @@ files reuse server reel preparation. Waveform preparation does not block editing
 Peak normalization accepts `targetPeakDb` from −60 through 0 dBFS, persisted
 in the recipe and applied by FFmpeg. Older recipes retain the −1 dBFS default.
 The waveform height represents the original recording, not a post-edit meter.
+
+### Reel profiles, résumé and presentation
+
+Reel drafts now include optional `profile` (name, email, occupation, bio),
+`appearance` (accent, dark/light player theme, introduction), `trackColors`, and
+`resumeId`/`resumeName`. Use my profile copies account details; subsequent manual
+changes belong to this reel. A published snapshot includes these details.
+
+Résumé uploads use the existing private media reserve/upload/complete flow, limited
+to PDF files of 10 MB. They are excluded from the audio library. Saving/publishing
+checks ownership, readiness and PDF type. Public manifests expose only a résumé
+availability flag; `/api/reels?action=resume&token=…` verifies the publication before
+redirecting to an expiring private Blob URL. Revoking the reel disables fresh résumé
+links too. Existing downloaded files/issued URLs cannot be recalled.
+
+The editor automatically prepares a live preview when tracks are available, reusing
+local WAV processing and cached server preparations. Profile/appearance changes do
+not regenerate audio. Publish sits at the bottom and remains explicit. A failed
+preview offers Retry preview. No schema migration or new credentials are required.
+Regression coverage includes `scripts/browser-reel-presentation-check.cjs` plus
+ownership, publication snapshot and PDF limits in the server tests.

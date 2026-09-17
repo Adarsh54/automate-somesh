@@ -9,3 +9,9 @@
 .reel-share-dialog{width:min(560px,calc(100vw - 32px))}.reel-share-dialog .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.reel-share-dialog textarea{resize:vertical}.reel-track-edit .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 .reel-wave svg{display:block;width:100%;height:100%}.reel-wave rect{fill:var(--muted,#555);opacity:.55}.reel-wave rect.played{fill:var(--reel-accent);opacity:1}
+.reel-player[data-theme=dark]{--surface:#181818;--text:#f5f5f5;--muted:#aaa;--line:#303030;--raised:#282828;--action-text:#111}
+.reel-player[data-theme=light]{--surface:#fff;--text:#181818;--muted:#666;--line:#ddd;--raised:#f4f4f4;--action-text:#111}
+.reel-playlist button .reel-track-number{color:var(--track-color,var(--muted))}.reel-playlist button.active .reel-track-title{color:var(--track-color,var(--reel-accent))}
+.reel-profile-card{display:flex;flex-wrap:wrap;gap:10px 18px;border-top:1px solid var(--line);margin-top:24px;padding-top:20px}.reel-profile-card strong{font-size:18px}.reel-profile-card p{width:100%;white-space:pre-wrap;margin:0}.reel-profile-card a{color:var(--reel-accent)}.reel-description{color:var(--muted);white-space:pre-wrap}
+.reel-wave rect{fill:var(--reel-accent);opacity:.45}
+.reel-wave rect.played{opacity:1}

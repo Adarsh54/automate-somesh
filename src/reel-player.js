@@ -4,9 +4,16 @@ const speakerIcon=muted=>`<svg aria-hidden="true" width="20" height="20" viewBox
 export const reelTime=seconds=>`${Math.floor((Number(seconds)||0)/60)}:${String(Math.floor((Number(seconds)||0)%60)).padStart(2,'0')}`;
 // One player owns one audio element; mounting another view destroys the previous instance.
 export class ReelPlayer{
- constructor(root,{title,tracks,allowDownloads=false,source,download,onProgress}){
-  this.root=root;this.tracks=tracks;this.source=source;this.download=download;this.onProgress=onProgress;this.played=false;this.lastReport=0;this.index=0;this.audio=new Audio();this.audio.preload='metadata';
+ constructor(root,{title,tracks,allowDownloads=false,source,download,onProgress,profile,appearance,resumeUrl}){
+  this.accent=/^#[0-9a-f]{6}$/i.test(appearance?.accent)?appearance.accent:null;this.root=root;this.tracks=tracks;this.source=source;this.download=download;this.onProgress=onProgress;this.played=false;this.lastReport=0;this.index=0;this.audio=new Audio();this.audio.preload='metadata';
   root.innerHTML=`<section class="reel-player" aria-label="${escape(title)}"><div class="reel-player-heading"><span class="reel-kicker">REEL</span><h2>${escape(title)}</h2></div><div class="reel-transport"><button class="reel-play" aria-label="Play">▶</button><div class="reel-wave-wrap"><div class="reel-wave" aria-hidden="true"></div><input class="reel-seek" aria-label="Seek through track" type="range" min="0" max="1000" value="0" step="1"></div><button class="reel-mute" aria-label="Mute">${speakerIcon(false)}</button><input class="reel-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><div class="reel-now"><span></span><time>0:00 / 0:00</time></div><p class="reel-player-error" role="alert" hidden></p><ol class="reel-playlist">${tracks.map((t,i)=>`<li><button data-reel-track="${i}"><span class="reel-track-number">${String(i+1).padStart(2,'0')}</span><span class="reel-track-title">${escape(t.title)}</span><time>${reelTime(t.duration)}</time></button>${allowDownloads&&download?`<button class="reel-download" data-reel-download="${i}" aria-label="Download ${escape(t.title)} as MP3" title="Download MP3">↓</button>`:''}</li>`).join('')}</ol></section>`;
+  const section=root.querySelector('.reel-player');
+  if(appearance?.theme)section.dataset.theme=appearance.theme;
+  if(this.accent)section.style.setProperty('--reel-accent',this.accent);
+  const heading=root.querySelector('.reel-player-heading');
+  if(appearance?.description){const description=document.createElement('p');description.className='reel-description';description.textContent=appearance.description;heading.append(description);}
+  if(profile?.name||profile?.email||profile?.bio||resumeUrl){const card=document.createElement('div');card.className='reel-profile-card';card.innerHTML=`<strong>${escape(profile?.name)}</strong><span>${escape(profile?.occupation)}</span><p>${escape(profile?.bio)}</p>`;if(profile?.email){const email=document.createElement('a');email.href='mailto:'+profile.email;email.textContent=profile.email;card.append(email);}if(resumeUrl){const resume=document.createElement('a');resume.href=resumeUrl;resume.target='_blank';resume.rel='noopener noreferrer';resume.textContent='View résumé';card.append(resume);}section.append(card);}
+  root.querySelectorAll('[data-reel-track]').forEach((button,i)=>{if(/^#[0-9a-f]{6}$/i.test(tracks[i].color))button.style.setProperty('--track-color',tracks[i].color);});
   this.play=root.querySelector('.reel-play');this.seek=root.querySelector('.reel-seek');this.wave=root.querySelector('.reel-wave');this.message=root.querySelector('.reel-player-error');
   this.play.onclick=()=>this.audio.paused?this.start():this.audio.pause();
   root.querySelector('.reel-mute').onclick=()=>{this.audio.muted=!this.audio.muted;this.volumeUI();};
@@ -23,6 +30,7 @@ export class ReelPlayer{
  }
  select(index){
   this.report(true);this.audio.pause();this.index=index;this.played=false;this.lastReport=0;const track=this.tracks[index];this.message.hidden=true;
+  const color=/^#[0-9a-f]{6}$/i.test(track.color)?track.color:this.accent;const section=this.root.querySelector('.reel-player');if(color)section.style.setProperty('--reel-accent',color);else section.style.removeProperty('--reel-accent');
   this.audio.src=this.source(track);this.audio.load();
   const peaks=track.peaks||Array(120).fill(.05);
   this.wave.innerHTML=`<svg viewBox="0 0 ${peaks.length*3} 100" preserveAspectRatio="none">${peaks.map((p,i)=>{const height=Math.max(2,Math.min(1,Number(p)||0)*100);return `<rect x="${i*3}" y="${(100-height)/2}" width="1.5" height="${height}"/>`;}).join('')}</svg>`;

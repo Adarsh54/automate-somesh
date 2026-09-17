@@ -11,9 +11,10 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,a
    const url=new URL(req.url,'http://localhost'),action=url.searchParams.get('action');
    if(!['GET','POST'].includes(req.method)){res.setHeader('Allow','GET, POST');return reply(res,405,{error:'METHOD_NOT_ALLOWED'});}
    const repo=repository();let cachedStats;const stats=()=>cachedStats||(cachedStats=analytics());
-   if(req.method==='GET' && ['public','stream','download'].includes(action)){
+   if(req.method==='GET' && ['public','stream','download','resume'].includes(action)){
     const manifest=await repo.publicReel(url.searchParams.get('token'));
-    if(action==='public')return reply(res,200,{reel:{...manifest,tracks:manifest.tracks.map(({pathname,...track})=>track)}});
+    if(action==='public'){const {resumePath,...publicManifest}=manifest;return reply(res,200,{reel:{...publicManifest,hasResume:Boolean(resumePath),tracks:manifest.tracks.map(({pathname,...track})=>track)}});}
+    if(action==='resume'){if(!manifest.resumePath)return reply(res,404,{error:'Resume not found.'});res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Location',await sign(manifest.resumePath));res.status(302);return res.end();}
     const track=manifest.tracks.find(t=>t.id===url.searchParams.get('track'));
     if(!track)return reply(res,404,{error:'Track not found.'});
     res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');
@@ -25,6 +26,7 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,a
     return reply(res,200,await stats().recordProgress(body.token,body));
    }
    const session=await auth(req,res);if(!session)return reply(res,401,{error:'SIGN_IN_REQUIRED'});
+   if(req.method==='GET'&&action==='resume-preview'){const asset=await mediaRepository().get(session.user.id,url.searchParams.get('id'));if(!asset.ready||asset.content_type!=='application/pdf')return reply(res,404,{error:'Resume not found.'});res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(asset.pathname));res.status(302);return res.end();}
    if(req.method==='GET'&&action==='preview'){res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(await repo.preview(session.user.id,url.searchParams.get('id'))));res.status(302);return res.end();}
    if(req.method==='GET'&&action==='analytics')return reply(res,200,{analytics:await stats().summary(session.user.id,url.searchParams.get('id'))});
    if(req.method==='GET')return reply(res,200,{publication:await repo.owner(session.user.id,url.searchParams.get('id'))});

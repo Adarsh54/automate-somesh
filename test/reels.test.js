@@ -20,7 +20,10 @@ test('publishing snapshots owned prepared audio; revisions, leases, permissions 
   const repo=createReelRepository(query),media=createMediaRepository(query),projects=createProjectRepository(query);
   const asset=await media.reserve('alice',{filename:'track.wav',size:100});
   await media.complete('alice',asset.id,{pathname:asset.pathname,size:100,contentType:'audio/wav'});
-  const id=crypto.randomUUID(),data={type:'reel',title:'Demo',status:'draft',audioIds:[asset.id],trackTitles:{[asset.id]:'Custom title'}};
+  const resume=await media.reserve('alice',{filename:'Resume.pdf',size:100});await media.complete('alice',resume.id,{pathname:resume.pathname,size:100,contentType:'application/pdf'});
+  const id=crypto.randomUUID(),data={profile:{name:'Alice',email:'alice@example.com',occupation:'Composer',bio:'Original music'},appearance:{accent:'#abcdef',theme:'light',description:'Selected works'},trackColors:{[asset.id]:'#123456'},resumeId:resume.id,resumeName:'Resume.pdf',type:'reel',title:'Demo',status:'draft',audioIds:[asset.id],trackTitles:{[asset.id]:'Custom title'}};
+  const foreign=await media.reserve('bob',{filename:'Other.pdf',size:100});await media.complete('bob',foreign.id,{pathname:foreign.pathname,size:100,contentType:'application/pdf'});await assert.rejects(projects.save('alice',{id,revision:0,data:{...data,resumeId:foreign.id}}),{status:400});
+  await assert.rejects(projects.save('alice',{id,revision:0,data:{...data,resumeId:asset.id}}),{status:400});
   await projects.save('alice',{id,revision:0,data});
   const input={id,revision:1,allowDownloads:false};
   await assert.rejects(repo.publish('alice',input),{status:409});
@@ -37,17 +40,17 @@ test('publishing snapshots owned prepared audio; revisions, leases, permissions 
   await assert.rejects(repo.publish('alice',{...input,revision:4}),{status:409});
   const publication=await repo.publish('alice',input);
   assert.equal((await repo.publicReel(publication.token)).tracks[0].title,'Custom title');
-  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);
+  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);assert.equal((await repo.publicReel(publication.token)).appearance.accent,'#abcdef');assert.equal((await repo.publicReel(publication.token)).profile.name,'Alice');assert.equal((await repo.publicReel(publication.token)).tracks[0].color,'#123456');
   await query`UPDATE reel_publications SET manifest=jsonb_set(manifest,'{allowDownloads}','false') WHERE project_id=${id}`;
   assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);
   const created=(await projects.get('alice',id)).created_at;
   await projects.save('alice',{id,revision:1,data:{...data,title:'Private edit'}});
   assert.equal((await repo.publicReel(publication.token)).title,'Demo');
   assert.deepEqual((await projects.list('alice'))[0].created_at,created);
-  const handler=createReelHandler({repository:()=>repo,auth:async()=>null,sign:async path=>{assert.equal(path,'reels/test/preview.mp3');return 'https://blob.test/signed';}});
-  for(const [action,code] of [['public',200],['stream',302],['download',302]]){
+  const handler=createReelHandler({repository:()=>repo,auth:async()=>null,sign:async path=>{assert.ok(['reels/test/preview.mp3',resume.pathname].includes(path));return 'https://blob.test/signed';}});
+  for(const [action,code] of [['public',200],['stream',302],['download',302],['resume',302]]){
    const res=response();await handler({method:'GET',url:`/api/reels?action=${action}&token=${publication.token}&track=${asset.id}`,headers:{}},res);assert.equal(res.code,code);
-   if(action==='public'){assert.equal(res.body.reel.tracks[0].pathname,undefined);assert.equal(res.headers['Cache-Control'],'no-store');}
+   if(action==='public'){assert.equal(res.body.reel.tracks[0].pathname,undefined);assert.equal(res.body.reel.resumePath,undefined);assert.equal(res.body.reel.hasResume,true);assert.equal(res.headers['Cache-Control'],'no-store');}
   }
   const anon=response();await handler({method:'POST',url:'/api/reels?action=publish',headers:{}},anon);assert.equal(anon.code,401);
   const owner=createReelHandler({repository:()=>repo,auth:async()=>({user:{id:'alice'}})}),csrf=response();

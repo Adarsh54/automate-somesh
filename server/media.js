@@ -5,10 +5,11 @@ import {mediaType,MAX_MEDIA_BYTES} from '../src/media-policy.js';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 export function parseMedia(input) {
   const result=z.object({filename:z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+$/),size:z.number().int().positive().max(MAX_MEDIA_BYTES)}).safeParse(input);
-  if(!result.success || !mediaType(result.data.filename)) throw fail('INVALID_MEDIA');
-  return {...result.data,contentType:mediaType(result.data.filename)};
+  const pdf=result.success&&/\.pdf$/i.test(result.data.filename)&&result.data.size<=10*1024*1024;
+  if(!result.success || (!pdf&&!mediaType(result.data.filename))) throw fail('INVALID_MEDIA');
+  return {...result.data,contentType:pdf?'application/pdf':mediaType(result.data.filename)};
 }
-export function mediaIds(data) {return [...new Set([...(data.type==='reel'?data.audioIds:[]),...Object.values(data.media?.tracks || {}),...(data.media?.movie?[data.media.movie]:[])])];}
+export function mediaIds(data) {return [...new Set([...(data.type==='reel'?[...data.audioIds,...(data.resumeId?[data.resumeId]:[])]:[]),...Object.values(data.media?.tracks || {}),...(data.media?.movie?[data.media.movie]:[])])];}
 export function createMediaRepository(query) {
   return {
     async listAudio(userId) {
@@ -51,8 +52,9 @@ export function createMediaRepository(query) {
       const rows=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND id=ANY(${ids}::uuid[])`;
       if(rows.length!==ids.length)throw fail('MEDIA_NOT_READY');
       if(data.type==='reel'){
-        const audio=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND content_type LIKE 'audio/%' AND id=ANY(${ids}::uuid[])`;
-        if(audio.length!==ids.length)throw fail('INVALID_REEL_AUDIO');
+        if(data.resumeId){const resume=await this.get(userId,data.resumeId);if(resume.content_type!=='application/pdf'||Number(resume.size)>10*1024*1024)throw fail('INVALID_RESUME');}
+        const audio=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND content_type LIKE 'audio/%' AND id=ANY(${data.audioIds}::uuid[])`;
+        if(audio.length!==data.audioIds.length)throw fail('INVALID_REEL_AUDIO');
       }
     },
   };
