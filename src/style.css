@@ -581,6 +581,21 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .project-filters { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .project-filters label { display: grid; gap: 7px; min-width: 180px; font-size: 12px; color: var(--muted); }
 .project-title-link { padding: 0; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; }
-.project-dates { display: block; margin-top: 5px; line-height: 1.7; }
+/* Shared, aligned date metadata for project and reel collections. */
+.project-dates { display: grid; grid-template-columns: repeat(2, minmax(112px, 1fr)); gap: 24px; margin: 0 12px; flex-shrink: 0; }
+.project-date dt { margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 500; letter-spacing: .3px; }
+.project-date dd { margin: 0; font-size: 12px; }
+.project-date time { display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+.project-date-day { color: var(--text); white-space: nowrap; }
+.project-date-clock { color: var(--muted); font-size: 11px; }
+@media(max-width:1000px) {
+ .collection-row:has(.project-dates) { flex-wrap: wrap; }
+ .collection-row:has(.project-dates) .collection-actions { margin-left: auto; width: auto; }
+ .project-dates { order: 3; flex-basis: 100%; margin: 2px 0 0; padding-top: 14px; border-top: 1px solid var(--line); gap: 16px; }
+}
 .saved-reels { margin-top: 40px; }
 .saved-reels h2 { margin-bottom: 16px; }
+@media(min-width:1001px) {
+ .saved-projects .collection-actions { min-width: 124px; justify-content: flex-end; }
+ .saved-reels .collection-actions { min-width: 180px; justify-content: flex-end; }
+}
