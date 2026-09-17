@@ -175,10 +175,10 @@ function review() {
   return reviewProject(state).issues;
 }
 let faqOpen = false;
-let faqAnswer = "";
+let faqQuestion = "";
 function faq() {
   const questions = ["What types of projects can I create?", "Where do my audio files go?", "Can I share or embed a reel yet?", "Can I reuse audio in another project?", "Are guest files saved to my account?", "Which workflow should I choose?", "Why can't I export yet?", "What files can I use?", "What does review mean?", "Is my media uploaded?", "What if a cue is not found?", "How do I add credits?", "Can I enter timings myself?"];
-  return `<div class="faq"><button class="faq-launcher" id="faq-launcher" title="${faqOpen ? "Close" : "Open"} FAQ" aria-label="${faqOpen ? "Close" : "Open"} FAQ" aria-expanded="${faqOpen}" aria-controls="faq-panel"><span class="faq-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button><section class="faq-panel${faqOpen ? " open" : ""}" id="faq-panel" aria-label="Frequently Asked Questions"><div class="faq-header"><div><span class="eyebrow">CUESTAMP GUIDE</span><h2>FAQ</h2></div><button class="text" id="faq-close" aria-label="Close FAQ">Close</button></div><p class="muted">Frequently asked questions. Select a question to see its answer.</p><div class="faq-questions">${questions.map((question) => `<button data-faq-question="${esc(question)}">${esc(question)}</button>`).join("")}</div>${faqAnswer ? `<div class="faq-answer" role="status">${esc(faqAnswer)}</div>` : ""}</section></div>`;
+  return `<div class="faq"><button class="faq-launcher" id="faq-launcher" title="${faqOpen ? "Close" : "Open"} FAQ" aria-label="${faqOpen ? "Close" : "Open"} FAQ" aria-expanded="${faqOpen}" aria-controls="faq-panel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2 1-6a8 8 0 1 1 17-4Z"/><path d="M7 11h10M7 14h6"/></svg></button><section class="faq-panel${faqOpen ? " open" : ""}" id="faq-panel" aria-label="Frequently Asked Questions"><div class="faq-header"><div><span class="eyebrow">CUESTAMP GUIDE</span><h2>FAQ</h2></div><button class="text" id="faq-close" aria-label="Close FAQ">Close</button></div><p class="muted">Frequently asked questions. Select a question to see its answer.</p><div class="faq-questions">${questions.map((question) => `<button data-faq-question="${esc(question)}" aria-expanded="${faqQuestion === question}">${esc(question)}</button>${faqQuestion === question ? `<div class="faq-answer" role="status">${esc(answerFAQ(question))}</div>` : ""}`).join("")}</div></section></div>`;
 }
 function answerFAQ(question) {
   const text = question.toLowerCase();
@@ -206,7 +206,7 @@ function teamPage() {
 function bindFAQ() {
   $("#faq-launcher")?.addEventListener("click", () => { faqOpen = !faqOpen; render(); });
   $("#faq-close")?.addEventListener("click", () => { faqOpen = false; render(); });
-  document.querySelectorAll("[data-faq-question]").forEach((button) => { button.onclick = () => { faqAnswer = answerFAQ(button.dataset.faqQuestion); faqOpen = true; render(); }; });
+  document.querySelectorAll("[data-faq-question]").forEach((button) => { button.onclick = () => { faqQuestion = faqQuestion === button.dataset.faqQuestion ? "" : button.dataset.faqQuestion; faqOpen = true; render(); }; });
 }
 function pageBreadcrumb(){
  if(tab==='reel')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Reel</span><span aria-hidden="true">›</span><b>${esc(reelWorkspace.title() || 'Untitled reel')}</b></div>`;
