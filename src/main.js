@@ -1,3 +1,4 @@
+import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {themeToggle} from "./theme.js";
 import {confirmDialog} from "./confirm-dialog.js";
 import {creditProfilesRequest} from "./account-credit-profiles.js";
@@ -275,9 +276,13 @@ function creditProfilePicker(){
 }
 
 function settingsPage() {
- if(!account.user)return `<section class="settings-page"><h1>Credit profiles</h1><p>Sign in to create and reuse credit profiles across your projects and devices.</p><div class="button-row">${cloudWorkspace.header()}</div></section>`;
- return `<section class="settings-page"><div class="heading"><div><div class="eyebrow">REUSABLE CREDITS</div><h1>Credit profiles</h1><p>Create and save contributor details, then choose a profile for your cue sheet.</p></div><button class="primary" id="new-credit-profile" ${creditProfilesLoading?"disabled":""}>＋ New profile</button></div><p class="muted">Saved to your account and available across devices. Choose a saved profile from the dropdown in Workspace.</p><div role="status">${creditProfilesLoading?"Loading your profiles…":""}${creditProfilesError?`${esc(creditProfilesError)} <button id="retry-credit-profiles">Retry</button>`:""}</div><div class="credit-profile-list">${creditProfiles.length?creditProfiles.map(p=>`<article class="panel"><h2>${esc(p.name)}</h2><p class="muted">${p.credits.map(c=>esc(c.role==='Composer'?[c.first,c.last].filter(Boolean).join(' '):c.name)).join(' · ')}</p><div class="button-row"><button data-edit-credit-profile="${esc(p.id)}">Edit</button><button data-delete-credit-profile="${esc(p.id)}">Delete</button></div></article>`).join(''):'<div class="empty"><h2>No credit profiles yet</h2><p>Create your first profile to reuse composer and publisher details.</p></div>'}</div></section>`;
+ const options={title:'Credit profiles',description:'Your saved composer and publisher credits, ready to reuse in any cue sheet.',action:account.user?collectionCreateButton({label:'Create profile',attributes:'id="new-credit-profile"',disabled:creditProfilesLoading}):''};
+ if(!account.user)return `<section class="settings-page">${collectionPage({...options,body:`<div class="empty"><h3>Sign in to see your credit profiles</h3><p>Saved profiles are linked to your account.</p><div class="button-row">${cloudWorkspace.header()}</div></div>`})}</section>`;
+ const rows=creditProfiles.map(p=>collectionRow({title:esc(p.name),detail:p.credits.map(c=>esc(c.role==='Composer'?[c.first,c.last].filter(Boolean).join(' '):c.name)).filter(Boolean).join(' · ') || 'Composer and publisher credits',icon:sidebarIcon('shared'),actions:`<button data-edit-credit-profile="${esc(p.id)}">Edit</button><button data-delete-credit-profile="${esc(p.id)}">Delete</button>`})).join('');
+ const body=creditProfilesLoading?'<p class="empty" role="status">Loading your profiles…</p>':creditProfilesError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your credit profiles</strong><span>${esc(creditProfilesError)}</span></span><button id="retry-credit-profiles">Try again</button></div>`:creditProfiles.length?`<div class="collection-list credit-profile-list">${rows}</div>`:'<div class="empty"><span aria-hidden="true">♙</span><h3>No credit profiles yet</h3><p>Create a profile to reuse composer and publisher details.</p></div>';
+ return `<section class="settings-page">${collectionPage({...options,summary:creditProfilesLoading?'Loading profiles…':`${creditProfiles.length} saved profile${creditProfiles.length===1?'':'s'}`,body})}</section>`;
 }
+
 function provenanceField(value) {
   return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
 }
