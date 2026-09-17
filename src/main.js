@@ -164,16 +164,16 @@ const select = (label, key, value, options) =>
 function review() {
   return reviewProject(state).issues;
 }
-let cueyOpen = false;
-let cueyAnswer = "";
-function cuey() {
+let faqOpen = false;
+let faqAnswer = "";
+function faq() {
   const questions = ["Which workflow should I choose?", "Why can't I export yet?", "What files can I use?", "What does review mean?", "Is my media uploaded?", "What if a cue is not found?", "How do I add credits?", "Can I enter timings myself?"];
-  return `<div class="cuey"><button class="cuey-launcher" id="cuey-launcher" title="${cueyOpen ? "Close" : "Ask"} Cuey" aria-label="${cueyOpen ? "Close" : "Ask"} Cuey" aria-expanded="${cueyOpen}" aria-controls="cuey-panel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2 1-6a8 8 0 1 1 17-4Z"/><path d="M7 11h10M7 14h6"/></svg></button><section class="cuey-panel${cueyOpen ? " open" : ""}" id="cuey-panel" aria-label="Cuey help"><div class="cuey-header"><div><span class="eyebrow">CUESTAMP GUIDE</span><h2>Cuey</h2></div><button class="text" id="cuey-close" aria-label="Close Cuey">Close</button></div><p class="muted">Ask about the workflow, timings, credits, or export.</p><div class="cuey-questions">${questions.map((question) => `<button data-cuey-question="${esc(question)}">${esc(question)}</button>`).join("")}</div>${cueyAnswer ? `<div class="cuey-answer" role="status">${esc(cueyAnswer)}</div>` : ""}<form id="cuey-form" class="cuey-form"><input id="cuey-input" type="text" placeholder="Ask a question" autocomplete="off" aria-label="Ask Cuey a question"><button class="primary" type="submit">Ask</button></form></section></div>`;
+  return `<div class="faq"><button class="faq-launcher" id="faq-launcher" title="${faqOpen ? "Close" : "Open"} FAQ" aria-label="${faqOpen ? "Close" : "Open"} FAQ" aria-expanded="${faqOpen}" aria-controls="faq-panel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2 1-6a8 8 0 1 1 17-4Z"/><path d="M7 11h10M7 14h6"/></svg></button><section class="faq-panel${faqOpen ? " open" : ""}" id="faq-panel" aria-label="Frequently Asked Questions"><div class="faq-header"><div><span class="eyebrow">CUESTAMP GUIDE</span><h2>FAQ</h2></div><button class="text" id="faq-close" aria-label="Close FAQ">Close</button></div><p class="muted">Frequently asked questions. Select a question to see its answer.</p><div class="faq-questions">${questions.map((question) => `<button data-faq-question="${esc(question)}">${esc(question)}</button>`).join("")}</div>${faqAnswer ? `<div class="faq-answer" role="status">${esc(faqAnswer)}</div>` : ""}</section></div>`;
 }
-function answerCuey(question) {
+function answerFAQ(question) {
   const text = question.toLowerCase();
   if (text.includes("workflow") || text.includes("choose")) return "Use Movie matching for a finished movie, Audio with offset for music-only exports, or Manual to enter timings yourself.";
-  if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export to download the XLSX."; }
+  if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export, finish your cue sheet, then choose Excel, CSV, or PDF to download."; }
   if (text.includes("file") || text.includes("format")) return `For video, MP4/AAC or WebM/Opus works best. For audio, use WAV, MP3, M4A, FLAC, or OGG. Files up to ${BROWSER_MAX_MB} MB are analyzed in your browser; larger files are processed on the server.`;
   if (text.includes("uploaded") || text.includes("private") || text.includes("media")) return `Files over ${BROWSER_MAX_MB} MB are uploaded privately for server processing. Comparisons against a large file also upload its reference files. Temporary processing files expire after 24 hours. Saving to an account keeps a separate copy of your media.`;
   if (text.includes("not found") || text.includes("no match") || text.includes("missing")) return "Check that the reference recording is the same speed and pitch as the movie audio. You can also add the placement manually in Timings & usage.";
@@ -182,17 +182,16 @@ function answerCuey(question) {
   if (text.includes("manual") || text.includes("myself") || text.includes("enter timing")) return "Choose Manual, add a cue recording, then enter Film in and Film out directly or mark them during playback.";
   if (text.includes("offset") || text.includes("timecode")) return "An offset is the film timecode where an audio file begins. It lets Cuestamp convert playback or detected positions into film timings.";
   if (text.includes("save") || text.includes("account")) return "Guest drafts stay in this browser. Sign in and click Save project to keep a project and its media in your account.";
-  return "I can help with workflows, supported files, timings, credits, review, and export. Try one of the questions above.";
+  return "Select one of the questions above to see its answer.";
 }
 function teamPage() {
   const members = [["Somesh Yatham", "team/somesh.png"], ["Rishil Uppaluru", "team/rishi.JPG"], ["Adarsh Ashok", "team/adarsh.png"]];
   return `<section class="team-page"><div class="eyebrow">THE PEOPLE BEHIND CUESTAMP</div><h1>Meet the team.</h1><p class="team-intro">Three people building a simpler way to turn music into a finished cue sheet.</p><div class="team-grid">${members.map(([name, photo]) => `<article class="team-member team-member-${name.split(" ")[0].toLowerCase()}"><div class="team-avatar"><img src="${import.meta.env.BASE_URL}${photo}" alt="${esc(name)}"></div><h2>${name}</h2><p>Team member</p></article>`).join("")}</div><button class="primary" data-tab="library">Back to workspace</button></section>`;
 }
-function bindCuey() {
-  $("#cuey-launcher")?.addEventListener("click", () => { cueyOpen = !cueyOpen; render(); });
-  $("#cuey-close")?.addEventListener("click", () => { cueyOpen = false; render(); });
-  document.querySelectorAll("[data-cuey-question]").forEach((button) => { button.onclick = () => { cueyAnswer = answerCuey(button.dataset.cueyQuestion); cueyOpen = true; render(); }; });
-  $("#cuey-form")?.addEventListener("submit", (event) => { event.preventDefault(); const input = $("#cuey-input"); if (!input.value.trim()) return; cueyAnswer = answerCuey(input.value); cueyOpen = true; render(); });
+function bindFAQ() {
+  $("#faq-launcher")?.addEventListener("click", () => { faqOpen = !faqOpen; render(); });
+  $("#faq-close")?.addEventListener("click", () => { faqOpen = false; render(); });
+  document.querySelectorAll("[data-faq-question]").forEach((button) => { button.onclick = () => { faqAnswer = answerFAQ(button.dataset.faqQuestion); faqOpen = true; render(); }; });
 }
 function pageBreadcrumb(){
  if(tab==='projects')return '<div class="page-breadcrumb" aria-label="Breadcrumb"><span aria-current="page">Projects</span></div>';
@@ -226,9 +225,9 @@ function render() {
     $("#cloud-workspace")?.remove();
     document.querySelector(".stats")?.remove();
   }
-  $("#app").insertAdjacentHTML("beforeend", cuey());
+  $("#app").insertAdjacentHTML("beforeend", faq());
   bind();
-  bindCuey();
+  bindFAQ();
   bindSidebar();
   cloudWorkspace?.bind();
   document.querySelectorAll("details").forEach((el) => {
