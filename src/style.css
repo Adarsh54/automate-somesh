@@ -477,3 +477,9 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
   .profile-chevron { transform: rotate(180deg); }
   .profile-menu[open] .profile-chevron { transform: rotate(0); }
 }
+
+.workspace-credit-profile h2 { margin-bottom: 6px; }
+.credit-profile-controls { margin-top: 18px; }
+.credit-profile-controls > label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.credit-profile-controls select { flex: 1; min-width: 160px; }
+.credit-profile-controls .button-row { flex-wrap: wrap; }
