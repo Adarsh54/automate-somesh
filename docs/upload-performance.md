@@ -108,3 +108,30 @@ Each request has a 30-second deadline; test objects are deleted. Results are
 written to `/tmp/cuestamp-upload-transports.json`. Raw process/socket samples
 were kept locally under `/tmp`, not committed. No app transport settings
 were changed as a result of this investigation.
+
+## San Francisco store comparison
+
+Created private test store `cuestamp-media-sfo-test` (`store_9303b4iBNELTvEld`)
+in `sfo1`. Its separate `SFO_BENCH_READ_WRITE_TOKEN` is connected only to the
+project's development environment. The app still uses the existing Virginia
+store and `BLOB_READ_WRITE_TOKEN`; no user media was migrated.
+
+Uploaded the identical synthetic 3 MB Blob from one browser, sequentially
+in order SFO, IAD, IAD, SFO, SFO, IAD. All six uploads completed and their
+objects were deleted.
+
+| Region | Upload times | Mean | Median |
+| --- | --- | --- | --- |
+| San Francisco (`sfo1`) | 2.800, 1.892, 3.462 s | 2.718 s | 2.800 s |
+| Virginia (`iad1`) | 2.950, 2.963, 3.530 s | 3.148 s | 2.963 s |
+
+SFO's mean was about 14% lower, but its median was only about 6% lower,
+and sample ranges overlap. Three short samples per region do not establish
+a reliable percentage improvement or predict large multipart throughput.
+This test does not support migrating production solely for a major speedup.
+
+Reproduce with `scripts/compare-blob-regions.mjs`, loading the development
+environment and separate SFO credential. The script transfers 18 MB total,
+uses a 30-second per-upload deadline, deletes test objects, and writes
+`/tmp/cuestamp-region-comparison.json`. Browser/module paths use the same
+Playwright environment variables as the other diagnostics.
