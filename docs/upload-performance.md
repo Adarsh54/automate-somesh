@@ -71,3 +71,40 @@ the canceled runs.
 
 Sources: [Vercel Blob regions](https://vercel.com/docs/vercel-blob),
 [Cloudflare speed-test API](https://github.com/cloudflare/speedtest/blob/main/README.md).
+
+## Follow-up: competing traffic and browser versus Node
+
+With no synthetic upload running, two macOS per-process network samples
+showed Apple's `identityservicesd` sending 1.138 MB over 4 seconds and
+2.799 MB over 10 seconds (about 2.2 Mbps). A separate socket-level sample
+confirmed 482 KB over 2 seconds to a public IPv4 destination on `en0`,
+not local-device traffic. Other processes contributed little in those idle
+samples. The service was left running; no network settings were changed.
+This is measurable competing upload traffic, but not proof it is the sole
+cause of the slow upload.
+
+Sequential 3 MB uploads, using scoped client tokens and the same Vercel
+Blob endpoint:
+
+| Mode | First sample | Second sample |
+| --- | ---: | ---: |
+| Browser with progress | 3.987 s / 6.02 Mbps | 3.134 s / 7.66 Mbps |
+| Node SDK | 2.796 s / 8.58 Mbps | 2.921 s / 8.22 Mbps |
+| Browser without progress | 2.328 s / 10.31 Mbps | 2.850 s / 8.42 Mbps |
+
+There is no order-of-magnitude browser-only penalty. Progress-enabled runs
+were slower in this small comparison, but the earlier 6 MB runs were nearly
+identical, so these samples do not isolate progress handling as a cause.
+The common network path, competing background traffic, and storage response
+latency remain better-supported constraints than frontend processing.
+
+Reproduce the 18 MB total comparison with the same Playwright environment:
+
+```sh
+node --env-file=.env.local scripts/compare-upload-transports.mjs
+```
+
+Each request has a 30-second deadline; test objects are deleted. Results are
+written to `/tmp/cuestamp-upload-transports.json`. Raw process/socket samples
+were kept locally under `/tmp`, not committed. No app transport settings
+were changed as a result of this investigation.
