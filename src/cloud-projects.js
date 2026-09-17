@@ -35,6 +35,11 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   const media=workflow?createCloudMedia({state,workflow,request,persist:()=>localStorage.setItem(storageKey,JSON.stringify(state))}):null;
   async function run(fn) {if(busy)return;busy=true;update();try{await fn();}catch(e){status=e.message;}finally{busy=false;update();}}
   async function save(copy=false,complete=false) {
+    if (!state.production.title.trim()) {
+      location.hash="#/workspace/library";
+      requestAnimationFrame(()=>document.querySelector("#workspace-project-title")?.focus());
+      throw new Error("Enter a project title before saving.");
+    }
     const version=changes, snapshot=structuredClone(state);
     snapshot.status=complete?"completed":(state.status || "draft");
     if(complete && !reviewProject(snapshot).valid)throw new Error("Complete all required checks before finishing your cue sheet.");
@@ -66,7 +71,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     finally {loadingProjects=false;update();}
   }
   function projectsPage() {
-    const heading=`<div class="heading"><div><div class="eyebrow">YOUR LIBRARY</div><h1>Projects</h1><p>Your saved cue sheets, ready to pick up where you left off.</p></div></div><button class="new-project-fab" data-new-project ${busy?"disabled":""} aria-label="New project"><span aria-hidden="true">＋</span> New project</button>`;
+    const heading=`<div class="heading"><div><div class="eyebrow">YOUR LIBRARY</div><h1>Projects</h1><p>Your saved cue sheets, ready to pick up where you left off.</p></div></div><button class="new-project-fab" data-new-project ${busy?"disabled":""} aria-label="New project" title="Create a new project"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>`;
     if(!account.user)return heading+`<div class="empty"><h3>Sign in to see your projects</h3><p>Saved projects are linked to your account.</p><div class="button-row">${authActions(account)}</div></div>`;
     return heading+`<div class="section-title"><span class="muted">${loadingProjects ? "Loading projects…" : `${projects.length} saved project${projects.length===1?"":"s"}`}</span></div>
       ${status?`<p class="notice" role="status">${esc(status)}</p>`:""}
