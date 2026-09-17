@@ -252,7 +252,7 @@ links too. Existing downloaded files/issued URLs cannot be recalled.
 
 The editor automatically prepares a live preview when tracks are available, reusing
 local WAV processing and cached server preparations. Profile/appearance changes do
-not regenerate audio. Publish sits at the bottom and remains explicit. A failed
+not regenerate audio. Publish sits below the preview, above Listener analytics, and remains explicit. A failed
 preview offers Retry preview. No schema migration or new credentials are required.
 Regression coverage includes `scripts/browser-reel-presentation-check.cjs` plus
 ownership, publication snapshot and PDF limits in the server tests.
