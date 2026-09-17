@@ -421,7 +421,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .profile-menu summary::-webkit-details-marker { display: none; }
 .profile-menu summary:hover { background: var(--hover); }
 .profile-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--tint); color: var(--accent); flex-shrink: 0; font-size: 12px; }
-.profile-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.profile-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .profile-chevron { color: var(--muted); flex-shrink: 0; transition: transform 150ms ease; }
 .profile-menu[open] .profile-chevron { transform: rotate(180deg); }
 .profile-options { position: absolute; bottom: calc(100% + 8px); left: 0; width: 100%; z-index: 30; padding: 12px; border: 1px solid var(--strong-line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
