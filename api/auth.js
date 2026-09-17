@@ -1,3 +1,4 @@
+import {creditProfilesRepository} from "../server/credit-profiles.js";
 import {userProfiles} from "../server/user-profile.js";
 import {authReady,settings,workos,cookie,setCookie,requireOrigin,equalState,sealFlow,openFlow,authenticate,apiError} from "../server/auth.js";
 import {reply,allowMethod,readJson} from "../server/http.js";
@@ -35,6 +36,17 @@ export default async function handler(req,res) {
         setCookie(res,"cuestamp-session",result.sealedSession,60*60*24*7);
         return redirect(res,settings().origin+"/");
       } catch { return redirect(res,settings().origin+"/?authError=1"); }
+    }
+    if(action==="credit-profiles") {
+      if(!['GET','POST','DELETE'].includes(req.method))return reply(res,405,{error:'METHOD_NOT_ALLOWED'});
+      if(req.method!=='GET')requireOrigin(req);
+      const session=await authenticate(req,res);
+      if(!session)return reply(res,401,{error:'SIGN_IN_REQUIRED'});
+      const repo=creditProfilesRepository(),owner=session.user.id;
+      if(req.method==='GET')return reply(res,200,{profiles:await repo.list(owner)});
+      const body=await readJson(req);
+      if(req.method==='DELETE'){await repo.remove(owner,body);return reply(res,200,{ok:true});}
+      return reply(res,200,{profile:await repo.save(owner,body,{importOnly:url.searchParams.get('import')==='true'})});
     }
     if(action==="profile") {
       if(!allowMethod(req,res,"POST"))return;

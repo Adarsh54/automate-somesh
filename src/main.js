@@ -1,3 +1,4 @@
+import {creditProfilesRequest} from "./account-credit-profiles.js";
 import {editCreditProfile} from "./credit-profile-editor.js";
 import {showDownloadDialog} from "./download-dialog.js";
 import {cueSheetCsv} from "./export-csv.js";
@@ -118,18 +119,26 @@ const $ = (s) => document.querySelector(s),
         })[c],
     );
 const id = () => crypto.randomUUID();
-const creditProfilesKey = account.user
-  ? `cuestamp-user:${account.user.id}:credit-profiles`
-  : "cuestamp-credit-profiles";
-let creditProfiles = [];
-let activeCreditProfileId = "";
-try { creditProfiles = JSON.parse(localStorage.getItem(creditProfilesKey)) || []; } catch {}
-if (!Array.isArray(creditProfiles)) creditProfiles=[];
-creditProfiles=creditProfiles.filter(p=>p && typeof p.id==='string' && typeof p.name==='string' && Array.isArray(p.credits));
-activeCreditProfileId=state.activeCreditProfileId || '';
-function storeCreditProfile(profile) {
-  const next=creditProfiles.filter(p=>p.id!==profile.id).concat(profile);
-  localStorage.setItem(creditProfilesKey,JSON.stringify(next));creditProfiles=next;render();
+const creditProfilesKey=account.user?`cuestamp-user:${account.user.id}:credit-profiles`:null;
+let creditProfiles=[],creditProfilesError='',creditProfilesLoading=false;
+let activeCreditProfileId=state.activeCreditProfileId || '';
+async function loadAccountCreditProfiles(){
+ if(!account.user || creditProfilesLoading)return;
+ creditProfilesLoading=true;creditProfilesError='';
+ try{
+  // Move only this signed-in account's old device presets. Never import guest data.
+  let legacy=[];try{legacy=JSON.parse(localStorage.getItem(creditProfilesKey)) || [];}catch{}
+  if(Array.isArray(legacy) && legacy.length){
+   for(const profile of legacy)await creditProfilesRequest('POST',profile,{importOnly:true});
+   localStorage.removeItem(creditProfilesKey);
+  }
+  creditProfiles=(await creditProfilesRequest()).profiles;
+ }catch(error){creditProfilesError=error.message;}
+ finally{creditProfilesLoading=false;if(tab==='settings')render();else {const select=document.querySelector('#select-credit-profile');if(select)select.innerHTML='<option value="">Choose a profile…</option>'+creditProfiles.map(p=>`<option value="${esc(p.id)}" ${p.id===activeCreditProfileId?'selected':''}>${esc(p.name)}</option>`).join('');}}
+}
+async function storeCreditProfile(profile){
+ const {profile:saved}=await creditProfilesRequest('POST',profile);
+ creditProfiles=creditProfiles.filter(p=>p.id!==saved.id).concat(saved);render();
 }
 function applyCreditProfile(profileId){
   const profile=creditProfiles.find(p=>p.id===profileId);if(!profile)return;
@@ -252,7 +261,8 @@ function sharedDetails() {
   return `<section class="panel" id="shared-details" tabindex="-1" aria-labelledby="shared-details-heading"><details class="shared-disclosure"><summary><span><span class="eyebrow">THE PEOPLE BEHIND THE MUSIC</span><h2 id="shared-details-heading">Shared credits</h2><span class="muted">Composer &amp; publisher details · applies to all cues</span></span><span class="disclosure-action" aria-hidden="true">Edit credits ↗</span></summary><div class="shared-body"><label>Use saved credit profile<select id="select-credit-profile"><option value="">Choose a profile…</option>${creditProfiles.map(p=>`<option value="${esc(p.id)}" ${p.id===activeCreditProfileId?"selected":""}>${esc(p.name)}</option>`).join("")}</select></label><button class="text" data-tab="settings">Manage credit profiles →</button><p class="muted">Fill this in once here. New cues use these details automatically. You can customize individual cues in Timings &amp; usage; existing cue overrides stay separate.</p>${provenanceField(state.sharedCueDetails.category)}${cueCreditEditor(state.sharedCueDetails, true)}<p id="shared-credit-status" class="muted" role="status">${esc(creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.")}</p></div></details></section>`;
 }
 function settingsPage() {
- return `<section class="settings-page"><div class="heading"><div><div class="eyebrow">REUSABLE CREDITS</div><h1>Credit profiles</h1><p>Create and save contributor details, then choose a profile for your cue sheet.</p></div><button class="primary" id="new-credit-profile">＋ New profile</button></div><p class="muted">Saved on this device${account.user?' for your account':''}. Applying a profile copies its credits into your workspace; individual cue overrides stay unchanged.</p><div class="credit-profile-list">${creditProfiles.length?creditProfiles.map(p=>`<article class="panel"><h2>${esc(p.name)}</h2><p class="muted">${p.credits.map(c=>esc(c.role==='Composer'?[c.first,c.last].filter(Boolean).join(' '):c.name)).join(' · ')}</p><div class="button-row"><button class="primary" data-credit-profile="${esc(p.id)}">Use in workspace</button><button data-edit-credit-profile="${esc(p.id)}">Edit</button><button data-delete-credit-profile="${esc(p.id)}">Delete</button></div></article>`).join(''):'<div class="empty"><h2>No credit profiles yet</h2><p>Create your first profile to reuse composer and publisher details.</p></div>'}</div></section>`;
+ if(!account.user)return `<section class="settings-page"><h1>Credit profiles</h1><p>Sign in to create and reuse credit profiles across your projects and devices.</p><div class="button-row">${cloudWorkspace.header()}</div></section>`;
+ return `<section class="settings-page"><div class="heading"><div><div class="eyebrow">REUSABLE CREDITS</div><h1>Credit profiles</h1><p>Create and save contributor details, then choose a profile for your cue sheet.</p></div><button class="primary" id="new-credit-profile" ${creditProfilesLoading?"disabled":""}>＋ New profile</button></div><p class="muted">Saved to your account and available across devices. Applying a profile copies its credits into your workspace; individual cue overrides stay unchanged.</p><div role="status">${creditProfilesLoading?"Loading your profiles…":""}${creditProfilesError?`${esc(creditProfilesError)} <button id="retry-credit-profiles">Retry</button>`:""}</div><div class="credit-profile-list">${creditProfiles.length?creditProfiles.map(p=>`<article class="panel"><h2>${esc(p.name)}</h2><p class="muted">${p.credits.map(c=>esc(c.role==='Composer'?[c.first,c.last].filter(Boolean).join(' '):c.name)).join(' · ')}</p><div class="button-row"><button class="primary" data-credit-profile="${esc(p.id)}">Use in workspace</button><button data-edit-credit-profile="${esc(p.id)}">Edit</button><button data-delete-credit-profile="${esc(p.id)}">Delete</button></div></article>`).join(''):'<div class="empty"><h2>No credit profiles yet</h2><p>Create your first profile to reuse composer and publisher details.</p></div>'}</div></section>`;
 }
 function provenanceField(value) {
   return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
@@ -355,11 +365,12 @@ function bind() {
     titleInput.onkeydown=event=>{if(event.key==="Enter"){event.preventDefault();titleInput.blur();}};
   }
   document.querySelectorAll('[data-credit-profile]').forEach(button=>button.onclick=()=>applyCreditProfile(button.dataset.creditProfile));
+  if($('#retry-credit-profiles'))$('#retry-credit-profiles').onclick=()=>loadAccountCreditProfiles();
   const profileSelect=document.querySelector('#select-credit-profile');
   if(profileSelect)profileSelect.onchange=()=>applyCreditProfile(profileSelect.value);
   if($('#new-credit-profile'))$('#new-credit-profile').onclick=()=>editCreditProfile(null,{esc,onSave:storeCreditProfile});
   document.querySelectorAll('[data-edit-credit-profile]').forEach(button=>button.onclick=()=>editCreditProfile(creditProfiles.find(p=>p.id===button.dataset.editCreditProfile),{esc,onSave:storeCreditProfile}));
-  document.querySelectorAll('[data-delete-credit-profile]').forEach(button=>button.onclick=()=>{if(!confirm('Delete this saved credit profile? Credits already applied to cue sheets are kept.'))return;const next=creditProfiles.filter(p=>p.id!==button.dataset.deleteCreditProfile);try{localStorage.setItem(creditProfilesKey,JSON.stringify(next));creditProfiles=next;render();}catch{alert('Could not delete the profile. Please retry.');}});
+  document.querySelectorAll('[data-delete-credit-profile]').forEach(button=>button.onclick=async()=>{if(!confirm('Delete this saved credit profile? Credits already applied to cue sheets are kept.'))return;const profile=creditProfiles.find(p=>p.id===button.dataset.deleteCreditProfile);button.disabled=true;try{await creditProfilesRequest('DELETE',{id:profile.id,revision:profile.revision});creditProfiles=creditProfiles.filter(p=>p.id!==profile.id);render();}catch(error){creditProfilesError=error.message;render();}});
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -803,6 +814,7 @@ function routePage(){
  if(steps.some(([key])=>key===page)){workspaceTab=page;try{sessionStorage.setItem(storageKey+':step',page);}catch{}}
  render();
  if(page==='projects')cloudWorkspace.loadProjects();
+ if(page==='settings')loadAccountCreditProfiles();
  window.scrollTo({top:0});
 }
 window.addEventListener('hashchange',routePage);
@@ -810,3 +822,5 @@ window.addEventListener('popstate',routePage);
 routePage();
 cloudWorkspace.restore();
 cloudWorkspace.onboard();
+
+if(tab!=="settings")loadAccountCreditProfiles();
