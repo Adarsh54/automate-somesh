@@ -135,3 +135,48 @@ environment and separate SFO credential. The script transfers 18 MB total,
 uses a 30-second per-upload deadline, deletes test objects, and writes
 `/tmp/cuestamp-region-comparison.json`. Browser/module paths use the same
 Playwright environment variables as the other diagnostics.
+
+## Lossless FLAC benchmark on the actual 190 MB WAV
+
+The selected source was 190,115,616 bytes, stereo 24-bit integer PCM at
+48 kHz, with 31,644,608 frames (659.263 seconds). The original was untouched;
+all output stayed local, with no additional media uploads.
+
+| Encoder | Compression time | FLAC size |
+| --- | ---: | ---: |
+| Native FFmpeg, level 0 | 0.771 s | 42,390,882 bytes |
+| Native FFmpeg, level 5 | 0.868 s | 39,725,318 bytes |
+| Native FFmpeg, level 8 | 1.115 s | 39,695,778 bytes |
+| Browser WASM libflacjs 5.6.0, level 5, verification enabled | 1.544 s including worker startup | 39,870,996 bytes |
+
+Browser compression reduced transferred size by approximately 79%. It ran
+in a Web Worker with chunked integer PCM parsing; the main-thread 10 ms
+heartbeat fired 154 times during processing. Native and browser FLAC outputs
+were independently decoded with FFmpeg to 24-bit PCM. Both the full decoded
+byte count and SHA-256 matched the source audio exactly. No sample-rate,
+channel-count, or bit-depth conversion was applied.
+
+At an assumed sustained 1 MB/s, the original would take about 190 seconds;
+browser compression plus FLAC upload would take about 41 seconds. This is
+an estimate, not a new measured network transfer. Results depend on the
+recording; do not extrapolate this compression ratio to all audio.
+
+This verifies exact audio samples, not preservation of every WAV metadata
+chunk or the original WAV container bytes. The benchmark rejects float WAVs
+and unsupported bit depths rather than silently quantizing them.
+
+The automatic app upload pipeline is unchanged. These scripts are local
+prototypes for assessing a future lossless-upload option:
+
+```sh
+node scripts/benchmark-flac.mjs input.wav /tmp/flac-benchmark
+npm install --prefix /tmp/flac-runtime libflacjs@5.6.0 --no-audit --no-fund
+FLAC_BENCH_RUNTIME=/tmp/flac-runtime/node_modules/libflacjs \
+PLAYWRIGHT_MODULE=/path/to/playwright \
+PLAYWRIGHT_EXECUTABLE=/path/to/chromium \
+node scripts/benchmark-browser-flac.mjs input.wav /tmp/flac-benchmark
+```
+
+The browser script serves only the benchmark runtime on an ephemeral
+loopback port; it never sends source audio to an external service. Its
+output should be independently decoded and compared before adoption.
