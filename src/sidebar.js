@@ -10,6 +10,7 @@ const paths = {
   cues: '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
   production: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7"/>',
   review: '<path d="M9 4H5v17h14V4h-4M9 3h6v4H9zM8 14l3 3 5-6"/>',
+  settings: '<path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .1 1.8 1.8 0 0 0-.3 1v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3.3-1l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-1-3.3H3a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 1-3.3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3.3-1V3a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3.3 1l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 1 3.3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-1 1.4Z"/>'
 };
 export const sidebarIcon = key => `<svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${paths[key]}</svg>`;
 export const sidebarToggle = `<button id="sidebar-toggle" type="button" aria-controls="sidebar-nav"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path class="desktop-arrow" d="m14 7-5 5 5 5"/><path class="mobile-arrow" d="m7 14 5-5 5 5"/></svg></button>`;
