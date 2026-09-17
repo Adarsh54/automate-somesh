@@ -116,3 +116,49 @@ test('API exposes open/event publicly without auth, decodes Vercel geo headers, 
   assert.equal(session.linkName,'Test link');
  }finally{await db.close();}
 });
+test('accountSummary ranks a user\'s reels by opens, is scoped to the owner, and excludes unpublished drafts',async()=>{
+ const {db,query,reels,stats,projectId,token}=await setup();
+ try{
+  await stats.recordOpen(token,{});
+  await stats.recordOpen(token,{});
+  const asset2=await createMediaRepository(query).reserve('alice',{filename:'other.wav',size:100});
+  await createMediaRepository(query).complete('alice',asset2.id,{pathname:asset2.pathname,size:100,contentType:'audio/wav'});
+  const projects=createProjectRepository(query);
+  const secondId=crypto.randomUUID();
+  await projects.save('alice',{id:secondId,revision:0,data:{type:'reel',title:'Second reel',status:'draft',audioIds:[asset2.id]}});
+  await query`INSERT INTO reel_audio(asset_id,pathname,duration,peaks) VALUES(${asset2.id},'reels/test/second.mp3',10,'[0,1]'::jsonb)`;
+  await reels.publish('alice',{id:secondId,revision:1});
+  const secondLink=await reels.createLink('alice',{id:secondId,name:'Second link'});
+  await stats.recordOpen(secondLink.token,{});
+  const unpublishedId=crypto.randomUUID();
+  await projects.save('alice',{id:unpublishedId,revision:0,data:{type:'reel',title:'Unpublished',status:'draft',audioIds:[]}});
+
+  const aliceSummary=await stats.accountSummary('alice');
+  assert.equal(aliceSummary.totalReels,2);
+  assert.equal(aliceSummary.totalOpens,3);
+  assert.deepEqual(aliceSummary.reels.map(r=>r.title),['Demo','Second reel']);
+  assert.equal(aliceSummary.reels[0].opens,2);
+  assert.equal(aliceSummary.reels[1].opens,1);
+  assert.ok(aliceSummary.reels[0].lastOpenedAt);
+  assert.ok(!aliceSummary.reels.some(r=>r.title==='Unpublished'));
+  assert.ok(Array.isArray(aliceSummary.daily) && aliceSummary.daily.reduce((sum,d)=>sum+d.opens,0)===3);
+
+  const bobSummary=await stats.accountSummary('bob');
+  assert.equal(bobSummary.totalReels,0);
+  assert.equal(bobSummary.totalOpens,0);
+  assert.deepEqual(bobSummary.reels,[]);
+ }finally{await db.close();}
+});
+test('API scopes the no-id analytics action to an account-wide summary for the signed-in user',async()=>{
+ const {db,stats,token}=await setup();
+ try{
+  await stats.recordOpen(token,{});
+  const owner=createReelHandler({analytics:()=>stats,repository:()=>({}),auth:async()=>({user:{id:'alice'}})});
+  const res=response();
+  await owner({method:'GET',url:'/api/reels?action=analytics',headers:{}},res);
+  assert.equal(res.code,200);
+  assert.equal(res.body.analytics.totalReels,1);
+  assert.equal(res.body.analytics.totalOpens,1);
+  assert.equal(res.body.analytics.reels[0].title,'Demo');
+ }finally{await db.close();}
+});
