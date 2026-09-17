@@ -1,3 +1,4 @@
+import {prepareReelTrack} from './reel-preparation.js';
 import {audioUploadButton} from './audio-upload-button.js';
 import {libraryRequest} from './audio-library.js';
 import {ReelPlayer} from './reel-player.js';
@@ -55,7 +56,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange}){
    const tracks=[];
    for(const [i,id] of data.audioIds.entries()){
     progress=`Preparing track ${i+1} of ${data.audioIds.length}…`;onChange();
-    tracks.push(account.user?{...(await post('prepare',{id})).track,title:titleFor(id)}:await guestTrack(id));
+    tracks.push(account.user?{...await prepareReelTrack(post,id),title:titleFor(id)}:await guestTrack(id));
    }
    preview={title:data.title,tracks};
    if(publish){publicationEpoch++;progress='Publishing reel…';onChange();publication=(await post('publish',{...active,allowDownloads:downloads})).publication;publicationLoaded=active.id;notice='Your reel is published. Anyone with the link can listen.';}

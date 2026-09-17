@@ -28,7 +28,7 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,p
    if(action==='publish')return reply(res,200,{publication:await repo.publish(session.user.id,body)});
    if(action==='revoke'){await repo.revoke(session.user.id,body.id);return reply(res,200,{ok:true});}
    return reply(res,400,{error:'INVALID_ACTION'});
-  }catch(e){return apiError(res,e);}
+  }catch(e){if(e.code==='REEL_PREPARING')return reply(res,202,{status:'processing',retryAfter:2});return apiError(res,e);}
  };
 }
 export default createReelHandler();

@@ -28,7 +28,7 @@ export function createReelRepository(query){
    if(cached[0]?.pathname)return cached[0];
    const lease=randomUUID();
    const claimed=await query`INSERT INTO reel_audio(asset_id,lease,lease_until) VALUES(${id},${lease},now()+interval '5 minutes') ON CONFLICT(asset_id) DO UPDATE SET lease=EXCLUDED.lease,lease_until=EXCLUDED.lease_until WHERE reel_audio.pathname IS NULL AND (reel_audio.lease_until IS NULL OR reel_audio.lease_until<now()) RETURNING asset_id`;
-   if(!claimed.length)throw fail('This track is being prepared. Try again in a few minutes.',409);
+   if(!claimed.length)throw Object.assign(fail('This track is being prepared.',409),{code:'REEL_PREPARING'});
    try{
     const result=await processAudio(asset);
     const rows=await query`UPDATE reel_audio SET pathname=${result.pathname},duration=${result.duration},peaks=${JSON.stringify(result.peaks)}::jsonb,lease=NULL,lease_until=NULL WHERE asset_id=${id} AND lease=${lease} RETURNING *`;

@@ -28,7 +28,9 @@ test('publishing snapshots owned prepared audio; revisions, leases, permissions 
   await assert.rejects(repo.prepare('alice',asset.id,async()=>{throw Error('decode failed');}),/decode failed/);
   let finish;const pending=repo.prepare('alice',asset.id,()=>new Promise(resolve=>{finish=resolve;}));
   while(!finish)await new Promise(resolve=>setTimeout(resolve,5));
-  await assert.rejects(repo.prepare('alice',asset.id,()=>assert.fail()),{status:409});
+  await assert.rejects(repo.prepare('alice',asset.id,()=>assert.fail()),{status:409,code:'REEL_PREPARING'});
+  const waitingHandler=createReelHandler({repository:()=>repo,auth:async()=>({user:{id:'alice'}}),prepare:()=>assert.fail('must not start a duplicate decoder')}),waiting=response();
+  await waitingHandler({method:'POST',url:'/api/reels?action=prepare',headers:{origin:'https://cuestamp.test','content-type':'application/json'},body:{id:asset.id}},waiting);assert.equal(waiting.code,202);assert.equal(waiting.body.status,'processing');
   finish({pathname:'reels/test/preview.mp3',duration:2,peaks:[0,.5,1]});await pending;
   await repo.prepare('alice',asset.id,()=>assert.fail('must reuse cache'));
   await assert.rejects(repo.publish('bob',input),{status:404});
