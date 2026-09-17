@@ -10,7 +10,8 @@
     "test": "node --test",
     "dev:api": "node --env-file-if-exists=.env.local --watch server/dev.js",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
-    "build:wasm": "node scripts/build-wasm.mjs"
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build:waveform": "node scripts/build-waveform-wasm.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -23,6 +24,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "jszip": "3.10.1",
+    "libflacjs": "5.6.0",
     "mediabunny": "^1.56.3",
     "zod": "^4.6.5"
   },

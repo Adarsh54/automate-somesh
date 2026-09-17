@@ -1,0 +1,16 @@
+(module
+ (memory (export "memory") 2 64)
+ (func (export "waveform") (param $data i32) (param $count i32) (param $offset i32) (param $total i32) (param $peaks i32) (param $bins i32)
+  (local $i i32) (local $bin i32) (local $addr i32) (local $value f32)
+  (block $done (loop $samples
+   (br_if $done (i32.ge_u (local.get $i) (local.get $count)))
+   (local.set $value (f32.abs (f32.load (i32.add (local.get $data) (i32.mul (local.get $i) (i32.const 4))))))
+   (local.set $bin (i32.trunc_f64_u (f64.div (f64.mul (f64.convert_i32_u (i32.add (local.get $offset) (local.get $i))) (f64.convert_i32_u (local.get $bins))) (f64.convert_i32_u (local.get $total)))))
+   (local.set $addr (i32.add (local.get $peaks) (i32.mul (local.get $bin) (i32.const 4))))
+   (if (i32.and (f32.gt (local.get $value) (f32.load (local.get $addr))) (f32.le (local.get $value) (f32.const 1e10)))
+    (then (f32.store (local.get $addr) (local.get $value))))
+   (local.set $i (i32.add (local.get $i) (i32.const 1)))
+   (br $samples)
+  ))
+ )
+)

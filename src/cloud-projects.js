@@ -17,7 +17,7 @@ export async function sessionInfo() {
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete,beforeNewProject,chooseType,onNewReel,onOpenReel,isProjectBusy=()=>false,saveAudio}) {
   let projectType="all",projectSort="created-desc";
-  let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="";
+  let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="",autosaveTimer=null;
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
   const update=()=>{document.querySelectorAll("[data-new-project]").forEach(button=>button.disabled=busy || isProjectBusy());const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
@@ -40,6 +40,11 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   const report=text=>{status=text;update();};
   const media=workflow?createCloudMedia({state,workflow,request,saveAudio,persist:()=>localStorage.setItem(storageKey,JSON.stringify(state))}):null;
   async function run(fn) {if(busy)return;const fromProjects=Boolean(document.querySelector("#projects-page"));if(fromProjects)projectActionError="";busy=true;update();try{await fn();}catch(e){if(fromProjects)projectActionError=e.message;else status=e.message;}finally{busy=false;update();}}
+  const scheduleAutosave=()=>{
+    if(autosaveTimer)clearTimeout(autosaveTimer);
+    if(!account.user)return;
+    autosaveTimer=setTimeout(()=>{autosaveTimer=null;if(dirty && !busy && state.production.title.trim())run(()=>save());},2500);
+  };
   async function save(copy=false,complete=false) {
     if (!state.production.title.trim()) {
       location.hash="#/workspace/library";
@@ -119,7 +124,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     on("#dismiss-project-error",()=>{projectActionError="";update();});
     document.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {saveBeforeLeaving:async()=>{if(busy || workflow?.busy)throw new Error("Wait for the current operation to finish, then try again.");busy=true;update();try{await save();if(dirty)throw new Error("There are newer edits. Save again before leaving.");}finally{busy=false;update();}},hasUnsavedChanges:()=>dirty,onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,createButton,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;localStorage.setItem(dirtyKey,"true");status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {saveBeforeLeaving:async()=>{if(busy || workflow?.busy)throw new Error("Wait for the current operation to finish, then try again.");busy=true;update();try{await save();if(dirty)throw new Error("There are newer edits. Save again before leaving.");}finally{busy=false;update();}},hasUnsavedChanges:()=>dirty,onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,createButton,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;localStorage.setItem(dirtyKey,"true");status=account.user?"Unsaved changes · saving automatically…":"Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;scheduleAutosave();}};
 }
 
 document.addEventListener('click',event=>{if(!event.target.closest('.profile-menu'))document.querySelector('.profile-menu[open]')?.removeAttribute('open');});

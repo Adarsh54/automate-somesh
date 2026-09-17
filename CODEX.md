@@ -175,3 +175,24 @@ Checks: `npm test`, `npm run build`, `scripts/browser-reel-check.cjs`, and `scri
 Projects exposes the existing immutable `projects.created_at` timestamp and `updated_at`, displayed in the viewer's local date/time. Type filters (All types, Cues, Reels) combine with creation/update ordering in either direction. The API returns the owner's collection, without the old 100-item truncation. Selecting a saved reel opens Edit Reel; Your reels lists all account reels with per-reel Edit and Stop sharing actions, plus Create reel. All published reels offer MP3 downloads, including older publications whose stored permission was disabled. There is no download-permission checkbox.
 
 Reel routes are distinct: `#/reels/new` starts a fresh creation form, and `#/reels/PROJECT_ID/edit` opens an existing reel. First account save replaces the creation URL with the saved reel's edit URL. Reloading an edit URL retains the selected reel; navigation between reels or back to New Reel uses the same unsaved-change guard as leaving a workspace. The New Reel sidebar item is selected only on the creation route.
+
+### Local reel waveform previews
+
+Reel previews can use local audio while the original uploads. Standard PCM WAV
+(8/16/24/32-bit integer or 32-bit float) is scanned in small chunks in a Web Worker;
+`wasm/waveform.wat` accumulates waveform peaks without decoding the whole file into
+memory. This also supports WAV files above the cue analysis 100 MB cutoff. Other
+local formats retain browser decoding up to 100 MB, with server processing after
+upload when local preview isn't supported. Publishing still prepares the server MP3
+and waveform from the original; local previews do not replace the uploaded audio.
+
+The compiled `src/waveform.wasm` is committed. After changing its WAT source, run
+`npm run build:waveform` (uses pinned WABT via npx), then `npm test` and `npm run build`.
+
+### Lossless audio uploads
+
+Signed-in audio-library uploads automatically compress eligible integer WAVs
+to FLAC in a browser WASM worker before uploading. Originals stay local;
+unsupported or unhelpful compression falls back to the original. No extra
+service configuration is required. See [upload performance](docs/upload-performance.md)
+for supported formats, retry storage, benchmarks and browser regression checks.

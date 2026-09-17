@@ -1,3 +1,5 @@
+import {prepareLosslessUpload} from './lossless-upload.js';
+import {audioUploadStatus,updateAudioUploadStatus} from './audio-upload-status.js';
 import {uploadAudioFile,useMultipartUpload} from './audio-upload.js';
 import {audioUploadButton} from "./audio-upload-button.js";
 import {upload} from '@vercel/blob/client';
@@ -9,11 +11,13 @@ export async function libraryRequest(url,options) {
  if(!response.ok)throw new Error(response.status===401?'Sign in again to access your saved files.':response.status===409?'This project changed elsewhere. Reopen it before saving again.':'Could not save or load your data. Please try again.');
  return response.json();
 }
-function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',1);req.onupgradeneeded=()=>req.result.createObjectStore('files',{keyPath:'localId'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
-async function localOperation(mode,fn){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('files',mode),request=fn(tx.objectStore('files'));tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
-export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libraryRequest,uploadFile=upload}) {
+function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',3);req.onupgradeneeded=()=>{for(const name of ['files','uploadState','uploadFiles'])if(!req.result.objectStoreNames.contains(name))req.result.createObjectStore(name,{keyPath:'localId'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function localOperation(mode,fn,storeName='files'){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(storeName,mode),request=fn(tx.objectStore(storeName));tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
+async function persistUploadState({localId,reservation,uploaded,assetId}){await localOperation('readwrite',store=>store.put({localId,reservation,uploaded,assetId}),'uploadState');}
+export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libraryRequest,uploadFile=upload,prepareUpload=prepareLosslessUpload}) {
  const post=(url,data)=>request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
- const scope=account.user?.id || 'guest',known=new WeakMap();
+ const scope=account.user?.id || 'guest',known=new WeakMap(),stored=new WeakSet();
+ let notice='',local=[],remote=[],loaded=false,loading=false,error='',progress='',uploading=false,loadPromise=null,uploadController=null,uploadDetail=null;
  const preferencesKey=`cuestamp-audio-library:${scope}:preferences`;
  let preferences={};try{preferences=JSON.parse(localStorage.getItem(preferencesKey)) || {};}catch{}
  let selected=null,previewUrl='',previewLoading=false,previewVersion=0,previewError='';
@@ -24,33 +28,55 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  }
  const visibleEntries=()=>entries().filter(a=>!preferences[a.id]?.removed);
 
- let notice='',local=[],remote=[],loaded=false,loading=false,error='',progress='',uploading=false,loadPromise=null,uploadController=null;
- function showProgress(text){progress=text;const labels=document.querySelectorAll('[data-audio-upload-progress]');if(labels.length)labels.forEach(el=>el.textContent=text);else onChange();}
+ function showProgress(text,percentage=null,filename=''){progress=text;uploadDetail={text,percentage,filename};if(!updateAudioUploadStatus(uploadDetail))onChange();}
+ function progressView(cancelAttribute){return progress?audioUploadStatus(uploadDetail,Boolean(uploadController),cancelAttribute,esc):'';}
  const entries=()=>{const items=new Map(remote.map(a=>[a.id,{id:a.id,filename:a.filename,size:Number(a.size),saved:true}]));for(const a of local)items.set(a.assetId || a.localId,{id:a.assetId || a.localId,filename:a.file.name,size:a.file.size,saved:Boolean(a.assetId)});return [...items.values()];};
- async function load(){if(loadPromise)return loadPromise;loading=true;error='';notice='';onChange();loadPromise=(async()=>{try{local=(await localOperation('readonly',store=>store.getAll())).filter(a=>a.scope===scope);if(account.user)remote=(await request('/api/media?action=list')).assets;loaded=true;}catch(e){error=e.message || 'Could not load your audio library.';}finally{loading=false;loadPromise=null;onChange();}})();return loadPromise;}
+ async function load(){if(loadPromise)return loadPromise;loading=true;error='';notice='';onChange();loadPromise=(async()=>{try{const [files,states]=await Promise.all([localOperation('readonly',store=>store.getAll()),localOperation('readonly',store=>store.getAll(),'uploadState')]);const stateById=new Map(states.map(state=>[state.localId,state]));local=files.filter(a=>a.scope===scope).map(a=>({...a,...stateById.get(a.localId)}));if(account.user)remote=(await request('/api/media?action=list')).assets;loaded=true;}catch(e){error=e.message || 'Could not load your audio library.';}finally{loading=false;loadPromise=null;onChange();}})();return loadPromise;}
 
- async function add(file){try{return await addFile(file);}catch(e){error=e.message;throw e;}finally{progress='';onChange();}}
- async function addFile(file){
+ async function add(file,options){try{return await addFile(file,options);}catch(e){error=e.message;throw e;}finally{progress='';onChange();}}
+ async function addFile(file,{onStaged=()=>{}}={}){
   if(!mediaType(file.name)?.startsWith('audio/') || !file.size || file.size>MAX_MEDIA_BYTES)throw new Error('Choose an audio file up to 2 GB (WAV, MP3, M4A, AAC, AIFF, FLAC, OGG or Opus).');
+  showProgress('Preparing upload…',null,file.name);
   if(!loaded)await load();
   let item=known.get(file);
-  if(!item){item={localId:crypto.randomUUID(),scope,file};await localOperation('readwrite',store=>store.put(item));local.push(item);known.set(file,item);onChange();}
+  if(!item){item={localId:crypto.randomUUID(),scope,file};local.push(item);known.set(file,item);await onStaged({id:item.localId,filename:file.name});onChange();}
+  else await onStaged({id:item.assetId || item.localId,filename:file.name});
+  if(!stored.has(file)&&!item.assetId){await localOperation('readwrite',store=>store.put({localId:item.localId,scope:item.scope,file}));stored.add(file);}
   if(account.user && !item.assetId){
-   showProgress(`Starting upload: ${file.name}…`);
-   item.reservation ??= (await post('/api/media?action=reserve',{filename:file.name,size:file.size})).asset;
-   await localOperation('readwrite',store=>store.put(item));
+   let transfer=file;
+   if(!item.uploaded){
+    const cached=await localOperation('readonly',store=>store.get(item.localId),'uploadFiles');
+    if(cached)transfer=cached.file;
+    else if(!item.reservation){
+     const controller=new AbortController();uploadController=controller;onChange();
+     try{
+      transfer=await prepareUpload(file,{signal:controller.signal,onProgress:percentage=>showProgress('Compressing losslessly…',percentage,file.name)});
+      controller.signal.throwIfAborted();
+      if(transfer!==file){
+       try{await localOperation('readwrite',store=>store.put({localId:item.localId,file:transfer}),'uploadFiles');}
+       catch{transfer=file;} // No reservation yet: safely use the original if local storage is full.
+      }
+      controller.signal.throwIfAborted();
+     }finally{uploadController=null;onChange();}
+    }
+    if(item.reservation?.size!=null&&transfer.size!==Number(item.reservation.size))throw Error('Prepared audio is unavailable. Please upload the original file again.');
+   }
+   showProgress('Starting upload…',null,file.name);
+   item.reservation ??= (await post('/api/media?action=reserve',{filename:transfer.name,size:transfer.size})).asset;
+   await persistUploadState(item);
    const asset=item.reservation;
-   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,file,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(file)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const next=`Uploading ${file.name} — ${Math.floor(percentage)}%`;if(progress!==next){showProgress(next);}}});item.uploaded=true;await localOperation('readwrite',store=>store.put(item));}
-   showProgress(`Finishing upload: ${file.name}…`);
+   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,transfer,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(transfer)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const value=Math.floor(percentage);if(uploadDetail?.percentage!==value){showProgress('Uploading',value,file.name);}}});item.uploaded=true;await persistUploadState(item);}
+   showProgress('Finishing upload…',100,file.name);
    await post('/api/media?action=complete',{id:asset.id});item.assetId=asset.id;
-   await localOperation('readwrite',store=>store.put(item));
+   await persistUploadState(item);
+   await localOperation('readwrite',store=>store.delete(item.localId),'uploadFiles').catch(()=>{});
   }
   const id=item.assetId || item.localId;
   if(preferences[id]?.removed)remember(id,{removed:false});
   progress='';onChange();return {id,assetId:item.assetId,filename:file.name};
  }
  async function fileFor(id){if(!loaded)await load();const item=local.find(a=>(a.assetId || a.localId)===id);if(item){known.set(item.file,item);return item.file;}const info=await request('/api/media?id='+encodeURIComponent(id));const res=await fetch(info.url,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(15*60*1000)});if(!res.ok)throw new Error('Could not download this audio file. Try again.');const blob=await res.blob();if(blob.size!==Number(info.size))throw new Error('Audio download was incomplete. Try again.');const file=new File([blob],info.filename,{type:info.contentType});known.set(file,{assetId:id,file,scope,localId:crypto.randomUUID()});return file;}
- async function addMany(files){if(uploading)throw new Error('Wait for your audio upload to finish.');uploading=true;error='';notice='';onChange();const result=[];try{for(const file of files)result.push(await add(file));notice=result.length===1?`${result[0].filename} is ready.`:`${result.length} audio files are ready.`;return result;}catch(e){error=e.message;throw e;}finally{uploading=false;progress='';onChange();}}
+ async function addMany(files,options){if(uploading)throw new Error('Wait for your audio upload to finish.');uploading=true;error='';notice='';onChange();const result=[];try{for(const file of files)result.push(await add(file,options));notice=result.length===1?`${result[0].filename} is ready.`:`${result.length} audio files are ready.`;return result;}catch(e){error=e.message;throw e;}finally{uploading=false;progress='';onChange();}}
  async function selectPreview(id){
   if(selected===id && previewUrl)return;
   const version=++previewVersion;
@@ -89,7 +115,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
   const items=visibleEntries(),active=items.find(a=>a.id===selected);
   const rows=items.map(a=>`<div class="track-row collection-row"><button class="track ${a.id===selected?'selected':''}" data-library-preview="${esc(a.id)}" draggable="true" aria-pressed="${a.id===selected}" title="Select to preview, or drag onto Add Cue Sheet"><span class="track-icon" aria-hidden="true">♪</span><span><strong>${esc(labelFor(a))}</strong><small>${esc(a.filename)} · ${a.size<1024*1024?`${Math.ceil(a.size/1024)} KB`:`${(a.size/1024/1024).toFixed(1)} MB`} · ${a.saved?'Saved to your account':'On this device'}</small></span></button><div class="track-actions"><button type="button" class="danger library-remove" data-library-remove="${esc(a.id)}" aria-label="Remove ${esc(labelFor(a))} from library" title="Remove from library"><span aria-hidden="true">−</span></button>${account.user&&!a.saved?`<button data-library-sync="${esc(a.id)}">Retry upload</button>`:''}</div></div>`).join('');
   const preview=active?`<section class="panel editor"><div class="section-title"><h2>Audio preview</h2><button type="button" class="danger library-remove" data-library-remove="${esc(active.id)}" aria-label="Remove ${esc(labelFor(active))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div><label for="library-source-label">Source label</label><input id="library-source-label" maxlength="300" value="${esc(labelFor(active))}"><p class="file-name">${esc(active.filename)}</p>${previewLoading?'<p role="status">Loading audio…</p>':previewUrl?`<audio id="track-preview" controls preload="metadata" aria-label="Preview ${esc(labelFor(active))}" src="${previewUrl}"></audio>`:''}<p id="preview-status" class="muted" role="status">${esc(previewError)}</p>${previewError?'<button data-library-preview-retry>Retry preview</button>':''}<button data-library-use="${esc(active.id)}">Add to cue sheet</button></section>`:'<div class="panel empty"><p>Select audio to preview it. Press Play on the timeline to listen.</p></div>';
-  return collectionPage({title:'Audio Library',description:'Keep your audio here for later. Select a file to preview it, or drag it onto Add Cue Sheet.',action:audioUploadButton({id:'library-upload',disabled:uploading,attributes:'data-library-upload'}),summary:`${items.length} audio file${items.length===1?'':'s'}`,body:`${!account.user?'<p class="muted">Audio is saved in this browser for your next visit. Clearing site data removes it.</p>':''}${error?`<div class="project-error" role="alert"><span>${esc(error)}</span><button data-library-retry>Try again</button></div>`:''}${notice?`<p class="notice" role="status">${esc(notice)}</p>`:''}${progress?`<p role="status" data-audio-upload-progress>${esc(progress)}</p>${uploadController?'<button data-cancel-audio-upload>Cancel upload</button>':''}`:''}${loading?'<p class="muted" role="status">Loading audio…</p>':''}${rows?`<div class="library-grid"><div class="track-list">${rows}</div>${preview}</div>`:'<div class="empty"><span>♫</span><h3>No audio files yet</h3><p>Upload multiple audio files to build your library.</p></div>'}<details class="disclosure"><summary>File support & storage</summary><p class="muted">WAV, MP3, M4A, AAC, AIFF, FLAC, OGG, and Opus. Files must be under 2 GB. Cue detection supports up to 60 minutes per file. Signed-in uploads are saved privately to your account; guest audio stays in this browser. Removing a library entry keeps audio already used in cue sheets and reels.</p></details>`});
+  return collectionPage({title:'Audio Library',description:'Keep your audio here for later. Select a file to preview it, or drag it onto Add Cue Sheet.',action:audioUploadButton({id:'library-upload',disabled:uploading,attributes:'data-library-upload'}),summary:`${items.length} audio file${items.length===1?'':'s'}`,body:`${!account.user?'<p class="muted">Audio is saved in this browser for your next visit. Clearing site data removes it.</p>':''}${error?`<div class="project-error" role="alert"><span>${esc(error)}</span><button data-library-retry>Try again</button></div>`:''}${notice?`<p class="notice" role="status">${esc(notice)}</p>`:''}${progressView('data-cancel-audio-upload')}${loading?'<p class="muted" role="status">Loading audio…</p>':''}${rows?`<div class="library-grid"><div class="track-list">${rows}</div>${preview}</div>`:'<div class="empty"><span>♫</span><h3>No audio files yet</h3><p>Upload multiple audio files to build your library.</p></div>'}<details class="disclosure"><summary>File support & storage</summary><p class="muted">WAV, MP3, M4A, AAC, AIFF, FLAC, OGG, and Opus. Files must be under 2 GB. Cue detection supports up to 60 minutes per file. Signed-in uploads are saved privately to your account; guest audio stays in this browser. Removing a library entry keeps audio already used in cue sheets and reels.</p></details>`});
  }
  function bind(){
   document.querySelector('[data-cancel-audio-upload]')?.addEventListener('click',cancelUpload);
@@ -136,5 +162,5 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  }
 
  function cancelUpload(){uploadController?.abort(new Error('Upload canceled. Your file is kept on this device so you can retry.'));}
- return {importLegacy,disposePreview,labelFor,cancelUpload,uploadStatus:()=>progress,canCancelUpload:()=>Boolean(uploadController),load,add,addMany,fileFor,entries,view,bind,pick,isBusy:()=>uploading};
+ return {importLegacy,disposePreview,labelFor,hasLocalFile:id=>local.some(a=>(a.assetId || a.localId)===id),progressView,cancelUpload,uploadStatus:()=>progress,canCancelUpload:()=>Boolean(uploadController),load,add,addMany,fileFor,entries,view,bind,pick,isBusy:()=>uploading};
 }
