@@ -1,6 +1,6 @@
 // Browser/Node-compatible signal processing. All samples are mono at ANALYSIS_RATE.
 export const ANALYSIS_RATE = 2000;
-export const MAX_DURATION = 20 * 60;
+export const MAX_DURATION = 60 * 60;
 // Default music-only segmentation floor: −100 dBFS on normalized PCM.
 // Audio below this level, including soft passages and fades, is treated as silence.
 export const SILENCE_THRESHOLD_DB = -100;
@@ -28,7 +28,15 @@ export function detectRegions(
   }
   if (start !== null && last - start >= minimum)
     regions.push({ start, end: last });
-  return regions;
+  return regions.filter(region => {
+    const first = Math.round(region.start * ANALYSIS_RATE);
+    const end = Math.round(region.end * ANALYSIS_RATE);
+    if (end - first >= 2 * ANALYSIS_RATE) return true;
+    let energy = 0;
+    for (let i = first; i < end; i++) energy += samples[i] ** 2;
+    // RMS dBFS over the candidate region; tolerate Float32 rounding at −30 dBFS.
+    return energy / (end - first) >= 10 ** (-30 / 10) * (1 - 1e-7);
+  });
 }
 
 export function fft(re, im, inverse = false) {

@@ -1,3 +1,4 @@
+import {MAX_DURATION} from "./analysis.js";
 import {collectionRow,collectionCreateButton} from './collection-page.js';
 import {projectDates} from './project-list.js';
 import {prepareReelTrack} from './reel-preparation.js';
@@ -43,7 +44,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
   const context=new AudioContext();
   try{
    const buffer=await context.decodeAudioData(await file.arrayBuffer());
-   if(buffer.duration>1200)throw Error('Reel tracks must be up to 20 minutes long.');
+   if(buffer.duration>MAX_DURATION)throw Error('Reel tracks must be up to 60 minutes long.');
    const channel=buffer.getChannelData(0),peaks=Array.from({length:360},(_,i)=>{let p=0;for(let j=Math.floor(i*channel.length/360);j<Math.floor((i+1)*channel.length/360);j++)p=Math.max(p,Math.abs(channel[j]));return p;});
    const max=Math.max(.001,...peaks),url=URL.createObjectURL(file);localUrls.push(url);
    return {id,title:titleFor(id),duration:buffer.duration,peaks:peaks.map(p=>p/max),url};

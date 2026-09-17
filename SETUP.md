@@ -114,7 +114,7 @@ Verified after migration: HTTPS, domain redirects, production health endpoint, G
 
 ## Hybrid browser/server audio processing
 
-Files <=100,000,000 bytes remain local. Larger files use `/api/analysis`, including in guest mode. `VITE_BROWSER_MAX_MB` can change the cutoff at build time. A movie/reference pair uses the server if either file is large, so its small counterpart also uploads. Audio-only projects route each track independently. Existing 20-minute/2 GiB file limits still apply.
+Files <=100,000,000 bytes remain local. Larger files use `/api/analysis`, including in guest mode. `VITE_BROWSER_MAX_MB` can change the cutoff at build time. A movie/reference pair uses the server if either file is large, so its small counterpart also uploads. Audio-only projects route each track independently. Existing 60-minute/2 GiB file limits still apply.
 
 For a new deployment environment:
 

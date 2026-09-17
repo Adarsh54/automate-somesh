@@ -18,7 +18,7 @@ const stateSchema=z.object({
   tracks:z.array(z.object({id:identifier,title:text,filename:text,offset:text}).passthrough()).max(500),
   cues:z.array(cue).max(2000),
   sharedCueDetails:z.object({category:z.enum(["original","sourced","unknown"]),credits:z.array(credit).max(100)}),
-  mode:z.enum(["movie","offset","manual"]),movieOffset:text,
+  mode:z.enum(["movie","offset","manual"]),movieOffset:text,scoreOffset:text.optional(),
   silenceGap:z.number().min(0).max(10),thresholdDb:z.number().min(-100).max(-10),matchThreshold:z.number().min(0).max(1),
   cueDetailsVersion:z.number().optional(),cueDetailsArchive:z.array(cue).max(2000).optional(),
   movieMetadata:z.json().optional(),movieOverrides:z.json().optional(),movieProfiles:z.json().optional(),

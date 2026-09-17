@@ -421,7 +421,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .profile-options #cloud-logout { width: 100%; text-align: left; }
 .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: none; }
 .sidebar-collapsed .profile-menu[open] .profile-options { position: fixed; left: 76px; bottom: 80px; width: 220px; z-index: 30; }
-.workflow-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 28px; overflow-x: auto; }
+.workflow-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 28px; margin-bottom: 24px; overflow-x: auto; }
 .workflow-tabs button { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .workflow-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
 .workflow-tabs button span { display: grid; place-items: center; width: 19px; height: 19px; background: var(--raised); border-radius: 50%; font-size: 10px; }
@@ -605,3 +605,39 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .reel-download-row button { flex-shrink: 0; }
 .reel-download-dialog { max-height: 85dvh; overflow-y: auto; }
 .reel-download-dialog [role="alert"] { color: var(--danger); }
+
+/* Local cue library controls and full-score drop target. */
+.track-row { display: flex; align-items: center; gap: 8px; }
+.track-row > .track { flex: 1; min-width: 0; width: auto; }
+.track-row > .track > span:last-child { min-width: 0; }
+.track-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-right: 8px; flex-shrink: 0; }
+.library-remove { font-size: 18px; line-height: 1; width: 28px; height: 28px; padding: 3px; min-height: 26px; border-radius: 6px; }
+.audio-drop-zone { border: 2px dashed var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.audio-drop-zone.drag { outline: 2px solid var(--accent); outline-offset: 2px; }
+.audio-drop-zone p { margin-bottom: 0; }
+
+.score-upload { gap: 8px; }
+.score-upload > span { font-size: 20px; line-height: 1; }
+
+.score-export-box { display: flex; justify-content: space-between; align-items: flex-start; gap: 28px; }
+.score-export-upload { flex: 1; min-width: 0; }
+.score-start { width: 156px; flex-shrink: 0; }
+.score-start input { font-variant-numeric: tabular-nums; font-family: monospace; font-size: 15px; letter-spacing: .5px; padding: 8px 10px; min-height: 36px; }
+.score-start input[aria-invalid="true"] { border-color: #ce4545; }
+.score-start-error { color: #ce4545; font-size: 12px; }
+.score-start-error:empty { display: none; }
+@media (max-width: 720px) { .score-export-box { flex-direction: column; gap: 18px; } .score-start { width: 156px; max-width: 100%; } }
+
+.file-offsets > [data-track-offset] { column-gap: 24px; row-gap: 6px; }
+.file-offsets .track-offset-label { grid-column: 2; grid-row: 1; }
+.file-offsets .uploaded-track { grid-column: 1; grid-row: 2; }
+.file-offsets input[data-field="offset"] { grid-column: 2; grid-row: 2; font-variant-numeric: tabular-nums; }
+.file-offsets .track-offset-hint { grid-column: 2; grid-row: 3; margin: 0; }
+@media (max-width: 720px) {
+  .file-offsets .uploaded-track { grid-column: 1; grid-row: 1; }
+  .file-offsets .track-offset-label { grid-column: 1; grid-row: 2; margin-top: 8px !important; }
+  .file-offsets input[data-field="offset"] { grid-column: 1; grid-row: 3; }
+  .file-offsets .track-offset-hint { grid-column: 1; grid-row: 4; }
+}
+
+.workflow-settings .detection-heading { margin-top: 32px; }
