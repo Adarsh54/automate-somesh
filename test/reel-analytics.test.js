@@ -41,7 +41,7 @@ test('summarizeSession counts a track still playing when the session ends withou
 
 async function setup(){
  const db=new PGlite();
- for(const f of ['001_users_projects.sql','002_media_assets.sql','006_reels.sql','007_reel_analytics.sql','008_reel_listen_events.sql','009_reel_share_links.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
+ for(const f of ['001_users_projects.sql','002_media_assets.sql','006_reels.sql','007_reel_analytics.sql','008_reel_listen_events.sql','009_reel_share_links.sql','010_folders.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
  await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
  const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
  const media=createMediaRepository(query),projects=createProjectRepository(query),reels=createReelRepository(query),stats=createReelAnalyticsRepository(query);

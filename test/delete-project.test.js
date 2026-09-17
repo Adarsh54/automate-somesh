@@ -8,7 +8,7 @@ import {createMediaRepository} from '../server/media.js';
 test('deleting a reel requires its owner and current revision, cascades sharing, and preserves library audio',async()=>{
  const db=new PGlite();
  try{
-  for(const file of ['001_users_projects.sql','002_media_assets.sql','006_reels.sql','007_audio_edits.sql','007_reel_analytics.sql','008_reel_listen_events.sql','009_reel_share_links.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['001_users_projects.sql','002_media_assets.sql','006_reels.sql','007_audio_edits.sql','007_reel_analytics.sql','008_reel_listen_events.sql','009_reel_share_links.sql','010_folders.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createProjectRepository(query),media=createMediaRepository(query);
@@ -33,7 +33,7 @@ test('deleting a reel requires its owner and current revision, cascades sharing,
 test('deleting a cue sheet requires its owner and current revision, and leaves other projects untouched',async()=>{
  const db=new PGlite();
  try{
-  for(const file of ['001_users_projects.sql','002_media_assets.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['001_users_projects.sql','002_media_assets.sql','010_folders.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createProjectRepository(query);

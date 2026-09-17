@@ -42,12 +42,22 @@ export function parseProject(input) {
 export function createProjectRepository(query) {
   return {
     async list(userId) {
-      return query`SELECT id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC`;
+      return query`SELECT id,title,revision,created_at,updated_at,folder_id AS "folderId",COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC`;
     },
     async get(userId,id) {
       if(!z.uuid().safeParse(id).success) throw Object.assign(new Error("NOT_FOUND"),{status:404});
-      const rows=await query`SELECT id,title,data,revision,created_at,updated_at FROM projects WHERE id=${id} AND user_id=${userId}`;
+      const rows=await query`SELECT id,title,data,revision,created_at,updated_at,folder_id AS "folderId" FROM projects WHERE id=${id} AND user_id=${userId}`;
       if(!rows[0]) throw Object.assign(new Error("NOT_FOUND"),{status:404});
+      return rows[0];
+    },
+    async moveProject(userId,input) {
+      const parsed=z.object({id:z.uuid(),folderId:z.uuid().nullable()}).safeParse(input);
+      if(!parsed.success)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+      const {id,folderId}=parsed.data;
+      const rows=await query`UPDATE projects SET folder_id=${folderId} WHERE id=${id} AND user_id=${userId}
+        AND (${folderId}::uuid IS NULL OR EXISTS(SELECT 1 FROM folders f WHERE f.id=${folderId} AND f.user_id=${userId}))
+        RETURNING id,folder_id AS "folderId"`;
+      if(!rows[0])throw Object.assign(new Error("NOT_FOUND"),{status:404});
       return rows[0];
     },
     async deleteProject(userId,input) {
@@ -76,3 +86,4 @@ export const getProject = (userId,id) => createProjectRepository(sql()).get(user
 export const saveProject = (userId,input) => createProjectRepository(sql()).save(userId,input);
 
 export const deleteProject = (userId,input) => createProjectRepository(sql()).deleteProject(userId,input);
+export const moveProject = (userId,input) => createProjectRepository(sql()).moveProject(userId,input);

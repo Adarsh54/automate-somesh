@@ -1,5 +1,5 @@
 import {openReelDownloads} from './reel-downloads.js';
-import {filterProjects,projectDates} from './project-list.js';
+import {filterProjects,projectDates,folderCounts} from './project-list.js';
 import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {openProfile} from "./user-profile.js";
 import {reviewProject} from "./domain/review.js";
@@ -17,8 +17,9 @@ export async function sessionInfo() {
   } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. You can still continue as a guest."};}
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete,beforeNewProject,chooseType,onNewReel,onOpenReel,isProjectBusy=()=>false,saveAudio}) {
-  let projectType="all",projectSort="created-desc";
+  let projectType="all",projectSort="created-desc",projectFolder="all",projectQuery="";
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="",deleteStatus="",autosaveTimer=null;
+  let folders=[],creatingFolder=false;
   const selectedProjects=new Set();
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
@@ -80,9 +81,43 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   async function loadProjects() {
     if(!account.user || loadingProjects)return;
     loadingProjects=true;projectsError="";update();
-    try {projects=(await request("/api/projects")).projects;for(const id of [...selectedProjects])if(!projects.some(p=>p.id===id))selectedProjects.delete(id);}
+    try {
+      const [projectsResult,foldersResult]=await Promise.all([request("/api/projects"),request("/api/projects?action=folders")]);
+      projects=projectsResult.projects || [];folders=foldersResult.folders || [];
+      for(const id of [...selectedProjects])if(!projects.some(p=>p.id===id))selectedProjects.delete(id);
+      if(projectFolder!=="all" && projectFolder!=="none" && !folders.some(f=>f.id===projectFolder))projectFolder="all";
+    }
     catch(error){projectsError=error.message;}
     finally {loadingProjects=false;update();}
+  }
+  async function createFolder(name) {
+    const {folder}=await request('/api/projects?action=folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    folders=[...folders,folder].sort((a,b)=>a.name.localeCompare(b.name));
+    creatingFolder=false;
+  }
+  async function removeFolder(id) {
+    const folder=folders.find(f=>f.id===id);
+    if(!folder)return;
+    await confirmDialog({
+      title:`Delete "${folder.name}"?`,
+      message:'This removes the folder. Its projects are kept and become unfiled.',
+      confirmLabel:'Delete folder',
+      onConfirm:async()=>{
+        await request('/api/projects?action=folders',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+        folders=folders.filter(f=>f.id!==id);
+        projects=projects.map(p=>p.folderId===id?{...p,folderId:null}:p);
+        if(projectFolder===id)projectFolder="all";
+      },
+    });
+  }
+  async function moveToFolder(ids,folderId) {
+    for(const id of ids){
+      try{
+        const {project}=await request('/api/projects?action=move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,folderId})});
+        projects=projects.map(p=>p.id===id?{...p,folderId:project.folderId}:p);
+      }catch(e){projectActionError=e.message;}
+    }
+    selectedProjects.clear();
   }
   async function removeProjects(ids) {
     const targets=ids.map(id=>projects.find(p=>p.id===id)).filter(Boolean);
@@ -111,13 +146,22 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   function projectsPage() {
     const options={title:'Projects',description:'Your cue sheets and reels, ready to create, edit, and share.',action:collectionCreateButton({label:'Create project',attributes:'data-new-project',disabled:busy || isProjectBusy()})};
     if(!account.user)return collectionPage({...options,body:`<div class="empty"><h3>Sign in to see your projects</h3><p>Saved projects are linked to your account.</p><div class="button-row">${authActions(account)}</div></div>`});
-    const visible=filterProjects(projects,projectType,projectSort);
-    const controls=`<div class="project-filters"><label>Type<select id="project-type-filter">${[["all","All types"],["cue","Cues"],["reel","Reels"]].map(([value,label])=>`<option value="${value}" ${projectType===value?"selected":""}>${label}</option>`).join("")}</select></label><label>Sort by<select id="project-date-sort">${[["created-desc","Created: newest first"],["created-asc","Created: oldest first"],["updated-desc","Updated: newest first"],["updated-asc","Updated: oldest first"]].map(([value,label])=>`<option value="${value}" ${projectSort===value?"selected":""}>${label}</option>`).join("")}</select></label></div>`;
+    const visible=filterProjects(projects,projectType,projectSort,{folderId:projectFolder,query:projectQuery});
+    const {counts:folderTotals,unfiled}=folderCounts(projects,folders);
+    const folderOptions=folders.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('');
+    const folderChips=`<div class="project-folders">
+      <button class="folder-chip ${projectFolder==='all'?'active':''}" data-select-folder="all" ${projectFolder==='all'?'aria-current="true"':''}>All (${projects.length})</button>
+      ${folders.map(f=>`<span class="folder-chip-wrap"><button class="folder-chip ${projectFolder===f.id?'active':''}" data-select-folder="${esc(f.id)}" ${projectFolder===f.id?'aria-current="true"':''}>${esc(f.name)} (${folderTotals.get(f.id)||0})</button><button class="folder-chip-delete" data-delete-folder="${esc(f.id)}" aria-label="Delete folder ${esc(f.name)}" title="Delete folder">×</button></span>`).join('')}
+      ${unfiled?`<button class="folder-chip ${projectFolder==='none'?'active':''}" data-select-folder="none" ${projectFolder==='none'?'aria-current="true"':''}>Unfiled (${unfiled})</button>`:''}
+      ${creatingFolder?`<form class="folder-create"><input id="new-folder-name" placeholder="Folder name" maxlength="120" required autofocus><button class="primary" type="submit">Create</button><button type="button" data-cancel-folder>Cancel</button></form>`:`<button class="folder-chip folder-chip-new" data-new-folder>+ Folder</button>`}
+    </div>`;
+    const controls=`<div class="project-filters"><label class="project-search-field">Search<input type="search" id="project-search" placeholder="Search by title" value="${esc(projectQuery)}"></label><label>Type<select id="project-type-filter">${[["all","All types"],["cue","Cues"],["reel","Reels"]].map(([value,label])=>`<option value="${value}" ${projectType===value?"selected":""}>${label}</option>`).join("")}</select></label><label>Sort by<select id="project-date-sort">${[["created-desc","Created: newest first"],["created-asc","Created: oldest first"],["updated-desc","Updated: newest first"],["updated-asc","Updated: oldest first"]].map(([value,label])=>`<option value="${value}" ${projectSort===value?"selected":""}>${label}</option>`).join("")}</select></label></div>`;
     const selectedCount=[...selectedProjects].filter(id=>visible.some(p=>p.id===id)).length;
     const allSelected=visible.length>0 && selectedCount===visible.length;
-    const bulkBar=visible.length?`<div class="collection-bulk-actions"><label class="checkbox-control"><input type="checkbox" id="select-all-projects" ${allSelected?"checked":""}>Select all</label>${selectedCount?`<button data-delete-selected-projects ${busy?"disabled":""}>Delete selected (${selectedCount})</button>`:""}</div>`:"";
-    const rows=visible.map(p=>collectionRow({title:`<label class="row-select"><input type="checkbox" data-select-project="${esc(p.id)}" aria-label="Select ${esc(p.title || 'Untitled production')}" ${selectedProjects.has(p.id)?"checked":""}></label><button class="project-title-link" data-cloud-open="${esc(p.id)}">${esc(p.title || 'Untitled production')}</button>`,detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'}`,icon:p.type==='reel'?'▷':'♫',metadata:projectDates(p,esc),actions:`<button data-delete-project="${esc(p.id)}" ${busy?'disabled':''} aria-label="Delete ${esc(p.title || 'Untitled production')}">Delete</button>${p.type==='reel'||p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="${p.type==='reel'?'Download reel':'Download cue sheet'}" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
-    const body=`${controls}${deleteStatus?`<p class="muted" role="status">${esc(deleteStatus)}</p>`:''}${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:visible.length?`${bulkBar}<div class="collection-list saved-projects">${rows}</div>`:projects.length?'<div class="empty"><h3>No projects of this type</h3><p>Choose another type or create a project.</p></div>':'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>'}`;
+    const bulkBar=visible.length?`<div class="collection-bulk-actions"><label class="checkbox-control"><input type="checkbox" id="select-all-projects" ${allSelected?"checked":""}>Select all</label>${selectedCount?`<label class="bulk-move-folder">Move to <select id="bulk-move-folder"><option value="" selected disabled>Choose folder…</option><option value="none">No folder</option>${folderOptions}</select></label><button data-delete-selected-projects ${busy?"disabled":""}>Delete selected (${selectedCount})</button>`:""}</div>`:"";
+    const rows=visible.map(p=>collectionRow({title:`<label class="row-select"><input type="checkbox" data-select-project="${esc(p.id)}" aria-label="Select ${esc(p.title || 'Untitled production')}" ${selectedProjects.has(p.id)?"checked":""}></label><button class="project-title-link" data-cloud-open="${esc(p.id)}">${esc(p.title || 'Untitled production')}</button>`,detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'}`,icon:p.type==='reel'?'▷':'♫',metadata:projectDates(p,esc),actions:`<select class="row-folder-select" data-move-project="${esc(p.id)}" ${busy?'disabled':''} aria-label="Move ${esc(p.title || 'Untitled production')} to folder"><option value="" ${!p.folderId?'selected':''}>No folder</option>${folders.map(f=>`<option value="${esc(f.id)}" ${p.folderId===f.id?'selected':''}>${esc(f.name)}</option>`).join('')}</select><button data-delete-project="${esc(p.id)}" ${busy?'disabled':''} aria-label="Delete ${esc(p.title || 'Untitled production')}">Delete</button>${p.type==='reel'||p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="${p.type==='reel'?'Download reel':'Download cue sheet'}" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
+    const empty=projectQuery.trim()?'<div class="empty"><h3>No matching projects</h3><p>Try a different search term, folder or type.</p></div>':projects.length?'<div class="empty"><h3>No projects here</h3><p>Choose another folder or type, or create a project.</p></div>':'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>';
+    const body=`${folderChips}${controls}${deleteStatus?`<p class="muted" role="status">${esc(deleteStatus)}</p>`:''}${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:visible.length?`${bulkBar}<div class="collection-list saved-projects">${rows}</div>`:empty}`;
     return collectionPage({...options,summary:loadingProjects?'Loading projects…':`${visible.length} of ${projects.length} projects`,body});
   }
 
@@ -137,15 +181,30 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
       history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();
     });
     if(!account.user)return;
-    const typeFilter=document.querySelector("#project-type-filter"),dateSort=document.querySelector("#project-date-sort");
+    const typeFilter=document.querySelector("#project-type-filter"),dateSort=document.querySelector("#project-date-sort"),search=document.querySelector("#project-search");
     if(typeFilter)typeFilter.onchange=()=>{projectType=typeFilter.value;update();};
     if(dateSort)dateSort.onchange=()=>{projectSort=dateSort.value;update();};
+    if(search)search.oninput=()=>{
+      const pos=search.selectionStart;
+      projectQuery=search.value;update();
+      const el=document.querySelector("#project-search");
+      if(el){el.focus();el.setSelectionRange(pos,pos);}
+    };
     const on=(selector,handler)=>{const button=document.querySelector(selector);if(button)button.onclick=handler;};
     on("#select-all-projects",event=>{
-      const visible=filterProjects(projects,projectType,projectSort);
+      const visible=filterProjects(projects,projectType,projectSort,{folderId:projectFolder,query:projectQuery});
       if(event.target.checked)visible.forEach(p=>selectedProjects.add(p.id));else visible.forEach(p=>selectedProjects.delete(p.id));
       update();
     });
+    document.querySelectorAll("[data-select-folder]").forEach(button=>button.onclick=()=>{projectFolder=button.dataset.selectFolder;update();});
+    on("[data-new-folder]",()=>{creatingFolder=true;update();});
+    on("[data-cancel-folder]",()=>{creatingFolder=false;update();});
+    const folderForm=document.querySelector(".folder-create");
+    if(folderForm)folderForm.onsubmit=event=>{event.preventDefault();const name=document.querySelector("#new-folder-name").value;run(()=>createFolder(name));};
+    document.querySelectorAll("[data-delete-folder]").forEach(button=>button.onclick=event=>{event.stopPropagation();run(()=>removeFolder(button.dataset.deleteFolder));});
+    document.querySelectorAll("[data-move-project]").forEach(select=>select.onchange=()=>run(()=>moveToFolder([select.dataset.moveProject],select.value||null)));
+    const bulkMove=document.querySelector("#bulk-move-folder");
+    if(bulkMove)bulkMove.onchange=()=>run(()=>moveToFolder([...selectedProjects],bulkMove.value==="none"?null:bulkMove.value));
     document.querySelectorAll("[data-select-project]").forEach(input=>input.onchange=()=>{
       const id=input.dataset.selectProject;
       if(input.checked)selectedProjects.add(id);else selectedProjects.delete(id);

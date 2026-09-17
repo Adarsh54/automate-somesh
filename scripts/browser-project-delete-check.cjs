@@ -17,6 +17,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');const as
   const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/api/auth?*',r=>r.fulfill({json:{configured:true,user:{id:'delete-test',email:'test@example.com'}}}));
   await page.route('**/api/projects*',r=>{
+   const action=new URL(r.request().url()).searchParams.get('action');
+   if(action==='folders')return r.fulfill({json:{folders:[]}});
    if(r.request().method()==='DELETE'){
     const body=r.request().postDataJSON();
     const project=projects.find(x=>x.id===body.id);
