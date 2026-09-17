@@ -548,3 +548,5 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .library-reuse { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
 .library-reuse span { font-size: 12px; }
 .reel-workspace { padding-bottom: 100px; }
+
+.review-reference-links { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 12px; }
