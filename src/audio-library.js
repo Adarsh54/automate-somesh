@@ -73,5 +73,5 @@ export function createAudioLibrary({account,esc,onChange,request=libraryRequest,
  }
 
  function cancelUpload(){uploadController?.abort(new Error('Upload canceled. Your file is kept on this device so you can retry.'));}
- return {progressView,cancelUpload,uploadStatus:()=>progress,canCancelUpload:()=>Boolean(uploadController),load,add,addMany,fileFor,entries,view,bind,pick,isBusy:()=>uploading};
+ return {hasLocalFile:id=>local.some(a=>(a.assetId || a.localId)===id),progressView,cancelUpload,uploadStatus:()=>progress,canCancelUpload:()=>Boolean(uploadController),load,add,addMany,fileFor,entries,view,bind,pick,isBusy:()=>uploading};
 }
