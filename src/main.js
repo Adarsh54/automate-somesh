@@ -117,6 +117,30 @@ const $ = (s) => document.querySelector(s),
         })[c],
     );
 const id = () => crypto.randomUUID();
+const creditProfilesKey = account.user
+  ? `cuestamp-user:${account.user.id}:credit-profiles`
+  : "cuestamp-credit-profiles";
+let creditProfiles = [];
+let activeCreditProfileId = "";
+try { creditProfiles = JSON.parse(localStorage.getItem(creditProfilesKey)) || []; } catch {}
+if (!Array.isArray(creditProfiles) || !creditProfiles.length) {
+  creditProfiles = [{id: id(), name: "Default credits", category: state.sharedCueDetails.category, credits: structuredClone(state.sharedCueDetails.credits)}];
+}
+activeCreditProfileId = state.activeCreditProfileId || creditProfiles[0].id;
+if (!creditProfiles.some((profile) => profile.id === activeCreditProfileId)) activeCreditProfileId = creditProfiles[0].id;
+function saveCreditProfiles() {
+  try { localStorage.setItem(creditProfilesKey, JSON.stringify(creditProfiles)); } catch {}
+}
+function activeCreditProfile() {
+  return creditProfiles.find((profile) => profile.id === activeCreditProfileId) || creditProfiles[0];
+}
+function syncActiveCreditProfile() {
+  const profile = activeCreditProfile();
+  if (!profile) return;
+  profile.category = state.sharedCueDetails.category;
+  profile.credits = structuredClone(state.sharedCueDetails.credits);
+  saveCreditProfiles();
+}
 function save() {
   state.status="draft";
   try {
@@ -183,9 +207,14 @@ function render() {
     ).length;
   $("#app").innerHTML =
     `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a><a class="nav ${tab !== "projects" ? "active" : ""}" href="#/workspace" title="Workspace" aria-label="Workspace" ${tab !== "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("library")}<span class="nav-label">Workspace</span></a><button class="nav" data-new-project title="New cue sheet" aria-label="New cue sheet"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New cue sheet</span></button></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account"><span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><label for="workspace-project-title">Project title</label><input id="workspace-project-title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name your project…" autocomplete="off"><span>Use your film or production name.</span></div>` : ""}<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div><nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
-  document.querySelector("#sidebar-profile")?.insertAdjacentHTML("beforebegin", `<button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
+  document.querySelector("#sidebar-profile")?.insertAdjacentHTML("beforebegin", `<button class="nav" data-tab="settings" aria-label="Settings" title="Settings">${sidebarIcon("settings")}<span class="nav-label">Settings</span></button><button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
+  if (tab === "settings") document.querySelector(".content").innerHTML = settingsPage();
+  if (tab === "team" || tab === "settings") {
+    $("#cloud-workspace")?.remove();
+    document.querySelector(".stats")?.remove();
+  }
   $("#app").insertAdjacentHTML("beforeend", cuey());
   bind();
   bindCuey();
@@ -206,12 +235,13 @@ const steps = [
 ];
 function stepNavigation() {
   const index = steps.findIndex(([key]) => key === tab);
+  if (index < 0) return "";
   const button = (direction, target) => `<button class="${direction === "next" ? "primary" : ""}" data-step="${direction}" data-tab="${steps[target][0]}">${direction === "next" ? "Next" : "Back"}: ${steps[target][1]} ${direction === "next" ? "→" : "←"}</button>`;
   return `<div class="button-row step-navigation" aria-label="Step navigation">${index > 0 ? button("back", index - 1) : ""}${index < steps.length - 1 ? button("next", index + 1) : ""}</div>`;
 }
 function library() {
   return (
-    workflowView(state, workflow, { esc, field, select }) + sharedDetails() +
+    workflowView(state, workflow, { esc, field, select }) +
     `<div class="section-title"><h2>Cue audio library <span>${state.tracks.length}</span></h2><span class="muted">Audio is shared across paths · select a file to preview or reattach audio</span></div>${state.tracks.length ? `<div class="library-grid"><div class="track-list">${state.tracks.map((t) => `<div class="track-row"><button class="track ${selected === t.id ? "selected" : ""}" data-track="${t.id}"><span class="track-icon">♪</span><span><strong>${esc(t.title)}</strong><small>${time(t.duration)} · ${workflow.audio.has(t.id) ? "Audio ready" : "Reattach audio to analyze"}</small></span><span class="badge ">Source audio</span></button>${state.mode === "movie" && !state.movieMetadata ? `<button class="text danger" data-remove-track="${t.id}" aria-label="Remove audio track ${esc(t.title)}" title="Remove track and its placements">Remove track</button>` : ""}</div>`).join("")}</div>${editor()}</div>` : '<div class="empty"><span>♫</span><h3>Add the music behind the picture</h3><p>Upload cue recordings or a music-only export using the selected workflow above.</p></div>'}`
   );
 }
@@ -223,6 +253,10 @@ function editor() {
 }
 function sharedDetails() {
   return `<section class="panel" id="shared-details" tabindex="-1" aria-labelledby="shared-details-heading"><details class="shared-disclosure"><summary><span><span class="eyebrow">THE PEOPLE BEHIND THE MUSIC</span><h2 id="shared-details-heading">Shared credits</h2><span class="muted">Composer &amp; publisher details · applies to all cues</span></span><span class="disclosure-action" aria-hidden="true">Edit credits ↗</span></summary><div class="shared-body"><p class="muted">Fill this in once here. New cues use these details automatically. You can customize individual cues in Timings &amp; usage; existing cue overrides stay separate.</p>${provenanceField(state.sharedCueDetails.category)}${cueCreditEditor(state.sharedCueDetails, true)}<p id="shared-credit-status" class="muted" role="status">${esc(creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.")}</p></div></details></section>`;
+}
+function settingsPage() {
+  const active = activeCreditProfile();
+  return `<section class="settings-page"><div class="eyebrow">REUSABLE CREDITS</div><h1>Credit profiles.</h1><p class="settings-intro">Create credit sets once, then apply them to a project. New cues inherit the selected profile unless you override them individually.</p><section class="profile-list panel"><div class="section-title"><div><h2>Your profiles</h2><p class="muted">${account.user ? "Saved for this account on this device." : "Saved in this browser as a guest."}</p></div><button class="primary" id="new-credit-profile">＋ New profile</button></div><div class="profile-buttons">${creditProfiles.map((profile) => `<button class="profile-button ${profile.id === active.id ? "selected" : ""}" data-credit-profile="${profile.id}"><strong>${esc(profile.name)}</strong><small>${profile.credits.filter((credit) => credit.role === "Composer").length} writers · ${profile.credits.filter((credit) => credit.role === "Publisher").length} publishers</small></button>`).join("")}</div>${creditProfiles.length > 1 ? `<button class="text danger" id="delete-credit-profile">Delete selected profile</button>` : ""}</section>${sharedDetails()}</section>`;
 }
 function provenanceField(value) {
   return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
@@ -325,6 +359,39 @@ function bind() {
     };
     titleInput.onkeydown=event=>{if(event.key==="Enter"){event.preventDefault();titleInput.blur();}};
   }
+  document.querySelectorAll("[data-credit-profile]").forEach((button) => {
+    button.onclick = () => {
+      const profile = creditProfiles.find((item) => item.id === button.dataset.creditProfile);
+      if (!profile) return;
+      activeCreditProfileId = profile.id;
+      state.activeCreditProfileId = profile.id;
+      state.sharedCueDetails = {category: profile.category, credits: structuredClone(profile.credits)};
+      save();
+      render();
+    };
+  });
+  if ($("#new-credit-profile")) $("#new-credit-profile").onclick = () => {
+    const name = prompt("Name this credit profile", `Profile ${creditProfiles.length + 1}`)?.trim();
+    if (!name) return;
+    const profile = {id: id(), name, category: state.sharedCueDetails.category, credits: structuredClone(state.sharedCueDetails.credits)};
+    creditProfiles.push(profile);
+    activeCreditProfileId = profile.id;
+    state.activeCreditProfileId = profile.id;
+    saveCreditProfiles();
+    save();
+    render();
+  };
+  if ($("#delete-credit-profile"))
+    $("#delete-credit-profile").onclick = () => {
+      if (creditProfiles.length < 2 || !confirm("Delete this credit profile?")) return;
+      creditProfiles = creditProfiles.filter((profile) => profile.id !== activeCreditProfileId);
+      activeCreditProfileId = creditProfiles[0].id;
+      state.activeCreditProfileId = activeCreditProfileId;
+      state.sharedCueDetails = {category: creditProfiles[0].category, credits: structuredClone(creditProfiles[0].credits)};
+      saveCreditProfiles();
+      save();
+      render();
+    };
   document.querySelectorAll("[data-tab]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -372,6 +439,7 @@ function bind() {
         if (e.closest("#shared-details")) {
           if (e.closest("[data-credit]")) { if (!writeCreditField(e, k)) return; }
           else state.sharedCueDetails[k] = e.value;
+          syncActiveCreditProfile();
         } else if (e.closest("#workflow-settings")) {
           if (k === "rate") {
             changeRate(e.value);
@@ -541,9 +609,9 @@ function updateIndicators() {
         state.sharedCueDetails,
       ).length,
   ).length;
-  document.querySelectorAll(".stats strong")[2].textContent = String(
+  document.querySelectorAll(".stats strong")[2] && (document.querySelectorAll(".stats strong")[2].textContent = String(
     ready,
-  ).padStart(2, "0");
+  ).padStart(2, "0"));
   document.querySelectorAll("[data-track]").forEach((el) => {
     const t = state.tracks.find((t) => t.id === el.dataset.track),
       pending = false;
