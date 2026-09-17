@@ -1,3 +1,4 @@
+import {filterProjects,projectDates} from './project-list.js';
 import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {openProfile} from "./user-profile.js";
 import {reviewProject} from "./domain/review.js";
@@ -14,6 +15,7 @@ export async function sessionInfo() {
   } catch {return {configured:false,user:null,error:"Sign-in is temporarily unavailable. You can still continue as a guest."};}
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete,beforeNewProject,chooseType,onNewReel,onOpenReel,isProjectBusy=()=>false,saveAudio}) {
+  let projectType="all",projectSort="created-desc";
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="";
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
@@ -76,11 +78,13 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   }
   function createButton() {return `<button class="new-project-fab" data-new-project ${busy || isProjectBusy()?"disabled":""} aria-label="New project" title="Create a new project"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>`;}
   function projectsPage() {
-    const options={title:'Projects',description:'Your saved cue sheets, ready to pick up where you left off.',action:collectionCreateButton({label:'Create project',attributes:'data-new-project',disabled:busy || isProjectBusy()})};
+    const options={title:'Projects',description:'Your cue sheets and reels, ready to create, edit, and share.',action:collectionCreateButton({label:'Create project',attributes:'data-new-project',disabled:busy || isProjectBusy()})};
     if(!account.user)return collectionPage({...options,body:`<div class="empty"><h3>Sign in to see your projects</h3><p>Saved projects are linked to your account.</p><div class="button-row">${authActions(account)}</div></div>`});
-    const rows=projects.map(p=>collectionRow({title:esc(p.title || 'Untitled production'),detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'} · Updated ${esc(new Date(p.updated_at).toLocaleString())}`,icon:p.type==='reel'?'▷':'♫',actions:`${p.type!=='reel'&&p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="Download cue sheet" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
-    const body=`${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:projects.length?`<div class="collection-list saved-projects">${rows}</div>`:'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>'}`;
-    return collectionPage({...options,summary:loadingProjects?'Loading projects…':`${projects.length} saved project${projects.length===1?'':'s'}`,body});
+    const visible=filterProjects(projects,projectType,projectSort);
+    const controls=`<div class="project-filters"><label>Type<select id="project-type-filter">${[["all","All types"],["cue","Cues"],["reel","Reels"]].map(([value,label])=>`<option value="${value}" ${projectType===value?"selected":""}>${label}</option>`).join("")}</select></label><label>Sort by<select id="project-date-sort">${[["created-desc","Created: newest first"],["created-asc","Created: oldest first"],["updated-desc","Updated: newest first"],["updated-asc","Updated: oldest first"]].map(([value,label])=>`<option value="${value}" ${projectSort===value?"selected":""}>${label}</option>`).join("")}</select></label></div>`;
+    const rows=visible.map(p=>collectionRow({title:`<button class="project-title-link" data-cloud-open="${esc(p.id)}">${esc(p.title || 'Untitled production')}</button>`,detail:`${p.type==='reel'?'Reel':'Cue'} · ${p.published?'Published':p.status==='completed'?'Complete':'Draft'} <span class="project-dates">${projectDates(p,esc)}</span>`,icon:p.type==='reel'?'▷':'♫',actions:`${p.type!=='reel'&&p.status==='completed'?`<button data-cloud-download="${esc(p.id)}" ${busy?'disabled':''} title="Download cue sheet" aria-label="Download ${esc(p.title || 'Untitled production')}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></button>`:''}<button data-cloud-open="${esc(p.id)}" ${busy?'disabled':''} aria-label="${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} ${esc(p.title || 'Untitled production')}">${p.type==='reel'||p.published||p.status==='completed'?'Edit':'Continue'} →</button>`})).join('');
+    const body=`${controls}${projectActionError?`<div class="project-error" role="alert"><span>${esc(projectActionError)}</span><button id="dismiss-project-error">Dismiss</button></div>`:''}${loadingProjects?'<p role="status" class="empty">Loading your projects…</p>':projectsError?`<div class="project-error" role="alert"><span><strong>Couldn’t load your projects</strong><span>${esc(projectsError)}</span></span><button id="projects-retry">Try again</button></div>`:visible.length?`<div class="collection-list saved-projects">${rows}</div>`:projects.length?'<div class="empty"><h3>No projects of this type</h3><p>Choose another type or create a project.</p></div>':'<div class="empty"><span>♫</span><h3>No saved projects yet</h3><p>Create a project, then choose Save project in the workspace.</p></div>'}`;
+    return collectionPage({...options,summary:loadingProjects?'Loading projects…':`${visible.length} of ${projects.length} projects`,body});
   }
 
   function header() {return account.user ? "" : authActions(account);}
@@ -99,6 +103,9 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
       history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();
     });
     if(!account.user)return;
+    const typeFilter=document.querySelector("#project-type-filter"),dateSort=document.querySelector("#project-date-sort");
+    if(typeFilter)typeFilter.onchange=()=>{projectType=typeFilter.value;update();};
+    if(dateSort)dateSort.onchange=()=>{projectSort=dateSort.value;update();};
     const on=(selector,handler)=>{const button=document.querySelector(selector);if(button)button.onclick=handler;};
     document.querySelectorAll("[data-cloud-download]").forEach(button=>button.onclick=()=>run(async()=>{const {project}=await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudDownload));await download(project.data);}));
     on("#edit-user-profile",()=>openProfile(account,update));

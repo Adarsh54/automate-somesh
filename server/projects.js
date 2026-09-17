@@ -42,11 +42,11 @@ export function parseProject(input) {
 export function createProjectRepository(query) {
   return {
     async list(userId) {
-      return query`SELECT id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC LIMIT 100`;
+      return query`SELECT id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC`;
     },
     async get(userId,id) {
       if(!z.uuid().safeParse(id).success) throw Object.assign(new Error("NOT_FOUND"),{status:404});
-      const rows=await query`SELECT id,title,data,revision,updated_at FROM projects WHERE id=${id} AND user_id=${userId}`;
+      const rows=await query`SELECT id,title,data,revision,created_at,updated_at FROM projects WHERE id=${id} AND user_id=${userId}`;
       if(!rows[0]) throw Object.assign(new Error("NOT_FOUND"),{status:404});
       return rows[0];
     },
@@ -54,8 +54,8 @@ export function createProjectRepository(query) {
       const {id,revision,data}=parseProject(input), title=data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
       await createMediaRepository(query).validate(userId,data);
       const rows=revision===0
-        ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`
-        : await query`UPDATE projects SET title=${title},data=${JSON.stringify(data)}::jsonb,revision=revision+1,updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND COALESCE(data->>'type','cue')=${data.type || "cue"} RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`;
+        ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`
+        : await query`UPDATE projects SET title=${title},data=${JSON.stringify(data)}::jsonb,revision=revision+1,updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND COALESCE(data->>'type','cue')=${data.type || "cue"} RETURNING id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`;
       if(!rows[0]) throw Object.assign(new Error("PROJECT_CONFLICT"),{status:409});
       return rows[0];
     },

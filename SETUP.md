@@ -69,7 +69,7 @@ If service credentials are missing, accounts and large-file processing are unava
 - `GET /api/auth?action=callback`: validate state, exchange code, upsert Neon user profile, set encrypted session cookie.
 - `GET /api/auth?action=me`: return only the current user's ID/email/name, never tokens.
 - `POST /api/auth?action=logout`: require matching Origin, revoke WorkOS session, clear cookie.
-- `GET /api/projects`: list the current user's latest 100 projects.
+- `GET /api/projects`: list the current user's projects with creation and update timestamps.
 - `GET /api/projects?id=UUID`: load one owned project.
 - `POST /api/projects`: create with revision 0 or save with the current revision; require matching Origin and an authenticated session.
 
@@ -139,4 +139,4 @@ The >100 MB test took about 96 seconds end to end on this connection, including 
 
 Migration `006_reels.sql` adds `reel_audio` (private prepared MP3 paths, waveforms, processing leases) and `reel_publications` (share tokens and published snapshots). Vercel applies it during deployment. The `/api/reels` function includes FFmpeg/ffprobe and has a 300-second limit. It uses the existing server-only Neon and private Blob credentials. A standalone Vite output, `reel.html`, serves public share pages and iframe embeds without authentication.
 
-Publishing is explicit and requires a signed-in owner. Draft saves remain private; re-publishing updates the existing shared snapshot. Revoking deletes the share token, while cached derivatives stay private for reuse. Already downloaded/buffered audio cannot be revoked, and issued Blob URLs last up to five minutes. Optional MP3 download controls do not prevent recording streamed audio. See CODEX.md for endpoints, limits, storage lifecycle, and the synthetic development smoke test.
+Publishing is explicit and requires a signed-in owner. Draft saves remain private; re-publishing updates the existing shared snapshot. Revoking deletes the share token, while cached derivatives stay private for reuse. Already downloaded/buffered audio cannot be revoked, and issued Blob URLs last up to five minutes. Every published reel provides MP3 downloads. See CODEX.md for endpoints, limits, storage lifecycle, and the synthetic development smoke test.

@@ -38,9 +38,9 @@ export function createReelRepository(query){
   },
   async owner(userId,id){await projects.get(userId,id);const rows=await query`SELECT token,updated_at FROM reel_publications WHERE project_id=${id}`;return rows[0]||null;},
   async publish(userId,input){
-   const parsed=z.object({id:z.uuid(),revision:z.number().int().positive(),allowDownloads:z.boolean()}).safeParse(input);
+   const parsed=z.object({id:z.uuid(),revision:z.number().int().positive()}).safeParse(input);
    if(!parsed.success)throw fail('INVALID_REEL');
-   const {id,revision,allowDownloads}=parsed.data,project=await projects.get(userId,id);
+   const {id,revision}=parsed.data,project=await projects.get(userId,id);
    if(project.revision!==revision)throw fail('PROJECT_CONFLICT',409);
    if(project.data.type!=='reel' || !project.data.audioIds.length || project.data.audioIds.length>50)throw fail('Add between 1 and 50 tracks before publishing.');
    await media.validate(userId,project.data);
@@ -52,7 +52,7 @@ export function createReelRepository(query){
     const audio=rows[0];
     tracks.push({id:assetId,title:project.data.trackTitles?.[assetId]?.trim() || asset.filename.replace(/\.[^.]+$/,''),duration:audio.duration,peaks:audio.peaks,pathname:audio.pathname});
    }
-   const manifest={title:project.title,allowDownloads,tracks};
+   const manifest={title:project.title,allowDownloads:true,tracks};
    // Read the revision again inside the write so an overlapping save cannot publish a stale draft.
    const rows=await query`INSERT INTO reel_publications(project_id,token,manifest) SELECT id,${randomUUID()}::uuid,${JSON.stringify(manifest)}::jsonb FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} ON CONFLICT(project_id) DO UPDATE SET manifest=EXCLUDED.manifest,updated_at=now() RETURNING token`;
    if(!rows[0])throw fail('PROJECT_CONFLICT',409);
@@ -63,7 +63,7 @@ export function createReelRepository(query){
    if(!z.uuid().safeParse(token).success)throw fail('This reel is unavailable.',404);
    const rows=await query`SELECT manifest FROM reel_publications WHERE token=${token}`;
    if(!rows[0])throw fail('This reel is unavailable.',404);
-   return rows[0].manifest;
+   return {...rows[0].manifest,allowDownloads:true};
   }
  };
 }

@@ -11,7 +11,6 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,p
    if(req.method==='GET' && ['public','stream','download'].includes(action)){
     const manifest=await repo.publicReel(url.searchParams.get('token'));
     if(action==='public')return reply(res,200,{reel:{...manifest,tracks:manifest.tracks.map(({pathname,...track})=>track)}});
-    if(action==='download'&&!manifest.allowDownloads)return reply(res,403,{error:'Downloads are disabled for this reel.'});
     const track=manifest.tracks.find(t=>t.id===url.searchParams.get('track'));
     if(!track)return reply(res,404,{error:'Track not found.'});
     res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');

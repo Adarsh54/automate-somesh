@@ -37,10 +37,15 @@ test('publishing snapshots owned prepared audio; revisions, leases, permissions 
   await assert.rejects(repo.publish('alice',{...input,revision:4}),{status:409});
   const publication=await repo.publish('alice',input);
   assert.equal((await repo.publicReel(publication.token)).tracks[0].title,'Custom title');
+  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);
+  await query`UPDATE reel_publications SET manifest=jsonb_set(manifest,'{allowDownloads}','false') WHERE project_id=${id}`;
+  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);
+  const created=(await projects.get('alice',id)).created_at;
   await projects.save('alice',{id,revision:1,data:{...data,title:'Private edit'}});
   assert.equal((await repo.publicReel(publication.token)).title,'Demo');
+  assert.deepEqual((await projects.list('alice'))[0].created_at,created);
   const handler=createReelHandler({repository:()=>repo,auth:async()=>null,sign:async path=>{assert.equal(path,'reels/test/preview.mp3');return 'https://blob.test/signed';}});
-  for(const [action,code] of [['public',200],['stream',302],['download',403]]){
+  for(const [action,code] of [['public',200],['stream',302],['download',302]]){
    const res=response();await handler({method:'GET',url:`/api/reels?action=${action}&token=${publication.token}&track=${asset.id}`,headers:{}},res);assert.equal(res.code,code);
    if(action==='public'){assert.equal(res.body.reel.tracks[0].pathname,undefined);assert.equal(res.headers['Cache-Control'],'no-store');}
   }
