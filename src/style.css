@@ -536,9 +536,6 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .project-type-options strong,.project-type-options span { display: block; }
 .project-type-options strong { font-size: 17px; margin-bottom: 8px; }
 .project-type-options span { font-size: 13px; color: var(--muted); line-height: 1.5; }
-.audio-upload { position: relative; display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 6px; cursor: pointer; background: var(--action); color: var(--action-text); font-size: 12px; }
-.audio-upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.audio-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
 .reel-audio-list { padding: 0; list-style: none; }
 .reel-audio-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .reel-audio-list li span { overflow-wrap: anywhere; min-width: 0; }
