@@ -133,7 +133,7 @@ const $ = (s) => document.querySelector(s),
     );
 const id = () => crypto.randomUUID();
 const audioLibrary=createAudioLibrary({account,esc,onUseInCue:useLibraryInCue,onChange:()=>{if(tab==='audio'||tab==='reel')render();}});
-const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onEdit:id=>goToReel(`#/reels/${id}/edit`),onCreate:()=>startNewReel(),onSaved:id=>{if(tab==='reel'){currentRoute=`#/reels/${id}/edit`;history.replaceState(null,'',currentRoute);}},onChange:()=>{if(tab==='reel')render();},onAnalytics:id=>goToReelAnalytics(id)});
+const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onEdit:id=>goToReel(`#/reels/${id}/edit`),onCreate:()=>startNewReel(),onDeleted:()=>{currentRoute='#/reels/new';history.replaceState(null,'',currentRoute);},onSaved:id=>{if(tab==='reel'){currentRoute=`#/reels/${id}/edit`;history.replaceState(null,'',currentRoute);}},onChange:()=>{if(tab==='reel')render();},onAnalytics:id=>goToReelAnalytics(id)});
 const reelAnalyticsView=createReelAnalyticsView({esc,onChange:()=>{if(tab==='reel-analytics')render();},onBack:()=>history.back()});
 
 const creditProfilesKey=account.user?`cuestamp-user:${account.user.id}:credit-profiles`:null;
