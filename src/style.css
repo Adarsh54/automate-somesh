@@ -514,3 +514,6 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
  #app:has(#projects-page) .faq { right: 24px; bottom: 82px; }
  .page-breadcrumb { gap: 6px; flex-wrap: wrap; }
 }
+
+.create-project-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; white-space: nowrap; padding: 8px 12px; font-size: 12px; }
+@media(max-width:720px) { #projects-page > .heading { flex-wrap: wrap; gap: 16px; } }
