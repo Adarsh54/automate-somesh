@@ -10,7 +10,7 @@ import {runBinary} from './audio-processing.js';
 import {signedAudio} from './reel-processing.js';
 const fail=message=>Object.assign(new Error(message),{status:400});
 export function parseEdit(input){
- const parsed=z.object({start:z.number().finite().min(0),end:z.number().finite().positive().max(3600),fadeIn:z.number().finite().min(0),fadeOut:z.number().finite().min(0),normalize:z.boolean()}).safeParse(input);
+ const parsed=z.object({start:z.number().finite().min(0),end:z.number().finite().positive().max(3600),fadeIn:z.number().finite().min(0),fadeOut:z.number().finite().min(0),normalize:z.boolean(),targetPeakDb:z.number().finite().min(-60).max(0).optional()}).safeParse(input);
  if(!parsed.success)throw fail('Enter valid times in seconds.');
  const edit=parsed.data,length=edit.end-edit.start;
  if(length<.05||edit.fadeIn+edit.fadeOut>length)throw fail('The snippet must be at least 0.05 seconds. Fades must fit inside it.');
@@ -39,7 +39,7 @@ export async function renderEdit(source,recipe,{sign=signedAudio,store=put}={}){
    await runBinary(ffmpeg,[...input,'-af',`atrim=start=${edit.start}:end=${edit.end},astats=metadata=1:reset=0,ametadata=mode=print:key=lavfi.astats.Overall.Peak_level:file=${stats}`,'-f','null','-'],signal);
    const matches=[...(await readFile(stats,'utf8')).matchAll(/lavfi.astats.Overall.Peak_level=([^\s]+)/g)];
    const peak=Number(matches.at(-1)?.[1]);
-   if(Number.isFinite(peak))gain=10**((-1-peak)/20);
+   if(Number.isFinite(peak))gain=10**(((edit.targetPeakDb??-1)-peak)/20);
   }
   const path=join(dir,'edited.flac');
   await runBinary(ffmpeg,[...input,'-af',editFilter(edit,gain),'-map_metadata','-1','-c:a','flac','-sample_fmt','s32','-compression_level','5','-fs',String(512*1024*1024+1),path],signal);

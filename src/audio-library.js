@@ -121,7 +121,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  async function edit(id,{reel=false}={}){
   if(!account.user)throw Error('Sign in to save audio edits while preserving the original.');
   if(!entries().find(a=>a.id===id)?.saved){const uploaded=await add(await fileFor(id));id=uploaded.id;}
-  const asset=await editAudio({id,esc,reel});
+  const asset=await editAudio({id,esc,reel,localSource:sourceId=>local.find(a=>(a.assetId||a.localId)===sourceId)?.file});
   if(asset){if(preferences[id]?.title)remember(asset.id,{title:preferences[id].title});disposePreview();await load();}
   return asset;
  }

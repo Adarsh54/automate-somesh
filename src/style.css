@@ -680,3 +680,20 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .audio-edit-normalize input { width: 18px; height: 18px; accent-color: var(--accent, #1ed760); }
 .audio-edit-dialog .button-row { flex-wrap: wrap; margin-top: 20px; }
 @media (max-width: 540px) { .audio-edit-fields { grid-template-columns: 1fr; } }
+.audio-edit-dialog { width: min(860px, calc(100vw - 40px)); }
+.audio-edit-waveform { margin: 0 0 24px; }
+.edit-wave-surface { position: relative; height: 160px; margin: 12px 10px; touch-action: none; user-select: none; cursor: crosshair; }
+.edit-wave-surface svg { width: 100%; height: 100%; overflow: visible; }
+.edit-wave-surface [data-bars] { fill: var(--accent, #1ed760); }
+.edit-wave-surface [data-left-shade], .edit-wave-surface [data-right-shade] { fill: var(--bg, #111); opacity: .8; }
+.edit-wave-surface [data-selection] { fill: var(--accent, #1ed760); fill-opacity: .08; stroke: var(--accent, #1ed760); stroke-width: 2; }
+.edit-wave-surface [data-envelope] { fill: none; stroke: var(--text, #eee); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+.edit-wave-surface [data-playhead] { stroke: var(--text, #eee); stroke-width: 2; pointer-events: none; }
+.edit-wave-surface [data-handle] { position: absolute; top: 0; height: 100%; width: 14px; min-width: 14px; padding: 0; border-radius: 5px; background: var(--accent, #1ed760); transform: translateX(-50%); cursor: ew-resize; }
+.edit-wave-surface [data-handle]::after { content: ''; display: block; width: 2px; height: 24px; margin: auto; background: #111; }
+.edit-wave-times { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; margin: 10px 0 16px; color: var(--muted); }
+.audio-edit-target { display: grid; grid-template-columns: 1fr 100px; align-items: center; gap: 12px; margin: 16px 0; }
+.audio-edit-target input[type=range], .audio-edit-target span { grid-column: 1 / -1; }
+.audio-edit-target input[type=range] { accent-color: var(--accent, #1ed760); padding: 0; }
+.audio-edit-dialog .button-row { position: sticky; bottom: -28px; background: var(--surface); padding: 14px 0; border-top: 1px solid var(--line); z-index: 2; }
+@media (min-width: 700px) { .audio-edit-dialog .audio-edit-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

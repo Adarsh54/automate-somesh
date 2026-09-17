@@ -226,3 +226,12 @@ Checks: `test/audio-edits.test.js` exercises actual FFmpeg output and ownership,
 lineage, copy/replacement and stale-save behavior. Run
 `scripts/browser-audio-edit-check.cjs` with the documented Playwright variables
 for the shared editor and reel integration.
+
+The audio editor also shows an interactive waveform: drag a range or use the
+start/end handles (arrow keys adjust by 0.1 s; Shift adjusts by 1 s). Numeric
+fields and the fade envelope stay synchronized. Play snippet auditions the
+selected original audio. Local WAVs reuse the Wasm waveform worker; remote
+files reuse server reel preparation. Waveform preparation does not block editing.
+Peak normalization accepts `targetPeakDb` from −60 through 0 dBFS, persisted
+in the recipe and applied by FFmpeg. Older recipes retain the −1 dBFS default.
+The waveform height represents the original recording, not a post-edit meter.

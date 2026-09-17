@@ -9,7 +9,7 @@ import {createMediaRepository} from '../server/media.js';
 const edit={start:1,end:3,fadeIn:.5,fadeOut:.5,normalize:true};
 test('audio edits validate snippets and fades',()=>{
  assert.deepEqual(parseEdit(edit),edit);
- for(const patch of [{start:-1},{end:1},{end:Infinity},{fadeIn:3},{fadeOut:-1},{normalize:'true'}])assert.throws(()=>parseEdit({...edit,...patch}),{status:400});
+ for(const patch of [{start:-1},{end:1},{end:Infinity},{fadeIn:3},{fadeOut:-1},{normalize:'true'},{targetPeakDb:1},{targetPeakDb:-61},{targetPeakDb:NaN}])assert.throws(()=>parseEdit({...edit,...patch}),{status:400});
 });
 test('FFmpeg trims, applies gain, and fades both edges',async()=>{
  const pcm=await runBinary(ffmpeg,['-v','error','-f','lavfi','-i','aevalsrc=0.25:s=8000:d=4','-af',editFilter(edit,2),'-f','f32le','pipe:1'],AbortSignal.timeout(10000));
@@ -51,7 +51,7 @@ test('server renders normalized, trimmed FLAC and validates source duration',asy
  try{
   let bytes;
   const dependencies={sign:async()=>`http://127.0.0.1:${server.address().port}/source.wav`,store:async(path,data)=>{bytes=data;return {pathname:path};}};
-  const result=await renderEdit({pathname:'original'},edit,dependencies);
+  const result=await renderEdit({pathname:'original'},{...edit,targetPeakDb:-6},dependencies);
   assert.equal(bytes.toString('ascii',0,4),'fLaC');assert.equal(result.size,bytes.length);
   const {mkdtemp,writeFile,rm}=await import('node:fs/promises');const {tmpdir}=await import('node:os');const {join}=await import('node:path');
   const dir=await mkdtemp(join(tmpdir(),'edit-test-'));
@@ -59,7 +59,7 @@ test('server renders normalized, trimmed FLAC and validates source duration',asy
    const path=join(dir,'result.flac');await writeFile(path,bytes);
    const pcm=await runBinary(ffmpeg,['-v','error','-i',path,'-f','f32le','pipe:1'],AbortSignal.timeout(10000));
    assert.equal(pcm.length,2*8000*4);
-   assert.ok(Math.abs(pcm.readFloatLE(8000*4)-10**(-1/20))<.001);
+   assert.ok(Math.abs(pcm.readFloatLE(8000*4)-10**(-6/20))<.001);
    assert.ok(Math.abs(pcm.readFloatLE(0))<.001);assert.ok(Math.abs(pcm.readFloatLE(pcm.length-4))<.001);
   }finally{await rm(dir,{recursive:true,force:true});}
   await assert.rejects(renderEdit({pathname:'original'},{...edit,end:8},dependencies),{status:400});
