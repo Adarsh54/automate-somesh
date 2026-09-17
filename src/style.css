@@ -115,7 +115,7 @@ header b { font-weight: 450; color: var(--text); }
 .local { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; }
 .local::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
 .account-login { text-decoration: none; font-size: 11px; padding: 6px 10px; white-space: nowrap; }
-#cloud-logout { font-size: 11px; white-space: nowrap; }
+#cloud-logout { white-space: nowrap; }
 .content { width: 100%; max-width: 1240px; margin: auto; padding: 42px 48px 20px; }
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .heading p { color: var(--muted); font-size: 13px; margin: 0; }
