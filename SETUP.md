@@ -58,7 +58,7 @@ npm run dev:api
 VITE_API_ENABLED=true npm run dev -- --port 5190 --strictPort
 ```
 
-Local Blob storage is not configured yet; uploading media for account storage or server processing requires separate development Blob credentials.
+Local media storage uses the private `cuestamp-media-development` Blob store, connected only to the Vercel Development environment. Its server-side token is in the ignored `.env.local`; see CODEX.md for setup on another machine.
 
 If service credentials are missing, accounts and large-file processing are unavailable; small-file browser processing and manual editing remain usable. No fake login or fallback user is used.
 

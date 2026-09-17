@@ -1,5 +1,6 @@
+import {showDownloadDialog} from "./download-dialog.js";
+import {cueSheetCsv} from "./export-csv.js";
 import "./storage-migration.js";
-import {themeToggle} from "./theme.js";
 import "./style.css";
 import {BROWSER_MAX_MB} from "./processing-policy.js";
 import {enterWorkspace} from "./welcome.js";
@@ -141,6 +142,7 @@ function syncActiveCreditProfile() {
   saveCreditProfiles();
 }
 function save() {
+  state.status="draft";
   try {
     localStorage.setItem(storageKey, JSON.stringify(state));
     cloudWorkspace?.changed();
@@ -203,16 +205,9 @@ function render() {
         state.sharedCueDetails,
         ).length,
     ).length;
-    $("#app").innerHTML = 
-    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><div class="project-label">MUSIC WORKSPACE</div><nav id="sidebar-nav" aria-label="Workspace navigation">${steps
-      .map(
-        ([key, label]) =>
-          `<button class="nav ${tab === key ? "active" : ""}" data-tab="${key}" aria-label="${label}" title="${label}" ${tab===key?'aria-current="page"':''}>${sidebarIcon(key)}<span class="nav-label">${label}</span></button>`,
-      )
-      .join(
-        "",
-      )}</nav><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account">${themeToggle()}<span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div><div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export", settings: "Credit profiles." }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet.", settings: "Manage reusable composer and publisher details." }[tab]}</p></div>${tab === "settings" || tab === "team" ? "" : stepNavigation()}</div><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : tab === "settings" ? settingsPage() : reviewPage(issues)}${tab === "settings" || tab === "team" ? "" : stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
-  document.querySelector(".source-link")?.insertAdjacentHTML("beforebegin", `<button class="nav ${tab === "settings" ? "active" : ""}" data-tab="settings" aria-label="Settings" title="Settings">${sidebarIcon("settings")}<span class="nav-label">Settings</span></button><button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
+  $("#app").innerHTML =
+    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a><a class="nav ${tab !== "projects" ? "active" : ""}" href="#/workspace" title="Workspace" aria-label="Workspace" ${tab !== "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("library")}<span class="nav-label">Workspace</span></a><button class="nav" data-new-project title="New cue sheet" aria-label="New cue sheet"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New cue sheet</span></button></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account"><span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><label for="workspace-project-title">Project title</label><input id="workspace-project-title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name your project…" autocomplete="off"><span>Use your film or production name.</span></div>` : ""}<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div><nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+  document.querySelector("#sidebar-profile")?.insertAdjacentHTML("beforebegin", `<button class="nav" data-tab="settings" aria-label="Settings" title="Settings">${sidebarIcon("settings")}<span class="nav-label">Settings</span></button><button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
   if (tab === "settings") document.querySelector(".content").innerHTML = settingsPage();
@@ -322,7 +317,7 @@ function cues() {
 }
 function reviewPage(issues) {
   const warnings = productionWarnings(state);
-  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to enable the export." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">XLSX</div><h2>Your music cue sheet</h2><p>Populates BMI’s official Excel template with production details, cue timings, usage and contributor rows.</p><button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ ${warnings.length ? "Download draft XLSX" : "Download cue sheet"}</button><p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
+  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to finish your cue sheet." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">✓</div><h2>Your music cue sheet</h2><p>Finish your cue sheet, then download it as Excel, CSV or a printable PDF.</p>${state.status === "completed" ? `<button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ Download cue sheet</button>` : `<button class="primary" id="cloud-finish" ${issues.length ? "disabled" : ""}>Finish making cue sheet</button>`}${!account.user?'<p class="muted">Sign in to save a completed project to Projects.</p>':""}<p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></section></div>`;
 }
 function credit(role) {
   return { id: id(), role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
@@ -354,6 +349,16 @@ function writeCreditField(element, key) {
 }
 function bind() {
   bindWorkflows();
+  const titleInput=document.querySelector("#workspace-project-title");
+  if(titleInput){
+    titleInput.oninput=()=>{
+      state.production.title=titleInput.value;
+      const productionTitle=document.querySelector('#production [data-field="title"]');
+      if(productionTitle)productionTitle.value=titleInput.value;
+      save();updateIndicators();
+    };
+    titleInput.onkeydown=event=>{if(event.key==="Enter"){event.preventDefault();titleInput.blur();}};
+  }
   document.querySelectorAll("[data-credit-profile]").forEach((button) => {
     button.onclick = () => {
       const profile = creditProfiles.find((item) => item.id === button.dataset.creditProfile);
@@ -562,35 +567,24 @@ function bind() {
         render();
       }),
   );
-  if ($("#export"))
-    $("#export").onclick = async () => {
-      if (review().length) return;
-      const button = $("#export");
-      button.disabled = true;
-      button.textContent = "Preparing spreadsheet…";
-      try {
-        const snapshot = structuredClone(state);
-        if (serverValidationEnabled) await validateOnServer(snapshot);
-        const blob = await exportWorkbook(
-          effectiveProduction(snapshot),
-          snapshot.tracks,
-          snapshot.cues,
-          snapshot.sharedCueDetails,
-        );
-        const url = URL.createObjectURL(blob),
-          a = document.createElement("a");
-        a.href = url;
-        a.download = `${effectiveProduction(snapshot).title.replace(/[^a-z0-9_-]/gi, "_")}-cue-sheet.xlsx`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-        message =
-          "Cue sheet downloaded. Review the workbook before submission.";
-      } catch (e) {
-        message = `Export failed: ${e.message}`;
-      }
-      render();
-    };
+  if ($("#cloud-finish") && !account.user) $("#cloud-finish").onclick=()=>{if(review().length)return;state.status="completed";localStorage.setItem(storageKey,JSON.stringify(state));render();openDownloads(state);};
+  if ($("#export")) $("#export").onclick=()=>openDownloads(state);
 }
+function openDownloads(snapshot) {
+  const completed=structuredClone(snapshot);
+  showDownloadDialog({title:effectiveProduction(completed).title,saved:Boolean(account.user),download:format=>downloadCompletedProject(completed,format)});
+}
+async function downloadCompletedProject(snapshot,format='xlsx') {
+  if(snapshot.status!=="completed" || !reviewProject(snapshot).valid)throw new Error("Finish the cue sheet before downloading.");
+  if(serverValidationEnabled)await validateOnServer(snapshot);
+  const production=effectiveProduction(snapshot);
+  if(!['xlsx','csv','pdf'].includes(format))throw new Error('Unsupported download format');
+  const blob=format==='pdf'?await (await import('./export-pdf.js')).exportPdf(production,snapshot.tracks,snapshot.cues,snapshot.sharedCueDetails):format==='csv'?new Blob([cueSheetCsv(production,snapshot.tracks,snapshot.cues,snapshot.sharedCueDetails)],{type:'text/csv;charset=utf-8'}):await exportWorkbook(production,snapshot.tracks,snapshot.cues,snapshot.sharedCueDetails);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=`${production.title.replace(/[^a-z0-9_-]/gi,'_')}-cue-sheet.${format}`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+
 function updateIndicators() {
   const sharedStatus = $("#shared-credit-status");
   if (sharedStatus) sharedStatus.textContent = creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.";
@@ -600,6 +594,8 @@ function updateIndicators() {
     analyze.disabled = Boolean(reason);
     if (help) help.textContent = reason || "Ready to detect with current settings.";
   }
+  const titleInput=document.querySelector("#workspace-project-title");
+  if(titleInput && document.activeElement!==titleInput)titleInput.value=effectiveProduction(state).title || "";
   const header = document.querySelector("header b");
   if (header)
     header.textContent =
@@ -613,9 +609,9 @@ function updateIndicators() {
         state.sharedCueDetails,
       ).length,
   ).length;
-  document.querySelectorAll(".stats strong")[2].textContent = String(
+  document.querySelectorAll(".stats strong")[2] && (document.querySelectorAll(".stats strong")[2].textContent = String(
     ready,
-  ).padStart(2, "0");
+  ).padStart(2, "0"));
   document.querySelectorAll("[data-track]").forEach((el) => {
     const t = state.tracks.find((t) => t.id === el.dataset.track),
       pending = false;
@@ -823,14 +819,18 @@ function bindWorkflows() {
       };
   });
 }
-cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow});
+cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,onComplete:()=>{render();openDownloads(state);}});
+if(!location.hash && account.user) history.replaceState(null,"","#/projects");
 render();
 
 cloudWorkspace.restore();
+let workspaceTab="library";
 function routePage() {
-  if(location.hash === "#/projects") {tab="projects";render();cloudWorkspace.loadProjects();}
-  else if(tab === "projects") {tab="library";render();}
+  if(location.hash === "#/projects") {if(tab!=="projects")workspaceTab=tab;tab="projects";render();cloudWorkspace.loadProjects();}
+  else if(tab === "projects") {tab=workspaceTab;render();}
   window.scrollTo({top:0});
 }
 window.addEventListener("hashchange",routePage);
 routePage();
+
+cloudWorkspace.onboard();

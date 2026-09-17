@@ -401,7 +401,7 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition: none !important; scroll-behavior: auto !important; } }
 
 .saved-projects { display: grid; gap: 10px; }
-.saved-project { display: flex; align-items: center; gap: 16px; padding: 20px; text-align: left; border-color: var(--line); }
+.saved-project { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: flex; align-items: center; gap: 16px; padding: 20px; text-align: left; border-color: var(--line); }
 .saved-project > span:nth-child(2) { min-width: 0; flex: 1; }
 .saved-project strong { display: block; font-weight: 500; overflow-wrap: anywhere; }
 .saved-project small { display: block; color: var(--muted); margin-top: 6px; font-size: 11px; }
@@ -410,3 +410,51 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 #projects-page .empty .button-row { justify-content: center; margin-top: 20px; }
 
 @media (max-width:720px) { #projects-page .heading > .account-login { margin-top: 16px; } }
+
+.app-navigation { margin-top: 32px; }
+.app-navigation .nav { text-decoration: none; border-radius: 6px; }
+#sidebar-profile { margin-top: 16px; }
+.profile-menu { position: relative; }
+.profile-menu summary { display: flex; align-items: center; gap: 9px; padding: 9px 5px; cursor: pointer; list-style: none; border-radius: 6px; }
+.profile-menu summary::-webkit-details-marker { display: none; }
+.profile-menu summary:hover { background: var(--hover); }
+.profile-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--tint); color: var(--accent); flex-shrink: 0; font-size: 12px; }
+.profile-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.profile-chevron { color: var(--muted); }
+.profile-options { padding: 12px; border: 1px solid var(--strong-line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.profile-options > strong { display: block; font-size: 11px; font-weight: 500; overflow-wrap: anywhere; margin-bottom: 12px; }
+.profile-theme { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 12px; }
+.profile-options #cloud-logout { width: 100%; text-align: left; }
+.sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: none; }
+.sidebar-collapsed .profile-menu[open] .profile-options { position: fixed; left: 76px; bottom: 32px; width: 220px; z-index: 30; }
+.workflow-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 28px; overflow-x: auto; }
+.workflow-tabs button { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.workflow-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+.workflow-tabs button span { display: grid; place-items: center; width: 19px; height: 19px; background: var(--raised); border-radius: 50%; font-size: 10px; }
+.workflow-tabs button.active span { background: var(--tint); color: var(--accent); }
+@media(max-width:720px) {
+  .app-navigation,.sidebar-collapsed aside .app-navigation { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  #sidebar-profile { margin-top: 10px; }
+  .sidebar-collapsed .profile-name,.sidebar-collapsed .profile-chevron { display: inline; }
+  .sidebar-collapsed .profile-menu[open] .profile-options { position: static; width: 100%; }
+  .workflow-tabs { flex-wrap: wrap; }
+  .workflow-tabs button { flex: 1 1 45%; padding: 12px 5px; font-size: 11px; }
+}
+
+.resume-workspace { width: min(520px,calc(100vw - 32px)); padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.resume-workspace::backdrop { background: #0009; }
+.resume-workspace p { line-height: 1.6; }
+.resume-workspace .button-row { flex-wrap: wrap; margin-top: 24px; }
+
+.project-title-editor { margin: 24px 0 28px; max-width: 640px; }
+.project-title-editor label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.project-title-editor input { width: 100%; font-size: 24px; font-weight: 600; padding: 10px 12px; }
+.project-title-editor > span { display: block; color: var(--muted); font-size: 11px; margin-top: 7px; }
+
+.completion-mark { color: var(--accent); background: var(--tint); border-radius: 50%; width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px; margin-bottom: 16px; }
+.download-dialog select { width: 100%; margin-top: 8px; }
+.download-dialog [data-title] { overflow-wrap: anywhere; }
+
+.user-profile-dialog label { display: block; margin: 18px 0 8px; }
+.user-profile-dialog input { width: 100%; }
+.profile-options #edit-user-profile { width: 100%; text-align: left; margin-bottom: 8px; }

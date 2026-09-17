@@ -1,5 +1,6 @@
+import {userProfiles} from "../server/user-profile.js";
 import {authReady,settings,workos,cookie,setCookie,requireOrigin,equalState,sealFlow,openFlow,authenticate,apiError} from "../server/auth.js";
-import {reply,allowMethod} from "../server/http.js";
+import {reply,allowMethod,readJson} from "../server/http.js";
 import {upsertUser} from "../server/projects.js";
 const redirect=(res,url)=>{res.statusCode=303;res.setHeader("Location",url);res.end();};
 export default async function handler(req,res) {
@@ -10,7 +11,7 @@ export default async function handler(req,res) {
       if(!allowMethod(req,res,"GET")) return;
       if(!authReady()) return reply(res,200,{configured:false,user:null});
       const session=await authenticate(req,res);
-      return reply(res,200,{configured:true,user:session?{id:session.user.id,email:session.user.email,firstName:session.user.firstName}:null});
+      return reply(res,200,{configured:true,user:session?{id:session.user.id,email:session.user.email,firstName:session.user.firstName}:null,...(session?{profile:await userProfiles().get(session.user.id)}:{})});
     }
     settings();
     if(action==="login" || action==="signup") {
@@ -34,6 +35,13 @@ export default async function handler(req,res) {
         setCookie(res,"cuestamp-session",result.sealedSession,60*60*24*7);
         return redirect(res,settings().origin+"/");
       } catch { return redirect(res,settings().origin+"/?authError=1"); }
+    }
+    if(action==="profile") {
+      if(!allowMethod(req,res,"POST"))return;
+      requireOrigin(req);
+      const session=await authenticate(req,res);
+      if(!session)return reply(res,401,{error:"SIGN_IN_REQUIRED"});
+      return reply(res,200,{profile:await userProfiles().save(session.user.id,await readJson(req))});
     }
     if(action==="logout") {
       if(!allowMethod(req,res,"POST")) return;
