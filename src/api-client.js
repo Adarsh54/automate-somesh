@@ -8,6 +8,7 @@ export function validationPayload(state) {
     production: pick(state.production, ["title", "company", "preparedBy", "email", "duration", "startTimecode", "rate"]),
     mode: state.mode,
     movieOffset: state.movieOffset,
+    scoreOffset: state.scoreOffset,
     movieMetadata: state.movieMetadata ? pick(state.movieMetadata, ["title", "duration"]) : undefined,
     movieOverrides: state.movieOverrides ? pick(state.movieOverrides, ["duration", "trimStart", "trimEnd"]) : undefined,
     sharedCueDetails: {credits: credits(state.sharedCueDetails.credits)},

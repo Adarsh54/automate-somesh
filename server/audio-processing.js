@@ -24,7 +24,7 @@ export async function decodeAudio(url,size,signal) {
   const audio=info.streams.find(s=>s.codec_type==='audio'),video=info.streams.find(s=>s.codec_type==='video');
   if(!audio)throw Object.assign(new Error('This file has no audio track.'),{status:400});
   const duration=Number(info.format.duration);
-  if(!Number.isFinite(duration) || duration<=0 || duration>MAX_DURATION+.1)throw Object.assign(new Error('Use media up to 20 minutes long.'),{status:400});
+  if(!Number.isFinite(duration) || duration<=0 || duration>MAX_DURATION+.1)throw Object.assign(new Error('Use media up to 60 minutes long.'),{status:400});
   const start=Math.max(0,Number(info.format.start_time)||0);
   // Preserve audio's position relative to the first media timestamp, including a delayed audio track.
   const channels=Number(audio.channels);

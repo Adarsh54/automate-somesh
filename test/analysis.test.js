@@ -98,3 +98,13 @@ test("frame offsets include preroll, fractional rates, and drop-frame transition
     for (const n of [0, 1799, 1800, 17982, 107892])
       assert.equal(toFrames(fromFrames(n, rate), rate), n);
 });
+
+test('short cues are excluded only when their RMS level is below minus 30 dBFS', () => {
+  const tone = (seconds, db) => Float32Array.from({length: Math.round(seconds * sr)}, (_, i) => Math.SQRT2 * 10 ** (db / 20) * Math.sin(2 * Math.PI * 200 * i / sr));
+  for (const [seconds, db, expected] of [[1,-40,0],[1,-30,1],[1,-20,1],[1.98,-31,0],[2,-40,1],[3,-40,1]]) {
+    assert.equal(detectRegions(tone(seconds,db)).length,expected,`${seconds}s at ${db} dBFS`);
+  }
+  const x=new Float32Array(sr*20);
+  x.set(tone(1,-40),0);x.set(tone(1,-20),sr*5);x.set(tone(3,-40),sr*10);x.set(tone(1,-40),sr*19);
+  assert.deepEqual(detectRegions(x),[{start:5,end:6},{start:10,end:13}]);
+});

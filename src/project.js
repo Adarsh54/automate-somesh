@@ -28,6 +28,7 @@ export function convertRate(state, rate) {
   };
   state.production.startTimecode = convert(state.production.startTimecode);
   state.movieOffset = convert(state.movieOffset);
+  if (state.scoreOffset !== undefined) state.scoreOffset = convert(state.scoreOffset);
   state.tracks.forEach((t) => (t.offset = convert(t.offset)));
   state.cues.forEach((c) => {
     c.start = convert(c.start);
@@ -73,6 +74,7 @@ export function applyMovieMetadata(state, file, metadata) {
 export function productionIssues(state) {
   const p = effectiveProduction(state),
     issues = [];
+  if (state.mode === "offset" && state.scoreOffset !== undefined && toFrames(state.scoreOffset, p.rate) === null) issues.push("Correct the full score start timecode");
   if (!p.title.trim()) issues.push("Add the production title");
   if (
     state.mode === "movie" &&

@@ -19,7 +19,7 @@ export async function decodeMedia(file, progress = () => {}, signal) {
     const mediaStart = Math.max(0, await input.getFirstTimestamp());
     const duration = (await input.computeDuration()) - mediaStart;
     if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_DURATION)
-      throw new Error("Use a non-empty file no longer than 20 minutes.");
+      throw new Error("Use a non-empty file no longer than 60 minutes.");
     const video = await input.getPrimaryVideoTrack();
     const frameMetrics = video
       ? await video

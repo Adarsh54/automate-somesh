@@ -71,7 +71,7 @@ Export requires a production title, valid cue timings/usages, complete contribut
 
 Use the same recording at original speed/pitch with reasonably audible music. Heavy masking, different mixes, EQ, retiming, short fragments, edits or stereo cancellation may cause missed/fragmented matches. Repetitive tones and similar recordings can produce false candidates. Similarity is a correlation measurement, **not a probability**. This is real signal analysis but does not guarantee every occurrence; review against the movie and correct when needed.
 
-Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 20 minutes and 2 GiB; backend routing does not raise these limits. Memory/work grow with movie length and reference count; use a desktop for larger projects.
+Desktop Chrome is recommended. MP4/AAC and PCM WAV were tested; WebM/Opus and other formats depend on browser codec support. Corrupt/unsupported media or a missing audio track produces an error. Each file is capped at 60 minutes and 2 GiB; backend routing does not raise these limits. Memory/work grow with movie length and reference count; use a desktop for larger projects.
 
 See [Wasm build and benchmark notes](wasm/README.md) for reproducible compilation, parity checks and the measured speedup. Wasm accelerates local matching. Server-routed comparisons upload their originals, including small reference files needed to match a large movie.
 

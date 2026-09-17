@@ -1,3 +1,4 @@
+import {scoreOffset} from "./score-offset.js";
 import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
 import { decodeMedia } from "./media.js";
 import {decodeMedia as decodeOnServer} from "./backend-analysis.js";
@@ -9,8 +10,8 @@ import { applyMovieMetadata } from "./project.js";
 import AnalysisWorker from "./analysis.worker.js?worker&inline";
 
 export class Workflow {
-  constructor({ state, save, render, notify, onAudioAdded }) {
-    Object.assign(this, { state, save, render, notify, onAudioAdded });
+  constructor({ state, save, render, notify, onAudioAdded, localAudio }) {
+    Object.assign(this, { state, save, render, notify, onAudioAdded, localAudio });
     this.files = new Map();
     this.audio = new Map();
     this.urls = new Map();
@@ -32,7 +33,7 @@ export class Workflow {
     this.notify("Analysis cancelled. Existing cues were kept.");
   }
 
-  async load(file, track = null, movie = false, restoring = false) {
+  async load(file, track = null, movie = false, restoring = false, purpose = "export") {
     if (this.busy || (this.restoring && !restoring)) return;
     this.busy = true;
     this.controller = new AbortController();
@@ -67,9 +68,10 @@ export class Workflow {
         if (!track) {
           track = {
             id: crypto.randomUUID(),
+            purpose,
             title: file.name.replace(/\.[^.]+$/, ""),
             filename: file.name,
-            offset: rates[this.state.production.rate]?.drop ? "01:00:00;00" : "01:00:00:00",
+            offset: purpose === "export" ? scoreOffset(this.state) : (rates[this.state.production.rate]?.drop ? "01:00:00;00" : "01:00:00:00"),
             duration: decoded.duration,
             credits: ["Composer", "Publisher"].map((role) => ({
               role,
@@ -105,10 +107,14 @@ export class Workflow {
         catch(error){libraryWarning=` Audio library upload needs attention: ${error.message}`;}
       }
       if (!restoring) this.save();
-      this.notify(
+      if (!restoring) this.notify(
         `${file.name} is ready.${libraryWarning} ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
         false,
       );
+      if (!movie && !restoring && this.localAudio) {
+        try { await this.localAudio.put(track.id, file); }
+        catch { this.notify(file.name + " is ready, but could not be saved in this browser. Keep the original file to reattach next time.", false); }
+      }
       return movie ? this.movie : track;
     } catch (error) {
       if (error.name !== "AbortError")
@@ -120,16 +126,22 @@ export class Workflow {
     }
   }
 
+  analysisTracks() {
+    return this.state.tracks.filter(track => track.purpose !== "library");
+  }
+
   analysisUnavailable() {
     const s = this.state;
     if (s.mode === "manual") return "Manual workflow uses entered timings, not detection.";
     if (this.busy && !this.worker) return "Wait for audio decoding to finish.";
-    if (!s.tracks.length) return "Add at least one audio track to detect cues.";
-    if (s.tracks.some(t => !this.audio.has(t.id))) return "Reattach missing audio files to run detection.";
+    if (s.mode === "offset" && toFrames(scoreOffset(s), s.production.rate) === null) return "Enter a valid full score start timecode.";
+    const tracks = this.analysisTracks();
+    if (!tracks.length) return "Add at least one audio track to detect cues.";
+    if (tracks.some(t => !this.audio.has(t.id))) return "Reattach missing audio files to run detection.";
     if (s.mode === "movie" && !this.movie) return "Reattach the movie to run detection.";
     if (s.mode === "movie" && toFrames(s.movieOffset, s.production.rate) === null)
       return "Enter a valid movie file-start timecode.";
-    if (s.mode === "offset" && s.tracks.some(t => toFrames(t.offset, s.production.rate) === null))
+    if (s.mode === "offset" && tracks.some(t => toFrames(t.offset, s.production.rate) === null))
       return "Enter a valid file-start timecode for each audio track.";
     return "";
   }
@@ -230,7 +242,7 @@ export class Workflow {
           : "Analysis completed: no matching recordings were found. Check that the supplied cues use the same recording and speed as the movie, or use manual timings. Previous detections for this workflow were replaced.");
       }
       this.notify(
-        `${cues.length} ${mode === "movie" ? "matching placements" : "sound regions"} detected in ${data.elapsed.toFixed(1)}s of analysis. Review the results and add usage/credits before export.`,
+        `${cues.length} ${cues.length === 1 ? "cue" : "cues"} detected.`,
       );
     };
     // Structured cloning leaves low-rate PCM cached for re-analysis and previews.
@@ -239,7 +251,7 @@ export class Workflow {
       movie: this.movie?.samples,
       movieAssetId: this.movie?.assetId,
       movieFile: this.files.get("movie"),
-      tracks: s.tracks.map((t) => ({
+      tracks: this.analysisTracks().map((t) => ({
         id: t.id,
         title: t.title,
         samples: this.audio.get(t.id) instanceof Float32Array ? this.audio.get(t.id) : undefined,

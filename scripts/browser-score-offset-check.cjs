@@ -1,0 +1,31 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const assert=require('node:assert/strict');
+const rate=8000,frames=rate*10,b=Buffer.alloc(44+frames*2);
+b.write('RIFF');b.writeUInt32LE(b.length-8,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(frames*2,40);
+for(let i=rate*2;i<rate*6;i++)b.writeInt16LE(Math.round(14000*Math.sin(i*2*Math.PI*220/rate)),44+i*2);
+(async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(process.env.CUESTAMP_URL || 'http://127.0.0.1:5173/');await page.locator('#continue-guest').click();
+  await page.locator('#score-start-timecode').fill('02:00:00:12');
+  await page.locator('[data-upload="unknown"]').setInputFiles({name:'full-score.wav',mimeType:'audio/wav',buffer:b});
+  await page.waitForFunction(()=>document.querySelector('#analyze') && !document.querySelector('#analyze').disabled);
+  assert.equal(await page.locator('[data-track-offset] [data-field="offset"]').inputValue(),'02:00:00:12');
+  await page.locator('#analyze').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).cues.length===1);
+  const original=await page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).cues[0]);
+  assert.equal(original.start,'02:00:02:12');assert.equal(original.end,'02:00:06:12');
+  await page.locator('#score-start-timecode').fill('03:15:00:06');
+  const changed=await page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-v1')).cues[0]);
+  assert.equal(changed.start,'03:15:02:06');assert.equal(changed.end,'03:15:06:06');assert.equal(changed.relativeStart,original.relativeStart);
+  await page.locator('#score-start-timecode').fill('03:99:00:00');assert.equal(await page.locator('#analyze').isDisabled(),true);
+  await page.locator('#score-start-timecode').fill('03:15:00:06');
+  await page.screenshot({path:'/tmp/cuestamp-score-offset.png',fullPage:true});
+  await page.locator('.workflow-tabs [data-tab="cues"]').click();
+  assert.equal(await page.locator('[data-cue] [data-field="start"]').inputValue(),'03:15:02:06');
+  assert.equal(await page.locator('[data-cue] [data-field="end"]').inputValue(),'03:15:06:06');
+  await page.locator('.workflow-tabs [data-tab="library"]').click();await page.reload();
+  await page.locator('#score-start-timecode').waitFor();assert.equal(await page.locator('#score-start-timecode').inputValue(),'03:15:00:06');
+  assert.deepEqual(errors,[]);console.log('PASS: start offset before upload, frame-accurate detection, existing-cue rebasing, invalid input, Timings & usage, and reload.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

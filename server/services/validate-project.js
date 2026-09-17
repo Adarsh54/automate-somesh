@@ -17,7 +17,7 @@ const project = z.object({
     rate: z.enum(Object.keys(rates)).default("24"),
   }),
   mode: z.enum(["movie", "offset", "manual"]),
-  movieOffset: optionalText,
+  scoreOffset: text.optional(), movieOffset: optionalText,
   movieMetadata: z.object({title: optionalText, duration: z.number().finite().positive()}).optional(),
   movieOverrides: z.object({duration: text.optional(), trimStart: numeric.optional(), trimEnd: numeric.optional()}).optional(),
   sharedCueDetails: z.object({credits}),
