@@ -42,10 +42,10 @@ test('audio edits keep originals, link copies, replace only the library version 
  }finally{await db.close();}
 });
 
-test('server renders normalized, trimmed FLAC and validates source duration',async()=>{
+test('server normalizes only the selected snippet, ignoring louder audio outside it',async()=>{
  const {createServer}=await import('node:http');
  const {renderEdit}=await import('../server/audio-edits.js');
- const wav=await runBinary(ffmpeg,['-v','error','-f','lavfi','-i','aevalsrc=0.25:s=8000:d=4','-c:a','pcm_s16le','-f','wav','pipe:1'],AbortSignal.timeout(10000));
+ const wav=await runBinary(ffmpeg,['-v','error','-f','lavfi','-i','aevalsrc=if(between(t\\,1\\,3)\\,0.25\\,0.8):s=8000:d=4','-c:a','pcm_s16le','-f','wav','pipe:1'],AbortSignal.timeout(10000));
  const server=createServer((req,res)=>{res.setHeader('Content-Type','audio/wav');res.setHeader('Content-Length',wav.length);res.end(wav);});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
