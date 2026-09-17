@@ -1,3 +1,4 @@
+export const useMultipartUpload=file=>file.size>100_000_000;
 // Stop a stalled transfer without leaving its caller permanently busy.
 export async function uploadAudioFile(upload,pathname,file,options,{onProgress=()=>{},onController=()=>{},stallMs=120000}={}){
  const controller=new AbortController();let timer,lastLoaded=-1;
