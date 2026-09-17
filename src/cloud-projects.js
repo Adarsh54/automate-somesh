@@ -1,6 +1,6 @@
 import {openProfile} from "./user-profile.js";
 import {reviewProject} from "./domain/review.js";
-import {themeToggle} from "./theme.js";
+
 import {authActions} from "./auth-actions.js";
 import {createCloudMedia} from "./cloud-media.js";
 import {serverValidationEnabled} from "./api-client.js";
@@ -75,7 +75,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   function header() {return account.user ? "" : authActions(account);}
   function profile() {
     const name=account.profile?.name || account.user?.firstName || account.user?.email || "Guest";
-    return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><span class="profile-chevron" aria-hidden="true">⌄</span></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong><div class="profile-theme"><span>Appearance</span>${themeToggle()}</div>${account.user?`<button id="edit-user-profile">Profile</button><button id="cloud-logout" ${busy?"disabled":""}>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
+    return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><span class="profile-chevron" aria-hidden="true">⌄</span></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong>${account.user?`<button class="account-menu-item" id="edit-user-profile"><span aria-hidden="true">♙</span>Profile</button>`:""}<button class="account-menu-item" aria-label="Appearance" data-theme-toggle><span aria-hidden="true">◐</span>Appearance</button>${account.user?`<button class="account-menu-item" id="cloud-logout" ${busy?"disabled":""}><span aria-hidden="true">↪</span>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
   }
   const confirmSwitch=()=>!dirty || confirm("Your current cue sheet has unsaved changes. Leave it and continue?");
   function bind() {
