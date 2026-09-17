@@ -251,7 +251,7 @@ function stepNavigation() {
 }
 function library() {
   return (
-    creditProfilePicker() + sharedDetails() + workflowView(state, workflow, { esc, field, select }) +
+    creditProfilePicker() + workflowView(state, workflow, { esc, field, select }) +
     `<div class="section-title"><h2>Cue audio library <span>${state.tracks.length}</span></h2><span class="muted">Audio is shared across paths · select a file to preview or reattach audio</span></div>${state.tracks.length ? `<div class="library-grid"><div class="track-list">${state.tracks.map((t) => `<div class="track-row"><button class="track ${selected === t.id ? "selected" : ""}" data-track="${t.id}"><span class="track-icon">♪</span><span><strong>${esc(t.title)}</strong><small>${time(t.duration)} · ${workflow.audio.has(t.id) ? "Audio ready" : "Reattach audio to analyze"}</small></span><span class="badge ">Source audio</span></button>${state.mode === "movie" && !state.movieMetadata ? `<button class="text danger" data-remove-track="${t.id}" aria-label="Remove audio track ${esc(t.title)}" title="Remove track and its placements">Remove track</button>` : ""}</div>`).join("")}</div>${editor()}</div>` : '<div class="empty"><span>♫</span><h3>Add the music behind the picture</h3><p>Upload cue recordings or a music-only export using the selected workflow above.</p></div>'}`
   );
 }
@@ -261,12 +261,18 @@ function editor() {
     return '<div class="panel empty"><p>Select a track to review its details.</p></div>';
   return `<section class="panel editor" data-editor="${t.id}"><div class="section-title"><h2>Audio source</h2></div>${field("Source label", "title", t.title)}${state.mode === "manual" ? `<details class="disclosure"><summary>Use playback marks (optional)</summary>${field("This audio file starts at film timecode", "offset", t.offset, 'placeholder="01:00:00:00"')}<p class="muted">Only needed for playback marking. Direct film in/out entry needs no file offset.</p></details>` : ""}<p class="file-name">${esc(t.filename)} · ${t.duration === null ? "Duration unavailable" : time(t.duration)}</p>${urls.has(t.id) ? `<audio id="track-preview" controls src="${urls.get(t.id)}"></audio>` : `<label class="upload-button">Reattach ${esc(t.filename)}<input data-reattach="${t.id}" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg"></label>`}${t.error ? `<p class="notice">${esc(t.error)}</p>` : ""}<p class="muted">Enter common composer and publisher details in the Shared credits section on this page. Customize exceptions per cue in Timings &amp; usage.</p>${state.mode === "manual" ? `<button class="primary" data-add-cue="${t.id}">Add manual placement</button>` : ""}</section>`;
 }
+function editWorkspaceCredits(){
+ const profile=creditProfiles.find(p=>p.id===activeCreditProfileId);
+ if(profile){editCreditProfile(profile,{esc,applyOnSave:true,onSave:async draft=>{const saved=await storeCreditProfile(draft);applyCreditProfile(saved.id);}});return;}
+ editSheetCredits();
+}
+function editSheetCredits(){
+ editCreditProfile({name:'Cue sheet credits',...structuredClone(state.sharedCueDetails)},{esc,sheetOnly:true,onSave:async draft=>{state.sharedCueDetails={category:draft.category,credits:draft.credits};save();render();}});
+}
 function creditProfilePicker(){
- return `<section class="panel workspace-credit-profile"><div><h2>Credit profile</h2><p class="muted">Choose the composer and publisher credits for this cue sheet.</p></div>${account.user?`<div class="credit-profile-controls"><label for="select-credit-profile">Saved profiles</label><div class="button-row"><select id="select-credit-profile"><option value="">Choose a profile…</option>${creditProfiles.map(p=>`<option value="${esc(p.id)}" ${p.id===activeCreditProfileId?'selected':''}>${esc(p.name)}</option>`).join('')}</select><button id="create-workspace-profile">＋ Create profile</button></div><p class="muted">Profiles are saved to your account. Choosing one applies it to this cue sheet.</p></div>`:`<p>Sign in to save and choose reusable credit profiles, or enter shared credits below.</p><div class="button-row">${cloudWorkspace.header()}</div>`}</section>`;
+ return `<section class="panel workspace-credit-profile"><div><h2>Credit profile</h2><p class="muted">Choose the composer and publisher credits for this cue sheet.</p></div>${account.user?`<div class="credit-profile-controls"><label for="select-credit-profile">Saved profiles</label><div class="button-row"><select id="select-credit-profile"><option value="">Choose a profile…</option>${creditProfiles.map(p=>`<option value="${esc(p.id)}" ${p.id===activeCreditProfileId?'selected':''}>${esc(p.name)}</option>`).join('')}</select><button id="edit-workspace-credits">Edit credits</button><button id="create-workspace-profile">＋ Create profile</button></div><p class="muted">Profiles are saved to your account. Choosing one applies it to this cue sheet.</p></div>`:`<p>Edit credits for this cue sheet, or sign in to use saved profiles.</p><div class="button-row"><button id="edit-workspace-credits">Edit credits</button>${cloudWorkspace.header()}</div>`}</section>`;
 }
-function sharedDetails() {
-  return `<section class="panel" id="shared-details" tabindex="-1" aria-labelledby="shared-details-heading"><details class="shared-disclosure"><summary><span><span class="eyebrow">THE PEOPLE BEHIND THE MUSIC</span><h2 id="shared-details-heading">Shared credits</h2><span class="muted">Composer &amp; publisher details · applies to all cues</span></span><span class="disclosure-action" aria-hidden="true">Edit credits ↗</span></summary><div class="shared-body"><p class="muted">Fill this in once here. New cues use these details automatically. You can customize individual cues in Timings &amp; usage; existing cue overrides stay separate.</p>${provenanceField(state.sharedCueDetails.category)}${cueCreditEditor(state.sharedCueDetails, true)}<p id="shared-credit-status" class="muted" role="status">${esc(creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.")}</p></div></details></section>`;
-}
+
 function settingsPage() {
  if(!account.user)return `<section class="settings-page"><h1>Credit profiles</h1><p>Sign in to create and reuse credit profiles across your projects and devices.</p><div class="button-row">${cloudWorkspace.header()}</div></section>`;
  return `<section class="settings-page"><div class="heading"><div><div class="eyebrow">REUSABLE CREDITS</div><h1>Credit profiles</h1><p>Create and save contributor details, then choose a profile for your cue sheet.</p></div><button class="primary" id="new-credit-profile" ${creditProfilesLoading?"disabled":""}>＋ New profile</button></div><p class="muted">Saved to your account and available across devices. Choose a saved profile from the dropdown in Workspace.</p><div role="status">${creditProfilesLoading?"Loading your profiles…":""}${creditProfilesError?`${esc(creditProfilesError)} <button id="retry-credit-profiles">Retry</button>`:""}</div><div class="credit-profile-list">${creditProfiles.length?creditProfiles.map(p=>`<article class="panel"><h2>${esc(p.name)}</h2><p class="muted">${p.credits.map(c=>esc(c.role==='Composer'?[c.first,c.last].filter(Boolean).join(' '):c.name)).join(' · ')}</p><div class="button-row"><button data-edit-credit-profile="${esc(p.id)}">Edit</button><button data-delete-credit-profile="${esc(p.id)}">Delete</button></div></article>`).join(''):'<div class="empty"><h2>No credit profiles yet</h2><p>Create your first profile to reuse composer and publisher details.</p></div>'}</div></section>`;
@@ -374,6 +380,7 @@ function bind() {
   if($('#retry-credit-profiles'))$('#retry-credit-profiles').onclick=()=>loadAccountCreditProfiles();
   const profileSelect=document.querySelector('#select-credit-profile');
   if(profileSelect)profileSelect.onchange=()=>applyCreditProfile(profileSelect.value);
+  if($('#edit-workspace-credits'))$('#edit-workspace-credits').onclick=editWorkspaceCredits;
   if($('#create-workspace-profile'))$('#create-workspace-profile').onclick=()=>editCreditProfile(null,{esc,applyOnSave:true,onSave:async draft=>{const saved=await storeCreditProfile(draft);applyCreditProfile(saved.id);}});
   if($('#new-credit-profile'))$('#new-credit-profile').onclick=()=>editCreditProfile(null,{esc,onSave:storeCreditProfile});
   document.querySelectorAll('[data-edit-credit-profile]').forEach(button=>button.onclick=()=>editCreditProfile(creditProfiles.find(p=>p.id===button.dataset.editCreditProfile),{esc,onSave:storeCreditProfile}));
@@ -385,9 +392,7 @@ function bind() {
         message = "";
         navigate(sharedShortcut ? "library" : b.dataset.tab);
         if (sharedShortcut) {
-          $("#shared-details details").open = true;
-          $("#shared-details").scrollIntoView({block:"start"});
-          $("#shared-details").focus({preventScroll:true});
+          editSheetCredits();
         } else window.scrollTo({top:0});
       }),
   );
