@@ -14,12 +14,13 @@ export async function sessionInfo() {
 }
 export function createCloudWorkspace(account,{state,storageKey,esc,workflow,download,onComplete}) {
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="";
-  const metaKey=storageKey+":project";
-  try {active=JSON.parse(localStorage.getItem(metaKey));dirty=Boolean(localStorage.getItem(storageKey));} catch {}
+  const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
+  try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
   const update=()=>{const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
   const stash=()=>{try {localStorage.setItem(storageKey+":backup",JSON.stringify(state));} catch {}};
   const replace=(project)=>{
     stash();localStorage.setItem(storageKey,JSON.stringify(project.data));
+    localStorage.removeItem(dirtyKey);
     localStorage.setItem(metaKey,JSON.stringify({id:project.id,revision:project.revision}));
     history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");
     location.reload();
@@ -49,6 +50,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     active={id:project.id,revision:project.revision};localStorage.setItem(metaKey,JSON.stringify(active));
     if(complete && project.status!=="completed")throw new Error("Your draft was saved, but completion was not confirmed by the server. Please retry Finish making cue sheet.");
     dirty=changes!==version;
+    localStorage.setItem(dirtyKey,String(dirty));
     if(!dirty){state.status=snapshot.status;localStorage.setItem(storageKey,JSON.stringify(state));}
     status=dirty?"Earlier edits saved. Save again for your latest changes.":"Saved to your account.";
     if(complete && !dirty){status="Cue sheet completed and saved.";onComplete?.();}
@@ -82,22 +84,11 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     const name=account.profile?.name || account.user?.firstName || account.user?.email || "Guest";
     return `<details class="profile-menu"><summary aria-label="Profile menu"><span class="profile-avatar">${esc(name[0].toUpperCase())}</span><span class="profile-name">${esc(name)}</span><svg class="profile-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></summary><div class="profile-options"><strong>${esc(account.user?.email || "Guest workspace")}</strong>${account.user?`<button class="account-menu-item" id="edit-user-profile"><span aria-hidden="true">♙</span>Profile</button>`:""}<button class="account-menu-item" aria-label="Appearance" data-theme-toggle><span aria-hidden="true">◐</span>Appearance</button>${account.user?`<button class="account-menu-item" id="cloud-logout" ${busy?"disabled":""}><span aria-hidden="true">↪</span>Log out</button>`:`<div class="button-row">${authActions(account)}</div>`}</div></details>`;
   }
-  const confirmSwitch=()=>!dirty || confirm("Your current cue sheet has unsaved changes. Leave it and continue?");
   function bind() {
     document.querySelectorAll("[data-new-project]").forEach(button=>button.onclick=()=>{
       if(busy || workflow?.busy)return;
-      const startNew=()=>{stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();};
-      if(!dirty && !active && !state.tracks.length && !state.cues.length && !state.production.title){startNew();return;}
-      const dialog=document.createElement("dialog");
-      dialog.className="resume-workspace";
-      dialog.setAttribute("aria-labelledby","resume-workspace-title");
-      dialog.innerHTML=`<h2 id="resume-workspace-title">Pick up where you left off?</h2><p>Your workspace has <strong>${esc(state.production.title || "an untitled cue sheet")}</strong>. Resume it at the step you left, or start a new cue sheet.</p><p class="muted">Starting new replaces your workspace draft. Save any changes you want to keep first.</p><div class="button-row"><button class="primary" data-resume autofocus>Resume cue sheet</button><button data-start-new>Start new cue sheet</button><button data-cancel>Cancel</button></div>`;
-      document.body.append(dialog);
-      dialog.addEventListener("close",()=>dialog.remove());
-      dialog.querySelector("[data-resume]").onclick=()=>{dialog.close();location.hash="#/workspace";};
-      dialog.querySelector("[data-start-new]").onclick=()=>{dialog.close();startNew();};
-      dialog.querySelector("[data-cancel]").onclick=()=>dialog.close();
-      dialog.showModal();
+      stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);localStorage.removeItem(dirtyKey);
+      history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();
     });
     if(!account.user)return;
     const on=(selector,handler)=>{const button=document.querySelector(selector);if(button)button.onclick=handler;};
@@ -110,9 +101,9 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     on("#cloud-restore",()=>run(()=>media?.restore(report)));
     on("#cloud-logout",()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuestamp-guest");}catch{}location.reload();}));
     on("#projects-retry",loadProjects);
-    document.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{if(confirmSwitch())replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
+    document.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
   }
-  return {onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
+  return {hasUnsavedChanges:()=>dirty,onboard:()=>{if(account.user && account.profile?.complete===false)openProfile(account,update,{onboarding:true});},view,header,profile,bind,projectsPage,loadProjects,restore:()=>account.user && state.media?run(()=>media?.restore(report)):Promise.resolve(),changed(){changes++;dirty=true;localStorage.setItem(dirtyKey,"true");status="Unsaved changes · click Save project to save.";const el=document.querySelector("#cloud-status");if(el)el.textContent=status;}};
 }
 
 document.addEventListener('click',event=>{if(!event.target.closest('.profile-menu'))document.querySelector('.profile-menu[open]')?.removeAttribute('open');});

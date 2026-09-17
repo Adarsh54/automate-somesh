@@ -811,11 +811,17 @@ function navigate(page){
  if(location.hash!==target)history.pushState(null,'',target);
  routePage();
 }
+let routeInitialized=false;
 function routePage(){
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
  let page=Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
  if(!page)page=account.user?'projects':'library';
+ if(routeInitialized && steps.some(([key])=>key===tab) && !steps.some(([key])=>key===page) && cloudWorkspace.hasUnsavedChanges()){
+   const warning=account.user ? "This cue sheet has unsaved changes. Cancel to stay and save your project, or OK to leave without saving." : "This cue sheet is only saved in this browser. Cancel to stay and sign in to save it to your account, or OK to leave.";
+   if(!confirm(warning)){history.replaceState(null,'',pageRoutes[tab]);return;}
+ }
+ routeInitialized=true;
  if(location.hash!==pageRoutes[page])history.replaceState(null,'',pageRoutes[page]);
  tab=page;
  if(steps.some(([key])=>key===page)){workspaceTab=page;try{sessionStorage.setItem(storageKey+':step',page);}catch{}}
@@ -824,6 +830,7 @@ function routePage(){
  if(page==='settings')loadAccountCreditProfiles();
  window.scrollTo({top:0});
 }
+window.addEventListener('beforeunload',event=>{if(steps.some(([key])=>key===tab) && cloudWorkspace.hasUnsavedChanges()){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',routePage);
 window.addEventListener('popstate',routePage);
 routePage();
