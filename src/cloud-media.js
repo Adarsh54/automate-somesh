@@ -32,7 +32,7 @@ export function createCloudMedia({state,workflow,persist,request,uploadFile=uplo
     report('Saving project…');
   }
   async function restore(report) {
-    if(workflow.busy)throw new Error('Wait for analysis to finish, then restore media.');
+    if(workflow.busy)throw new Error('Wait for analysis to finish before loading saved files.');
     const entries=state.tracks.filter(t=>state.media?.tracks?.[t.id] && !workflow.files.has(t.id)).map(t=>({id:state.media.tracks[t.id],track:t}));
     if(state.media?.movie && !workflow.files.has('movie'))entries.push({id:state.media.movie,movie:true});
     workflow.restoring=true;
@@ -41,7 +41,7 @@ export function createCloudMedia({state,workflow,persist,request,uploadFile=uplo
       for(const entry of entries) {
         try {
           const media=await request('/api/media?id='+encodeURIComponent(entry.id));
-          report(`Restoring ${media.filename}…`);
+          report(`Loading ${media.filename}…`);
           const response=await fetch(media.url,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(15*60*1000)});
           if(!response.ok)throw new Error('Download failed');
           const blob=await response.blob();
@@ -51,8 +51,8 @@ export function createCloudMedia({state,workflow,persist,request,uploadFile=uplo
         } catch {failures.push(entry.track?.filename || 'movie');}
       }
     } finally {workflow.restoring=false;}
-    if(failures.length)throw new Error(`Could not restore ${failures.join(', ')}. Retry Restore media or reattach the files. Your cues are kept.`);
-    report(entries.length?'Media restored.':'Attached media is ready.');
+    if(failures.length)throw new Error(`Could not load ${failures.join(', ')}. Reload the page or reattach the files. Your cues are kept.`);
+    report('');
   }
   return {prepare,restore};
 }

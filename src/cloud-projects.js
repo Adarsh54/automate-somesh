@@ -61,7 +61,6 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     return `<section class="panel account-panel"><div><strong>${esc(account.user.email)}</strong><p id="cloud-status" role="status">${esc(status || (active ? "Click Save project to keep your latest changes." : "New workspace · save to add it to your account."))}</p></div><div class="button-row">
     <button class="primary" id="cloud-save" ${busy?"disabled":""}>Save project</button>
     <button id="cloud-copy" ${busy?"disabled":""}>Save a copy</button>
-    <button id="cloud-restore" ${busy?"disabled":""}>Restore media</button>
     </div>
     </section>`;
   }
@@ -101,7 +100,6 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     on("#cloud-save",()=>run(()=>save()));
     on("#cloud-copy",()=>run(()=>save(true)));
 
-    on("#cloud-restore",()=>run(()=>media?.restore(report)));
     on("#cloud-logout",()=>run(async()=>{await request("/api/auth?action=logout",{method:"POST"});try{sessionStorage.removeItem("cuestamp-guest");}catch{}location.reload();}));
     on("#projects-retry",loadProjects);
     document.querySelectorAll("[data-cloud-open]").forEach(button=>button.onclick=()=>run(async()=>{replace((await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudOpen))).project);}));
