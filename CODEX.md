@@ -256,3 +256,7 @@ not regenerate audio. Publish sits below the preview, above Listener analytics, 
 preview offers Retry preview. No schema migration or new credentials are required.
 Regression coverage includes `scripts/browser-reel-presentation-check.cjs` plus
 ownership, publication snapshot and PDF limits in the server tests.
+
+Published reels display their share URL directly beneath the preview, with Copy
+link and Open reel controls. Each published item under Your reels also exposes
+Share without changing the currently edited reel. Drafts do not expose share URLs.
