@@ -21,7 +21,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   const replace=(project)=>{
     stash();localStorage.setItem(storageKey,JSON.stringify(project.data));
     localStorage.setItem(metaKey,JSON.stringify({id:project.id,revision:project.revision}));
-    history.replaceState(null,"",location.pathname+location.search+"#/workspace");
+    history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");
     location.reload();
   };
   async function request(url, options) {
@@ -81,7 +81,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   function bind() {
     document.querySelectorAll("[data-new-project]").forEach(button=>button.onclick=()=>{
       if(busy || workflow?.busy)return;
-      const startNew=()=>{stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);history.replaceState(null,"",location.pathname+location.search+"#/workspace");location.reload();};
+      const startNew=()=>{stash();localStorage.removeItem(storageKey);localStorage.removeItem(metaKey);history.replaceState(null,"",location.pathname+location.search+"#/workspace/library");location.reload();};
       if(!dirty && !active && !state.tracks.length && !state.cues.length && !state.production.title){startNew();return;}
       const dialog=document.createElement("dialog");
       dialog.className="resume-workspace";

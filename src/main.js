@@ -135,7 +135,7 @@ function applyCreditProfile(profileId){
   const profile=creditProfiles.find(p=>p.id===profileId);if(!profile)return;
   activeCreditProfileId=profile.id;state.activeCreditProfileId=profile.id;
   state.sharedCueDetails={category:profile.category,credits:structuredClone(profile.credits)};
-  save();tab='library';history.replaceState(null,'','#/workspace');render();
+  save();navigate('library');
 }
 function save() {
   state.status="draft";
@@ -202,9 +202,9 @@ function render() {
         ).length,
     ).length;
   $("#app").innerHTML =
-    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a><a class="nav ${steps.some(([key]) => key === tab) ? "active" : ""}" href="#/workspace" title="Workspace" aria-label="Workspace" ${steps.some(([key]) => key === tab) ? 'aria-current="page"' : ""}>${sidebarIcon("library")}<span class="nav-label">Workspace</span></a><button class="nav" data-new-project title="New cue sheet" aria-label="New cue sheet"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New cue sheet</span></button></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account"><span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><label for="workspace-project-title">Project title</label><input id="workspace-project-title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name your project…" autocomplete="off"><span>Use your film or production name.</span></div>` : ""}<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div><nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
-  document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<button class="nav ${tab === "settings" ? "active" : ""}" data-tab="settings" aria-label="Credit profiles" title="Credit profiles">${sidebarIcon("settings")}<span class="nav-label">Credit profiles</span></button>`);
-  document.querySelector(".source-link")?.insertAdjacentHTML("afterend", `<button class="nav team-link ${tab === "team" ? "active" : ""}" data-tab="team" aria-label="Meet the team" title="Meet the team">Meet the team</button>`);
+    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#/projects" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a><a class="nav ${steps.some(([key]) => key === tab) ? "active" : ""}" href="#/workspace" title="Workspace" aria-label="Workspace" ${steps.some(([key]) => key === tab) ? 'aria-current="page"' : ""}>${sidebarIcon("library")}<span class="nav-label">Workspace</span></a><button class="nav" data-new-project title="New cue sheet" aria-label="New cue sheet"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New cue sheet</span></button></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div><a class="source-link" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI cue sheet guide ↗</a></aside><main><header><span>WORKSPACE / <b>${esc(effectiveProduction(state).title || "Untitled production")}</b></span><div class="header-account"><span class="local">${account.user ? "My workspace" : "Guest workspace"}</span><div id="account-actions">${cloudWorkspace?.header() || ""}</div></div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><label for="workspace-project-title">Project title</label><input id="workspace-project-title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name your project…" autocomplete="off"><span>Use your film or production name.</span></div>` : ""}<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div><nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+  document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${tab === "settings" ? "active" : ""}" href="#/credit-profiles" ${tab === "settings" ? 'aria-current="page"' : ""} aria-label="Credit profiles" title="Credit profiles">${sidebarIcon("settings")}<span class="nav-label">Credit profiles</span></a>`);
+  document.querySelector(".source-link")?.insertAdjacentHTML("afterend", `<a class="nav team-link ${tab === "team" ? "active" : ""}" href="#/team" ${tab === "team" ? 'aria-current="page"' : ""} aria-label="Meet the team" title="Meet the team">Meet the team</a>`);
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
   if (tab === "settings") document.querySelector(".content").innerHTML = settingsPage();
@@ -331,9 +331,8 @@ function addCue(trackId) {
     method: "manual",
     reviewed: true,
   });
-  tab = "cues";
   save();
-  render();
+  navigate("cues");
 }
 function writeCreditField(element, key) {
   const owner = element.closest("#shared-details") ? state.sharedCueDetails
@@ -365,10 +364,8 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         const sharedShortcut = b.dataset.tab === "shared";
-        if(location.hash === "#/projects") history.pushState(null,"","#/workspace");
-        tab = sharedShortcut ? "library" : b.dataset.tab;
-        (message = "");
-        render();
+        message = "";
+        navigate(sharedShortcut ? "library" : b.dataset.tab);
         if (sharedShortcut) {
           $("#shared-details details").open = true;
           $("#shared-details").scrollIntoView({block:"start"});
@@ -735,9 +732,8 @@ function bindWorkflows() {
       (b.onclick = () => {
         const c = state.cues.find((c) => c.id === b.dataset.listen);
         state.mode = "movie";
-        tab = "library";
         save();
-        render();
+        navigate("library");
         const video = $("#movie-preview");
         if (video?.closest("details")) video.closest("details").open = true;
         if (video) {
@@ -789,17 +785,28 @@ function bindWorkflows() {
   });
 }
 cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,onComplete:()=>{render();openDownloads(state);}});
-if(!location.hash && account.user) history.replaceState(null,"","#/projects");
-render();
-
-cloudWorkspace.restore();
-let workspaceTab="library";
-function routePage() {
-  if(location.hash === "#/projects") {if(tab!=="projects")workspaceTab=tab;tab="projects";render();cloudWorkspace.loadProjects();}
-  else if(tab === "projects") {tab=workspaceTab;render();}
-  window.scrollTo({top:0});
+const pageRoutes={projects:'#/projects',settings:'#/credit-profiles',team:'#/team',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
+let workspaceTab='library';
+try {const saved=sessionStorage.getItem(storageKey+':step');if(steps.some(([key])=>key===saved))workspaceTab=saved;}catch{}
+function navigate(page){
+ const target=pageRoutes[page] || pageRoutes.library;
+ if(location.hash!==target)history.pushState(null,'',target);
+ routePage();
 }
-window.addEventListener("hashchange",routePage);
+function routePage(){
+ let hash=location.hash;
+ if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
+ let page=Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
+ if(!page)page=account.user?'projects':'library';
+ if(location.hash!==pageRoutes[page])history.replaceState(null,'',pageRoutes[page]);
+ tab=page;
+ if(steps.some(([key])=>key===page)){workspaceTab=page;try{sessionStorage.setItem(storageKey+':step',page);}catch{}}
+ render();
+ if(page==='projects')cloudWorkspace.loadProjects();
+ window.scrollTo({top:0});
+}
+window.addEventListener('hashchange',routePage);
+window.addEventListener('popstate',routePage);
 routePage();
-
+cloudWorkspace.restore();
 cloudWorkspace.onboard();

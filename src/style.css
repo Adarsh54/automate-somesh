@@ -469,3 +469,5 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .credit-profile-editor input,.credit-profile-editor select { width:100%; margin-top:6px; }
 .credit-profile-editor fieldset { border:1px solid var(--line); border-radius:8px; margin:16px 0; padding:16px; }
 .credit-profile-list { display:grid; gap:16px; margin-top:24px; }
+
+.nav.team-link { text-decoration: none; }
