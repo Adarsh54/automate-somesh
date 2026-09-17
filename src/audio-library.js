@@ -1,3 +1,4 @@
+import {prepareLosslessUpload} from './lossless-upload.js';
 import {audioUploadStatus,updateAudioUploadStatus} from './audio-upload-status.js';
 import {uploadAudioFile,useMultipartUpload} from './audio-upload.js';
 import {audioUploadButton} from "./audio-upload-button.js";
@@ -9,10 +10,10 @@ export async function libraryRequest(url,options) {
  if(!response.ok)throw new Error(response.status===401?'Sign in again to access your saved files.':response.status===409?'This project changed elsewhere. Reopen it before saving again.':'Could not save or load your data. Please try again.');
  return response.json();
 }
-function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',2);req.onupgradeneeded=()=>{for(const name of ['files','uploadState'])if(!req.result.objectStoreNames.contains(name))req.result.createObjectStore(name,{keyPath:'localId'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function database(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cuestamp-audio-library',3);req.onupgradeneeded=()=>{for(const name of ['files','uploadState','uploadFiles'])if(!req.result.objectStoreNames.contains(name))req.result.createObjectStore(name,{keyPath:'localId'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
 async function localOperation(mode,fn,storeName='files'){const db=await database();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(storeName,mode),request=fn(tx.objectStore(storeName));tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
 async function persistUploadState({localId,reservation,uploaded,assetId}){await localOperation('readwrite',store=>store.put({localId,reservation,uploaded,assetId}),'uploadState');}
-export function createAudioLibrary({account,esc,onChange,request=libraryRequest,uploadFile=upload}) {
+export function createAudioLibrary({account,esc,onChange,request=libraryRequest,uploadFile=upload,prepareUpload=prepareLosslessUpload}) {
  const post=(url,data)=>request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
  const scope=account.user?.id || 'guest',known=new WeakMap(),stored=new WeakSet();
  let local=[],remote=[],loaded=false,loading=false,error='',progress='',uploading=false,loadPromise=null,uploadController=null,uploadDetail=null;
@@ -29,16 +30,35 @@ export function createAudioLibrary({account,esc,onChange,request=libraryRequest,
   let item=known.get(file);
   if(!item){item={localId:crypto.randomUUID(),scope,file};local.push(item);known.set(file,item);await onStaged({id:item.localId,filename:file.name});onChange();}
   else await onStaged({id:item.assetId || item.localId,filename:file.name});
-  if(!stored.has(file)&&!item.assetId){await localOperation('readwrite',store=>store.put(item));stored.add(file);}
+  if(!stored.has(file)&&!item.assetId){await localOperation('readwrite',store=>store.put({localId:item.localId,scope:item.scope,file}));stored.add(file);}
   if(account.user && !item.assetId){
+   let transfer=file;
+   if(!item.uploaded){
+    const cached=await localOperation('readonly',store=>store.get(item.localId),'uploadFiles');
+    if(cached)transfer=cached.file;
+    else if(!item.reservation){
+     const controller=new AbortController();uploadController=controller;onChange();
+     try{
+      transfer=await prepareUpload(file,{signal:controller.signal,onProgress:percentage=>showProgress('Compressing losslessly…',percentage,file.name)});
+      controller.signal.throwIfAborted();
+      if(transfer!==file){
+       try{await localOperation('readwrite',store=>store.put({localId:item.localId,file:transfer}),'uploadFiles');}
+       catch{transfer=file;} // No reservation yet: safely use the original if local storage is full.
+      }
+      controller.signal.throwIfAborted();
+     }finally{uploadController=null;onChange();}
+    }
+    if(item.reservation?.size!=null&&transfer.size!==Number(item.reservation.size))throw Error('Prepared audio is unavailable. Please upload the original file again.');
+   }
    showProgress('Starting upload…',null,file.name);
-   item.reservation ??= (await post('/api/media?action=reserve',{filename:file.name,size:file.size})).asset;
+   item.reservation ??= (await post('/api/media?action=reserve',{filename:transfer.name,size:transfer.size})).asset;
    await persistUploadState(item);
    const asset=item.reservation;
-   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,file,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(file)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const value=Math.floor(percentage);if(uploadDetail?.percentage!==value){showProgress('Uploading',value,file.name);}}});item.uploaded=true;await persistUploadState(item);}
+   if(!item.uploaded){await uploadAudioFile(uploadFile,asset.pathname,transfer,{access:'private',handleUploadUrl:'/api/media',clientPayload:asset.id,contentType:asset.contentType,multipart:useMultipartUpload(transfer)},{onController:controller=>{uploadController=controller;onChange();},onProgress:({percentage})=>{const value=Math.floor(percentage);if(uploadDetail?.percentage!==value){showProgress('Uploading',value,file.name);}}});item.uploaded=true;await persistUploadState(item);}
    showProgress('Finishing upload…',100,file.name);
    await post('/api/media?action=complete',{id:asset.id});item.assetId=asset.id;
    await persistUploadState(item);
+   await localOperation('readwrite',store=>store.delete(item.localId),'uploadFiles').catch(()=>{});
   }
   progress='';onChange();return {id:item.assetId || item.localId,assetId:item.assetId,filename:file.name};
  }

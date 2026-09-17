@@ -1,5 +1,5 @@
 const text=(view,offset,length)=>String.fromCharCode(...new Uint8Array(view.buffer,view.byteOffset+offset,length));
-export async function wavInfo(file){
+export async function wavInfo(file,{maxDuration=1200}={}){
  const header=new DataView(await file.slice(0,12).arrayBuffer());
  if(header.byteLength<12||text(header,0,4)!=='RIFF'||text(header,8,4)!=='WAVE')throw Error('This audio format needs server processing.');
  let fmt;
@@ -16,7 +16,7 @@ export async function wavInfo(file){
    const {format,channels,rate,align,bits}=fmt;
    if(!channels||!rate||align!==channels*bits/8||!((format===1&&[8,16,24,32].includes(bits))||(format===3&&bits===32)))throw Error('This WAV encoding needs server processing.');
    const frames=Math.floor(size/align),duration=frames/rate;
-   if(!frames||duration>1200)throw Error('Reel tracks must be up to 20 minutes long.');
+   if(!frames||duration>maxDuration)throw Error('Reel tracks must be up to 20 minutes long.');
    return {...fmt,start,size:frames*align,duration,samples:frames*channels};
   }
   offset=start+size+(size%2);

@@ -24,6 +24,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "jszip": "3.10.1",
+    "libflacjs": "5.6.0",
     "mediabunny": "^1.56.3",
     "zod": "^4.6.5"
   },

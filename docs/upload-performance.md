@@ -165,8 +165,27 @@ This verifies exact audio samples, not preservation of every WAV metadata
 chunk or the original WAV container bytes. The benchmark rejects float WAVs
 and unsupported bit depths rather than silently quantizing them.
 
-The automatic app upload pipeline is unchanged. These scripts are local
-prototypes for assessing a future lossless-upload option:
+Automatic lossless compression is now enabled in the shared audio-library
+upload pipeline (reels, cues, and Audio Files). WAV files of at least 1 MiB
+with integer 16-bit or 24-bit PCM are encoded in a cancellable WASM worker.
+The app uploads FLAC only when it saves at least 5%; other encodings, float
+WAV, encoder failures, and timeouts use the original. Guest files stay local.
+
+The original remains in IndexedDB for local playback. A separate `uploadFiles`
+store caches the prepared FLAC until upload completion, so retrying after a
+reload uses the same bytes and reservation. Existing WAV reservations continue
+using WAV. Compression preserves audio samples, not WAV metadata chunks.
+The pinned npm runtime is bundled by Vite; no CDN or new environment variable
+is required. Its license ships at `/licenses/libflacjs.txt`.
+
+Regression check: run `scripts/browser-lossless-upload-check.cjs` with the
+Playwright environment variables below and Vite running on port 5190. It tests
+PCM equality, cancellation, unsupported/incompressible fallback, original
+local playback and persisted retry. To also test a real file against the
+production worker, run `npm run build`, start preview on port 5192, and pass
+the WAV path as an argument.
+
+The original standalone benchmark scripts remain available:
 
 ```sh
 node scripts/benchmark-flac.mjs input.wav /tmp/flac-benchmark

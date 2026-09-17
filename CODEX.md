@@ -188,3 +188,11 @@ and waveform from the original; local previews do not replace the uploaded audio
 
 The compiled `src/waveform.wasm` is committed. After changing its WAT source, run
 `npm run build:waveform` (uses pinned WABT via npx), then `npm test` and `npm run build`.
+
+### Lossless audio uploads
+
+Signed-in audio-library uploads automatically compress eligible integer WAVs
+to FLAC in a browser WASM worker before uploading. Originals stay local;
+unsupported or unhelpful compression falls back to the original. No extra
+service configuration is required. See [upload performance](docs/upload-performance.md)
+for supported formats, retry storage, benchmarks and browser regression checks.
