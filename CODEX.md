@@ -196,3 +196,67 @@ to FLAC in a browser WASM worker before uploading. Originals stay local;
 unsupported or unhelpful compression falls back to the original. No extra
 service configuration is required. See [upload performance](docs/upload-performance.md)
 for supported formats, retry storage, benchmarks and browser regression checks.
+
+### Non-destructive audio editing
+
+Run `npm run db:migrate` after pulling `007_audio_edits.sql`. **Edit audio** is
+available on saved Audio Library tracks and in reel track rows. Signed-in users
+can set a start/end snippet, fade-in/out durations, and peak normalization to
+−1 dB. Times always refer to the original recording; Reset edits restores its
+full range. The editor's player auditions the original recording. Listen to the
+saved result through Audio Library or Preview reel.
+
+The existing `/api/reels?action=edit-audio` POST handles owned audio only and
+renders in Vercel Functions with FFmpeg. Rendered samples are stored in a private
+FLAC file. MP3 playback/download derivatives are still prepared on publication.
+There is no new service or credential. Processing requires an account and a
+completed upload, supports up to 60 minutes / eight channels, and caps output at
+512 MB within the existing 260-second processing deadline.
+
+`media_assets.source_id` points to the preserved original; `parent_id` records the
+version edited; `edit_recipe` stores the snippet/fades/normalization settings.
+Subsequent edits render from the original, avoiding accumulated processing loss.
+Save changes replaces the visible library version using `superseded_by`, while
+Save as copy retains both entries. Old versions remain readable for existing
+projects/publications. Apply to reel creates a library copy and replaces that
+reel's track reference; publish again to update a shared reel. Neither operation
+deletes the original Blob. Retained originals/versions consume storage.
+
+Checks: `test/audio-edits.test.js` exercises actual FFmpeg output and ownership,
+lineage, copy/replacement and stale-save behavior. Run
+`scripts/browser-audio-edit-check.cjs` with the documented Playwright variables
+for the shared editor and reel integration.
+
+The audio editor also shows an interactive waveform: drag a range or use the
+start/end handles (arrow keys adjust by 0.1 s; Shift adjusts by 1 s). Numeric
+fields and the fade envelope stay synchronized. Play snippet auditions the
+selected original audio. Local WAVs reuse the Wasm waveform worker; remote
+files reuse server reel preparation. Waveform preparation does not block editing.
+Peak normalization accepts `targetPeakDb` from −60 through 0 dBFS, persisted
+in the recipe and applied by FFmpeg. Older recipes retain the −1 dBFS default.
+The waveform height represents the original recording, not a post-edit meter.
+
+### Reel profiles, résumé and presentation
+
+Reel drafts now include optional `profile` (name, email, occupation, bio),
+`appearance` (accent, dark/light player theme, introduction), `trackColors`, and
+`resumeId`/`resumeName`. Use my profile copies account details; subsequent manual
+changes belong to this reel. A published snapshot includes these details.
+
+Résumé uploads use the existing private media reserve/upload/complete flow, limited
+to PDF files of 10 MB. They are excluded from the audio library. Saving/publishing
+checks ownership, readiness and PDF type. Public manifests expose only a résumé
+availability flag; `/api/reels?action=resume&token=…` verifies the publication before
+redirecting to an expiring private Blob URL. Revoking the reel disables fresh résumé
+links too. Existing downloaded files/issued URLs cannot be recalled.
+
+The editor automatically prepares a live preview when tracks are available, reusing
+local WAV processing and cached server preparations. Profile/appearance changes do
+not regenerate audio. Publish sits below the preview, above Listener analytics, and remains explicit. A failed
+preview offers Retry preview. No schema migration or new credentials are required.
+Regression coverage includes `scripts/browser-reel-presentation-check.cjs` plus
+ownership, publication snapshot and PDF limits in the server tests.
+
+Published reels display their share URL directly beneath the preview, with Copy
+link and Open reel controls. Each published item under Your reels also exposes
+Share without changing the currently edited reel. Drafts do not expose share URLs.

@@ -8,13 +8,13 @@ import {createMediaHandler} from '../api/media.js';
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(v){this.body=v;return this;}});
 Object.assign(process.env,{WORKOS_API_KEY:'test',WORKOS_CLIENT_ID:'test',SESSION_SECRET:'x'.repeat(40),APP_URL:'https://cuestamp.test',DATABASE_URL:'postgresql://unused'});
 test('media metadata rejects unsafe paths, unsupported formats and oversized files',()=>{
-  assert.equal(parseMedia({filename:'A.WAV',size:1}).contentType,'audio/wav');
+  assert.equal(parseMedia({filename:'A.WAV',size:1}).contentType,'audio/wav');assert.equal(parseMedia({filename:'Resume.PDF',size:100}).contentType,'application/pdf');assert.throws(()=>parseMedia({filename:'Resume.pdf',size:10*1024*1024+1}),{status:400});
   for(const input of [{filename:'../a.wav',size:1},{filename:'x.html',size:1},{filename:'x.wav',size:0},{filename:'x.wav',size:2147483649}]) assert.throws(()=>parseMedia(input),{status:400});
 });
 test('private media ownership, completion and project references are enforced by Postgres',async()=>{
  const db=new PGlite();
  try {
-  for(const f of ['001_users_projects.sql','002_media_assets.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
+  for(const f of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createMediaRepository(query),projects=createProjectRepository(query);
