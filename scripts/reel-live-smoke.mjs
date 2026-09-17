@@ -19,9 +19,10 @@ try{
  await put(asset.pathname,wav,{access:'private',contentType:asset.contentType,addRandomSuffix:false});await media.complete(user,asset.id,{pathname:asset.pathname,size:wav.length,contentType:asset.contentType});
  const audio=await reels.prepare(user,asset.id,prepareAudio);paths.push(audio.pathname);assert.equal(audio.peaks.length,360);
  const id=randomUUID();await projects.save(user,{id,revision:0,data:{type:'reel',title:'Synthetic reel integration test',status:'draft',audioIds:[asset.id]}});
- const publication=await reels.publish(user,{id,revision:1,allowDownloads:true});
- const result=await promisify(execFile)(process.execPath,['scripts/browser-reel-check.cjs'],{env:{...process.env,CUESTAMP_REEL_URL:`${process.env.APP_URL}/reel.html?token=${publication.token}`},timeout:90000});process.stdout.write(result.stdout);
- await reels.revoke(user,id);const response=await fetch(`${process.env.APP_URL}/api/reels?action=public&token=${publication.token}`);assert.equal(response.status,404);
+ await reels.publish(user,{id,revision:1,allowDownloads:true});
+ const link=await reels.createLink(user,{id,name:'Smoke test link'});
+ const result=await promisify(execFile)(process.execPath,['scripts/browser-reel-check.cjs'],{env:{...process.env,CUESTAMP_REEL_URL:`${process.env.APP_URL}/reel.html?token=${link.token}`},timeout:90000});process.stdout.write(result.stdout);
+ await reels.revoke(user,id);const response=await fetch(`${process.env.APP_URL}/api/reels?action=public&token=${link.token}`);assert.equal(response.status,404);
  console.log('PASS live development Neon + private Blob + FFmpeg + public API + browser playback + revocation.');
 }finally{
  if(paths.length)await del(paths);
