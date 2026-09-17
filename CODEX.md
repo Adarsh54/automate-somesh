@@ -196,3 +196,33 @@ to FLAC in a browser WASM worker before uploading. Originals stay local;
 unsupported or unhelpful compression falls back to the original. No extra
 service configuration is required. See [upload performance](docs/upload-performance.md)
 for supported formats, retry storage, benchmarks and browser regression checks.
+
+### Non-destructive audio editing
+
+Run `npm run db:migrate` after pulling `007_audio_edits.sql`. **Edit audio** is
+available on saved Audio Library tracks and in reel track rows. Signed-in users
+can set a start/end snippet, fade-in/out durations, and peak normalization to
+−1 dB. Times always refer to the original recording; Reset edits restores its
+full range. The editor's player auditions the original recording. Listen to the
+saved result through Audio Library or Preview reel.
+
+The existing `/api/reels?action=edit-audio` POST handles owned audio only and
+renders in Vercel Functions with FFmpeg. Rendered samples are stored in a private
+FLAC file. MP3 playback/download derivatives are still prepared on publication.
+There is no new service or credential. Processing requires an account and a
+completed upload, supports up to 60 minutes / eight channels, and caps output at
+512 MB within the existing 260-second processing deadline.
+
+`media_assets.source_id` points to the preserved original; `parent_id` records the
+version edited; `edit_recipe` stores the snippet/fades/normalization settings.
+Subsequent edits render from the original, avoiding accumulated processing loss.
+Save changes replaces the visible library version using `superseded_by`, while
+Save as copy retains both entries. Old versions remain readable for existing
+projects/publications. Apply to reel creates a library copy and replaces that
+reel's track reference; publish again to update a shared reel. Neither operation
+deletes the original Blob. Retained originals/versions consume storage.
+
+Checks: `test/audio-edits.test.js` exercises actual FFmpeg output and ownership,
+lineage, copy/replacement and stale-save behavior. Run
+`scripts/browser-audio-edit-check.cjs` with the documented Playwright variables
+for the shared editor and reel integration.

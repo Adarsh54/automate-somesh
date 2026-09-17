@@ -14,7 +14,7 @@ test('media metadata rejects unsafe paths, unsupported formats and oversized fil
 test('private media ownership, completion and project references are enforced by Postgres',async()=>{
  const db=new PGlite();
  try {
-  for(const f of ['001_users_projects.sql','002_media_assets.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
+  for(const f of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createMediaRepository(query),projects=createProjectRepository(query);

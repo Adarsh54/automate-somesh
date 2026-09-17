@@ -1,3 +1,5 @@
+import {mediaRepository} from '../server/media.js';
+import {saveAudioEdit} from '../server/audio-edits.js';
 import {authenticate,requireOrigin,apiError} from '../server/auth.js';
 import {readJson,reply} from '../server/http.js';
 import {reelRepository} from '../server/reels.js';
@@ -20,6 +22,7 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,p
    if(req.method==='GET'&&action==='preview'){res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(await repo.preview(session.user.id,url.searchParams.get('id'))));res.status(302);return res.end();}
    if(req.method==='GET')return reply(res,200,{publication:await repo.owner(session.user.id,url.searchParams.get('id'))});
    requireOrigin(req);const body=await readJson(req);
+   if(action==='edit-audio')return reply(res,200,{asset:await saveAudioEdit(mediaRepository(),session.user.id,body)});
    if(action==='prepare'){
     const audio=await repo.prepare(session.user.id,body.id,prepare);
     return reply(res,200,{track:{id:body.id,duration:audio.duration,peaks:audio.peaks}});

@@ -14,7 +14,7 @@ const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(n){thi
 test('publishing snapshots owned prepared audio; revisions, leases, permissions and revocation are enforced',async()=>{
  const db=new PGlite();
  try{
-  for(const file of ['001_users_projects.sql','002_media_assets.sql','006_reels.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql','006_reels.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createReelRepository(query),media=createMediaRepository(query),projects=createProjectRepository(query);

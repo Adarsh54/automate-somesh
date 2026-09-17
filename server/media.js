@@ -12,7 +12,7 @@ export function mediaIds(data) {return [...new Set([...(data.type==='reel'?data.
 export function createMediaRepository(query) {
   return {
     async listAudio(userId) {
-      return query`SELECT id,filename,content_type,size,created_at FROM media_assets WHERE user_id=${userId} AND ready=true AND content_type LIKE 'audio/%' ORDER BY created_at DESC`;
+      return query`SELECT id,filename,content_type,size,created_at,source_id,parent_id,edit_recipe,superseded_by FROM media_assets WHERE user_id=${userId} AND ready=true AND content_type LIKE 'audio/%' ORDER BY created_at DESC`;
     },
     async reserve(userId,input) {
       const {filename,size,contentType}=parseMedia(input),id=randomUUID(),pathname=`media/${id}/${encodeURIComponent(filename)}`;
@@ -31,6 +31,19 @@ export function createMediaRepository(query) {
         throw fail('MEDIA_UPLOAD_MISMATCH');
       await query`UPDATE media_assets SET ready=true WHERE id=${id} AND user_id=${userId}`;
       return {id:asset.id};
+    },
+    async saveEdit(userId,asset,source,edit,mode,output) {
+      const id=randomUUID(),filename=asset.filename.replace(/\.[^.]+$/,'').replace(/ — reel$/,'')+' — reel.flac';
+      // One statement keeps replacement and insertion atomic. Existing projects keep immutable audio IDs.
+      const rows=await query`WITH target AS (SELECT * FROM media_assets WHERE id=${asset.id} AND user_id=${userId} FOR UPDATE), inserted AS (
+        INSERT INTO media_assets(id,user_id,pathname,filename,content_type,size,ready,source_id,parent_id,edit_recipe)
+        SELECT ${id},${userId},${output.pathname},${filename},'audio/flac',${output.size},true,${source.id},${asset.id},${JSON.stringify(edit)}::jsonb
+        FROM target WHERE ${mode}='copy' OR superseded_by IS NULL
+        RETURNING *
+      ), replaced AS (UPDATE media_assets SET superseded_by=${id} WHERE id=${asset.id} AND user_id=${userId} AND ${mode}='replace' AND EXISTS(SELECT 1 FROM inserted) RETURNING id)
+      SELECT id,filename,size,source_id,parent_id,edit_recipe FROM inserted`;
+      if(!rows[0])throw fail('This audio was edited elsewhere. Refresh your library.',409);
+      return rows[0];
     },
     async validate(userId,data) {
       const ids=mediaIds(data);
