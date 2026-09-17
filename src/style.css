@@ -106,6 +106,7 @@ aside { position: fixed; inset: 0 auto 0 0; width: 224px; padding: 24px 14px 20p
 .nav-icon { width: 17px; height: 17px; flex-shrink: 0; }
 .credits-nav { margin-top: 8px; }
 .team-link { margin-top: 8px; padding-top: 13px; }
+.source-link, .nav.team-link { font-size: 11px; font-weight: 400; line-height: 1.5; }
 .source-link { font-size: 11px; padding: 12px 10px 0; text-decoration: none; color: var(--muted); border-top: 1px solid var(--line); }
 main { width: calc(100% - 224px); margin-left: 224px; min-width: 0; }
 header { min-height: 62px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 36px; font-size: 11px; color: var(--muted); }
