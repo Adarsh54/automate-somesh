@@ -36,7 +36,7 @@ export function createReelRepository(query){
     return rows[0];
    }catch(e){await query`UPDATE reel_audio SET lease=NULL,lease_until=NULL WHERE asset_id=${id} AND lease=${lease}`;throw e;}
   },
-  async owner(userId,id){await projects.get(userId,id);const rows=await query`SELECT token,updated_at FROM reel_publications WHERE project_id=${id}`;return rows[0]||null;},
+  async owner(userId,id){await projects.get(userId,id);const rows=await query`SELECT updated_at AS "updatedAt" FROM reel_publications WHERE project_id=${id}`;return rows[0]?{published:true,updatedAt:rows[0].updatedAt}:{published:false};},
   async publish(userId,input){
    const parsed=z.object({id:z.uuid(),revision:z.number().int().positive()}).safeParse(input);
    if(!parsed.success)throw fail('INVALID_REEL');
@@ -55,14 +55,40 @@ export function createReelRepository(query){
    const resume=project.data.resumeId?await media.get(userId,project.data.resumeId):null;
    const manifest={title:project.title,allowDownloads:true,tracks,profile:project.data.profile,appearance:project.data.appearance,...(resume?{resumePath:resume.pathname,resumeName:resume.filename}:{})};
    // Read the revision again inside the write so an overlapping save cannot publish a stale draft.
-   const rows=await query`INSERT INTO reel_publications(project_id,token,manifest) SELECT id,${randomUUID()}::uuid,${JSON.stringify(manifest)}::jsonb FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} ON CONFLICT(project_id) DO UPDATE SET manifest=EXCLUDED.manifest,updated_at=now() RETURNING token`;
+   const rows=await query`INSERT INTO reel_publications(project_id,token,manifest) SELECT id,${randomUUID()}::uuid,${JSON.stringify(manifest)}::jsonb FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} ON CONFLICT(project_id) DO UPDATE SET manifest=EXCLUDED.manifest,updated_at=now() RETURNING project_id`;
    if(!rows[0])throw fail('PROJECT_CONFLICT',409);
-   return rows[0];
+   return {published:true};
   },
-  async revoke(userId,id){await projects.get(userId,id);await query`DELETE FROM reel_publications WHERE project_id=${id}`;},
+  async revoke(userId,id){await projects.get(userId,id);await query`DELETE FROM reel_publications WHERE project_id=${id}`;await query`DELETE FROM reel_share_links WHERE project_id=${id}`;},
+  async listLinks(userId,id){
+   await projects.get(userId,id);
+   return query`SELECT id,token,name,active,created_at AS "createdAt" FROM reel_share_links WHERE project_id=${id} ORDER BY created_at DESC`;
+  },
+  async createLink(userId,{id,name}){
+   const parsed=z.object({id:z.uuid(),name:z.string().trim().min(1).max(200)}).safeParse({id,name});
+   if(!parsed.success)throw fail('Give this link a name.');
+   await projects.get(userId,id);
+   const published=await query`SELECT 1 FROM reel_publications WHERE project_id=${id}`;
+   if(!published.length)throw fail('Publish this reel before creating a share link.');
+   const link=await query`INSERT INTO reel_share_links(id,project_id,token,name) VALUES(${randomUUID()},${id},${randomUUID()},${parsed.data.name}) RETURNING id,token,name,active,created_at AS "createdAt"`;
+   return link[0];
+  },
+  async setLinkActive(userId,linkId,active){
+   const rows=await query`SELECT k.id FROM reel_share_links k JOIN projects p ON p.id=k.project_id WHERE k.id=${linkId} AND p.user_id=${userId}`;
+   if(!rows.length)throw fail('Not found',404);
+   await query`UPDATE reel_share_links SET active=${Boolean(active)} WHERE id=${linkId}`;
+  },
+  async deleteLink(userId,linkId){
+   const rows=await query`SELECT k.id FROM reel_share_links k JOIN projects p ON p.id=k.project_id WHERE k.id=${linkId} AND p.user_id=${userId}`;
+   if(!rows.length)throw fail('Not found',404);
+   await query`DELETE FROM reel_share_links WHERE id=${linkId}`;
+  },
   async publicReel(token){
    if(!z.uuid().safeParse(token).success)throw fail('This reel is unavailable.',404);
-   const rows=await query`SELECT manifest FROM reel_publications WHERE token=${token}`;
+   const link=(await query`SELECT id,project_id AS "projectId" FROM reel_share_links WHERE token=${token} AND active=true`)[0];
+   const projectId=link?.projectId ?? (await query`SELECT project_id AS "projectId" FROM reel_publications WHERE token=${token}`)[0]?.projectId;
+   if(!projectId)throw fail('This reel is unavailable.',404);
+   const rows=await query`SELECT manifest FROM reel_publications WHERE project_id=${projectId}`;
    if(!rows[0])throw fail('This reel is unavailable.',404);
    return {...rows[0].manifest,allowDownloads:true};
   }

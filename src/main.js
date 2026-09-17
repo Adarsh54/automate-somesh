@@ -1,6 +1,7 @@
 import {applyScoreOffset} from "./score-offset.js";
 import {createAudioLibrary} from "./audio-library.js";
 import {createReelWorkspace} from "./reel-workspace.js";
+import {createReelAnalyticsView} from "./reel-analytics-view.js";
 import {chooseProjectType} from "./project-type-dialog.js";
 import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {themeToggle} from "./theme.js";
@@ -132,7 +133,8 @@ const $ = (s) => document.querySelector(s),
     );
 const id = () => crypto.randomUUID();
 const audioLibrary=createAudioLibrary({account,esc,onUseInCue:useLibraryInCue,onChange:()=>{if(tab==='audio'||tab==='reel')render();}});
-const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onEdit:id=>goToReel(`#/reels/${id}/edit`),onCreate:()=>startNewReel(),onSaved:id=>{if(tab==='reel'){currentRoute=`#/reels/${id}/edit`;history.replaceState(null,'',currentRoute);}},onChange:()=>{if(tab==='reel')render();}});
+const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onEdit:id=>goToReel(`#/reels/${id}/edit`),onCreate:()=>startNewReel(),onSaved:id=>{if(tab==='reel'){currentRoute=`#/reels/${id}/edit`;history.replaceState(null,'',currentRoute);}},onChange:()=>{if(tab==='reel')render();},onAnalytics:id=>goToReelAnalytics(id)});
+const reelAnalyticsView=createReelAnalyticsView({esc,onChange:()=>{if(tab==='reel-analytics')render();},onBack:()=>history.back()});
 
 const creditProfilesKey=account.user?`cuestamp-user:${account.user.id}:credit-profiles`:null;
 let creditProfiles=[],creditProfilesError='',creditProfilesLoading=false;
@@ -215,6 +217,7 @@ function bindFAQ() {
 }
 function pageBreadcrumb(){
  if(tab==='reel')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Reel</span><span aria-hidden="true">›</span><b>${esc(reelWorkspace.title() || 'Untitled reel')}</b></div>`;
+ if(tab==='reel-analytics')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Analytics</span><span aria-hidden="true">›</span><b>${esc(reelAnalyticsView.title() || 'Reel')}</b></div>`;
  if(tab==='audio')return '<div class="page-breadcrumb"><span>Audio Library</span></div>';
  if(tab==='projects')return '<div class="page-breadcrumb" aria-label="Breadcrumb"><span aria-current="page">Projects</span></div>';
  if(steps.some(([key])=>key===tab))return `<div class="page-breadcrumb" aria-label="Breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Workspace</span><span aria-hidden="true">›</span><b>${esc(effectiveProduction(state).title || 'Untitled project')}</b></div>`;
@@ -239,12 +242,14 @@ function render() {
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
   if (tab === "reel") document.querySelector(".content").innerHTML = reelWorkspace.view();
+  if (tab === "reel-analytics") document.querySelector(".content").innerHTML = reelAnalyticsView.view();
   if (tab === "audio") document.querySelector(".content").innerHTML = audioLibrary.view();
   if (tab === "settings") document.querySelector(".content").innerHTML = settingsPage();
   if (tab === "team" || tab === "settings") {
     $("#cloud-workspace")?.remove();
     document.querySelector(".stats")?.remove();
   }
+  if (tab === "reel-analytics") $("#cloud-workspace")?.remove();
   $("#app").insertAdjacentHTML("beforeend", faq() + (cloudWorkspace?.createButton() || ""));
   const nextPlayer = document.querySelector("#track-preview");
   if (previousPlayer && nextPlayer?.getAttribute("src") === previousPlayer.getAttribute("src")) {
@@ -257,6 +262,7 @@ function render() {
   cloudWorkspace?.bind();
   if(tab==="audio")audioLibrary.bind();
   if(tab==="reel")reelWorkspace.bind();
+  if(tab==="reel-analytics")reelAnalyticsView.bind();
   document.querySelectorAll("details").forEach((el) => {
     if (openDetails.has(el.querySelector("summary")?.textContent))
       el.open = true;
@@ -909,6 +915,7 @@ function navigate(page){
 let routeInitialized=false,leavePromptOpen=false,currentRoute='',pendingRoute='',routeVersion=0;
 async function startNewReel(){if(reelWorkspace.isBusy()||audioLibrary.isBusy())return;if(hasOpenEdits()&&!await askToLeave())return;reelWorkspace.newProject();history.pushState(null,'','#/reels/new');showPage('reel');}
 function goToReel(route){if(location.hash!==route)history.pushState(null,'',route);routePage();}
+function goToReelAnalytics(id){const route=`#/reels/${id}/analytics`;if(location.hash!==route)history.pushState(null,'',route);routePage();}
 function hasOpenEdits(){return tab==='reel'?reelWorkspace.isDirty():steps.some(([key])=>key===tab)&&cloudWorkspace.hasUnsavedChanges();}
 async function askToLeave(){
  if(leavePromptOpen)return false;
@@ -919,7 +926,8 @@ async function routePage(){
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
  const edit=hash.match(/^#\/reels\/([0-9a-f-]{36})\/edit$/i);
- let page=edit?'reel':Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
+ const analyticsMatch=hash.match(/^#\/reels\/([0-9a-f-]{36})\/analytics$/i);
+ let page=edit?'reel':analyticsMatch?'reel-analytics':Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
  if(!page){page=account.user?'projects':'library';hash=pageRoutes[page];}
  if(pendingRoute===hash)return;
  const changing=!routeInitialized||hash!==currentRoute;
@@ -940,6 +948,7 @@ async function routePage(){
    if(edit)await reelWorkspace.loadProject(edit[1],()=>version===routeVersion);
    else if(routeInitialized||reelWorkspace.activeId())reelWorkspace.newProject();
   }
+  if(page==='reel-analytics')reelAnalyticsView.load(analyticsMatch[1]);
   if(version===routeVersion)showPage(page,hash);
  }catch(error){
   if(version===routeVersion){history.replaceState(null,'',currentRoute||'#/projects');confirmDialog({title:'Could not open reel',message:error.message,confirmLabel:'Got it'});if(!routeInitialized)showPage('projects');}

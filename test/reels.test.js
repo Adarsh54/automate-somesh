@@ -14,7 +14,7 @@ const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(n){thi
 test('publishing snapshots owned prepared audio; revisions, leases, permissions and revocation are enforced',async()=>{
  const db=new PGlite();
  try{
-  for(const file of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql','006_reels.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql','006_reels.sql','007_reel_analytics.sql','008_reel_listen_events.sql','009_reel_share_links.sql'])await db.exec(await readFile(new URL('../migrations/'+file,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const repo=createReelRepository(query),media=createMediaRepository(query),projects=createProjectRepository(query);
@@ -38,28 +38,41 @@ test('publishing snapshots owned prepared audio; revisions, leases, permissions 
   await repo.prepare('alice',asset.id,()=>assert.fail('must reuse cache'));
   await assert.rejects(repo.publish('bob',input),{status:404});
   await assert.rejects(repo.publish('alice',{...input,revision:4}),{status:409});
-  const publication=await repo.publish('alice',input);
-  assert.equal((await repo.publicReel(publication.token)).tracks[0].title,'Custom title');
-  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);assert.equal((await repo.publicReel(publication.token)).appearance.accent,'#abcdef');assert.equal((await repo.publicReel(publication.token)).profile.name,'Alice');assert.equal((await repo.publicReel(publication.token)).tracks[0].color,'#123456');
+  const published=await repo.publish('alice',input);assert.equal(published.published,true);
+  await assert.rejects(repo.createLink('alice',{id,name:''}));
+  await assert.rejects(repo.createLink('bob',{id,name:'x'}),{status:404});
+  const link=await repo.createLink('alice',{id,name:'For the director'});
+  assert.equal((await repo.publicReel(link.token)).tracks[0].title,'Custom title');
+  assert.equal((await repo.publicReel(link.token)).allowDownloads,true);assert.equal((await repo.publicReel(link.token)).appearance.accent,'#abcdef');assert.equal((await repo.publicReel(link.token)).profile.name,'Alice');assert.equal((await repo.publicReel(link.token)).tracks[0].color,'#123456');
   await query`UPDATE reel_publications SET manifest=jsonb_set(manifest,'{allowDownloads}','false') WHERE project_id=${id}`;
-  assert.equal((await repo.publicReel(publication.token)).allowDownloads,true);
+  assert.equal((await repo.publicReel(link.token)).allowDownloads,true);
   const created=(await projects.get('alice',id)).created_at;
   await projects.save('alice',{id,revision:1,data:{...data,title:'Private edit'}});
-  assert.equal((await repo.publicReel(publication.token)).title,'Demo');
+  assert.equal((await repo.publicReel(link.token)).title,'Demo');
   assert.deepEqual((await projects.list('alice'))[0].created_at,created);
   const handler=createReelHandler({repository:()=>repo,auth:async()=>null,sign:async path=>{assert.ok(['reels/test/preview.mp3',resume.pathname].includes(path));return 'https://blob.test/signed';}});
   for(const [action,code] of [['public',200],['stream',302],['download',302],['resume',302]]){
-   const res=response();await handler({method:'GET',url:`/api/reels?action=${action}&token=${publication.token}&track=${asset.id}`,headers:{}},res);assert.equal(res.code,code);
+   const res=response();await handler({method:'GET',url:`/api/reels?action=${action}&token=${link.token}&track=${asset.id}`,headers:{}},res);assert.equal(res.code,code);
    if(action==='public'){assert.equal(res.body.reel.tracks[0].pathname,undefined);assert.equal(res.body.reel.resumePath,undefined);assert.equal(res.body.reel.hasResume,true);assert.equal(res.headers['Cache-Control'],'no-store');}
   }
   const anon=response();await handler({method:'POST',url:'/api/reels?action=publish',headers:{}},anon);assert.equal(anon.code,401);
   const owner=createReelHandler({repository:()=>repo,auth:async()=>({user:{id:'alice'}})}),csrf=response();
   await owner({method:'POST',url:'/api/reels?action=publish',headers:{origin:'https://evil.test'}},csrf);assert.equal(csrf.code,403);
-  const updated=await repo.publish('alice',{...input,revision:2,allowDownloads:true});assert.equal(updated.token,publication.token);
-  const download=response();await handler({method:'GET',url:`/api/reels?action=download&token=${publication.token}&track=${asset.id}`,headers:{}},download);assert.equal(download.code,302);
+  await repo.publish('alice',{...input,revision:2,allowDownloads:true});
+  const download=response();await handler({method:'GET',url:`/api/reels?action=download&token=${link.token}&track=${asset.id}`,headers:{}},download);assert.equal(download.code,302);
+  const second=await repo.createLink('alice',{id,name:'For the composer'});
+  assert.equal((await repo.listLinks('alice',id)).length,2);
+  await assert.rejects(repo.setLinkActive('bob',second.id,false),{status:404});
+  await repo.setLinkActive('alice',second.id,false);
+  await assert.rejects(repo.publicReel(second.token),{status:404});
+  await assert.rejects(repo.deleteLink('bob',link.id),{status:404});
+  await repo.deleteLink('alice',second.id);
+  assert.equal((await repo.listLinks('alice',id)).length,1);
   await assert.rejects(repo.revoke('bob',id),{status:404});await repo.revoke('alice',id);
-  await assert.rejects(repo.publicReel(publication.token),{status:404});
-  const republished=await repo.publish('alice',{...input,revision:2});assert.notEqual(republished.token,publication.token);
+  await assert.rejects(repo.publicReel(link.token),{status:404});
+  assert.equal((await repo.listLinks('alice',id)).length,0);
+  await repo.publish('alice',{...input,revision:2});
+  const republished=await repo.createLink('alice',{id,name:'Reshared'});assert.notEqual(republished.token,link.token);
  }finally{await db.close();}
 });
 test('real FFmpeg prepares a browser-compatible MP3 and waveform from an owned source',async()=>{

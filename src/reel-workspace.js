@@ -8,13 +8,13 @@ import {audioUploadButton} from './audio-upload-button.js';
 import {libraryRequest} from './audio-library.js';
 import {ReelPlayer,downloadReelTrack} from './reel-player.js';
 import {confirmDialog} from './confirm-dialog.js';
-export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,onCreate,onSaved,uploadResume=upload}){
+export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,onCreate,onSaved,onAnalytics,uploadResume=upload}){
  const key=account.user?`cuestamp-user:${account.user.id}:reel-draft`:'cuestamp-guest:reel-draft';
  const blank=()=>({type:'reel',title:'',status:'draft',audioIds:[],trackTitles:{}});
  let data=blank(),active=null,dirty=false,busy=false,error='',notice='',preview=null,player=null,publication=null,publicationLoaded=null,progress='',uploading=false;
  let localUrls=[],publicationEpoch=0,pendingUploads=[],savedReels=[],reelsLoaded=false,reelsLoading=false,autosaveTimer=null;
  let autoTimer=null,autoKey='',autoLoading=false,autoError='',previewEpoch=0;const trackCache=new Map();
- let analytics=null,analyticsLoaded=false,analyticsLoading=false,analyticsError='';
+ let links=[],linksLoadedFor=null;
  try{const saved=JSON.parse(localStorage.getItem(key));if(saved?.data?.type==='reel'){data=saved.data;active=saved.active;dirty=Boolean(saved.dirty);}}catch{}
  const persist=()=>localStorage.setItem(key,JSON.stringify({data,active,dirty}));
  const dispose=()=>{player?.destroy();player=null;};
@@ -46,7 +46,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
    }
    const target=active || {id:crypto.randomUUID(),revision:0};
    const {project}=await libraryRequest('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...target,data:snapshot})});
-   const isNew=!active;active={id:project.id,revision:project.revision};if(JSON.stringify(data)===beforeSave){data=snapshot;dirty=false;}else dirty=true;persist();onSaved?.(active.id);notice='Reel draft saved to Projects.';reelsLoaded=false;if(isNew){analyticsLoaded=false;analytics=null;}
+   active={id:project.id,revision:project.revision};if(JSON.stringify(data)===beforeSave){data=snapshot;dirty=false;}else dirty=true;persist();onSaved?.(active.id);notice='Reel draft saved to Projects.';reelsLoaded=false;
   }catch(e){error=e.message;throw e;}
   finally{busy=false;if(dirty&&!error)scheduleAutosave();if(silent)setAutosaveStatus(error?'':'Saved');else onChange();}
  }
@@ -88,7 +88,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
     }else tracks.push(account.user?{...await prepareReelTrack(post,id),title:titleFor(id),url:`/api/reels?action=preview&id=${encodeURIComponent(id)}`}:await localTrack(id));
    }
    preview={title:data.title,tracks,local:local||!account.user};
-   if(publish){publicationEpoch++;progress='Publishing reel…';onChange();publication=(await post('publish',{...active,allowDownloads:true})).publication;publicationLoaded=active.id;notice='Your reel is published. Anyone with the link can listen.';reelsLoaded=false;}
+   if(publish){publicationEpoch++;progress='Publishing reel…';onChange();publication=(await post('publish',{...active,allowDownloads:true})).publication;publicationLoaded=active.id;notice='Your reel is published. Create a share link to send it out.';reelsLoaded=false;linksLoadedFor=null;}
    else notice='Preview ready.';
   }finally{busy=false;progress='';onChange();}
  }
@@ -131,18 +131,43 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
    await libraryRequest('/api/media?action=complete',options({id:asset.id}));data.resumeId=asset.id;data.resumeName=file.name;changed();
   }finally{busy=false;onChange();}
  }
- function shareUrl(token=publication.token){const url=new URL('reel.html',location.href);url.search='';url.hash='';url.searchParams.set('token',token);return url.href;}
+ function shareUrl(token){const url=new URL('reel.html',location.href);url.search='';url.hash='';url.searchParams.set('token',token);return url.href;}
  function errorView(){
   if(!error)return '';
   if(error.startsWith('Upload canceled.'))return `<div class="reel-upload-notice" role="status"><div><strong>Upload canceled</strong><span>Your file is still available on this device.</span></div>${pendingUploads.length?'<button id="retry-reel-upload">Retry upload</button>':''}</div>`;
   return `<div class="project-error" role="alert"><span>${esc(error)}</span>${pendingUploads.length?'<button id="retry-reel-upload">Retry upload</button>':''}</div>`;
  }
- function view(){dispose();return `<section class="reel-workspace"><div class="heading"><div><div class="eyebrow">REEL PROJECT</div><h1>${active?'Edit Reel':'New Reel'}</h1><p>Build a playlist, preview your reel, then share it anywhere.</p></div><button class="primary" id="save-reel" ${busy||uploading?'disabled':''}>${active?'Save changes':'Save draft'}</button>${account.user?`<span id="reel-autosave-status" class="muted" role="status"></span>`:''}</div><div class="project-title-editor"><label for="reel-title">Project title</label><input id="reel-title" maxlength="300" value="${esc(data.title)}" placeholder="Name your reel…" ${busy?'disabled':''}></div>${errorView()}${audioLibrary.progressView('id="cancel-reel-upload"')}${notice?`<p class="muted" role="status">${esc(notice)}</p>`:''}<section class="panel"><div class="section-title"><h2>Tracks</h2><div class="button-row"><button id="reel-library" ${busy?'disabled':''}>Choose from audio library</button>${audioUploadButton({id:'reel-upload',disabled:busy||uploading})}</div></div><p class="muted">${uploading?'Uploading in the background. You can edit track names and order while you wait. Keep this page open.':'Name your tracks and arrange the order listeners will hear them.'}</p>${data.audioIds.length?`<ol class="reel-audio-list">${data.audioIds.map((id,i)=>`<li><label class="reel-track-edit"><span class="sr-only">Track ${i+1} title</span><input aria-label="Track ${i+1} title" data-reel-title="${esc(id)}" maxlength="300" value="${esc(titleFor(id))}" ${busy?'disabled':''}></label><div class="reel-order"><button data-reel-up="${i}" aria-label="Move track ${i+1} up" ${busy||!i?'disabled':''}>↑</button><button data-reel-down="${i}" aria-label="Move track ${i+1} down" ${busy||i===data.audioIds.length-1?'disabled':''}>↓</button></div><button data-edit-reel-audio="${esc(id)}" ${busy||uploading?'disabled':''}>Edit audio</button><button data-remove-reel-audio="${esc(id)}" ${busy?'disabled':''}>Remove</button></li>`).join('')}</ol>`:'<p class="empty">Add audio to start your reel.</p>'}</section>${presentationView()}${publication?`<section class="reel-direct-share" aria-label="Published reel link"><label for="published-reel-link">Published reel link</label><div class="reel-direct-share-controls"><input id="published-reel-link" readonly value="${esc(shareUrl())}"><button id="copy-published-reel-link">Copy link</button><a href="${esc(shareUrl())}" target="_blank" rel="noopener noreferrer">Open reel ↗</a></div><span id="reel-copy-status" role="status"></span></section>`:''}${progress?`<p role="status" class="muted">${esc(progress)}</p>`:''}${publication?'<p class="muted">Draft changes stay private until you update the published reel.</p>':''}<div class="reel-publish-actions">${publication?'<button id="share-reel">Share & embed</button>':''}${account.user?`<button class="primary" id="publish-reel" ${busy||uploading||!data.audioIds.length?'disabled':''}>${publication?'Update published reel':'Publish reel'}</button>`:'<p class="muted">Sign in to publish and embed your reel.</p>'}</div>${analyticsView()}${reelsView()}</section>`;}
- function showShare({token=publication?.token,title=data.title,trackCount=data.audioIds.length}={}){
-  const url=shareUrl(token),embed=`<iframe src="${url}&embed=1" width="100%" height="${Math.min(900,330+trackCount*58)}" title="${esc(title)}" frameborder="0" loading="lazy" allow="autoplay"></iframe>`;
-  const dialog=document.createElement('dialog');dialog.className='resume-workspace reel-share-dialog';dialog.innerHTML=`<div class="dialog-heading"><h2>Share your reel</h2><button data-close aria-label="Close">×</button></div><p class="muted">Anyone with this link can listen. Use Stop sharing to revoke access.</p><div class="reel-share-fields"><label>Share link<input readonly value="${esc(url)}"></label><button data-copy-link>Copy link</button><label>Embed on your website<textarea rows="4" readonly>${esc(embed)}</textarea></label><button data-copy-embed>Copy embed code</button></div><p role="status"></p>`;
+ function view(){dispose();return `<section class="reel-workspace"><div class="heading"><div><div class="eyebrow">REEL PROJECT</div><h1>${active?'Edit Reel':'New Reel'}</h1><p>Build a playlist, preview your reel, then share it anywhere.</p></div><button class="primary" id="save-reel" ${busy||uploading?'disabled':''}>${active?'Save changes':'Save draft'}</button>${account.user?`<span id="reel-autosave-status" class="muted" role="status"></span>`:''}</div><div class="project-title-editor"><label for="reel-title">Project title</label><input id="reel-title" maxlength="300" value="${esc(data.title)}" placeholder="Name your reel…" ${busy?'disabled':''}></div>${errorView()}${audioLibrary.progressView('id="cancel-reel-upload"')}${notice?`<p class="muted" role="status">${esc(notice)}</p>`:''}<section class="panel"><div class="section-title"><h2>Tracks</h2><div class="button-row"><button id="reel-library" ${busy?'disabled':''}>Choose from audio library</button>${audioUploadButton({id:'reel-upload',disabled:busy||uploading})}</div></div><p class="muted">${uploading?'Uploading in the background. You can edit track names and order while you wait. Keep this page open.':'Name your tracks and arrange the order listeners will hear them.'}</p>${data.audioIds.length?`<ol class="reel-audio-list">${data.audioIds.map((id,i)=>`<li><label class="reel-track-edit"><span class="sr-only">Track ${i+1} title</span><input aria-label="Track ${i+1} title" data-reel-title="${esc(id)}" maxlength="300" value="${esc(titleFor(id))}" ${busy?'disabled':''}></label><div class="reel-order"><button data-reel-up="${i}" aria-label="Move track ${i+1} up" ${busy||!i?'disabled':''}>↑</button><button data-reel-down="${i}" aria-label="Move track ${i+1} down" ${busy||i===data.audioIds.length-1?'disabled':''}>↓</button></div><button data-edit-reel-audio="${esc(id)}" ${busy||uploading?'disabled':''}>Edit audio</button><button data-remove-reel-audio="${esc(id)}" ${busy?'disabled':''}>Remove</button></li>`).join('')}</ol>`:'<p class="empty">Add audio to start your reel.</p>'}</section>${presentationView()}${publication?.published&&links[0]?`<section class="reel-direct-share" aria-label="Published reel link"><label for="published-reel-link">Published reel link (${esc(links[0].name)})</label><div class="reel-direct-share-controls"><input id="published-reel-link" readonly value="${esc(shareUrl(links[0].token))}"><button id="copy-published-reel-link">Copy link</button><a href="${esc(shareUrl(links[0].token))}" target="_blank" rel="noopener noreferrer">Open reel ↗</a></div><span id="reel-copy-status" role="status"></span></section>`:''}${progress?`<p role="status" class="muted">${esc(progress)}</p>`:''}${publication?.published?'<p class="muted">Draft changes stay private until you update the published reel.</p>':''}<div class="reel-publish-actions">${publication?.published?'<button id="share-reel">Share links</button>':''}${account.user?`<button class="primary" id="publish-reel" ${busy||uploading||!data.audioIds.length?'disabled':''}>${publication?.published?'Update published reel':'Publish reel'}</button>`:'<p class="muted">Sign in to publish and embed your reel.</p>'}${account.user&&active?`<button id="view-reel-analytics">Analytics</button>`:''}</div>${reelsView()}</section>`;}
+ function showLinks({id=active?.id,title=data.title,trackCount=data.audioIds.length}={}){
+  const dialog=document.createElement('dialog');dialog.className='resume-workspace reel-share-dialog';
+  dialog.innerHTML=`<div class="dialog-heading"><h2>Share links</h2><button data-close aria-label="Close">×</button></div><p class="muted">Create a named link for each person or channel so the Analytics page can tell who's listening. Anyone with an active link can listen.</p><div class="reel-links-list" role="status">Loading…</div><form class="reel-links-create"><label class="sr-only" for="reel-link-name">Link name</label><input id="reel-link-name" placeholder="e.g. For the director" maxlength="200" required><button class="primary" type="submit">Create link</button></form><p role="status" class="reel-links-status"></p>`;
   document.body.append(dialog);dialog.showModal();dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.onclose=()=>dialog.remove();
-  for(const [selector,text] of [['[data-copy-link]',url],['[data-copy-embed]',embed]])dialog.querySelector(selector).onclick=async()=>{try{await navigator.clipboard.writeText(text);dialog.querySelector('[role=status]').textContent='Copied';}catch{dialog.querySelector('[role=status]').textContent='Select the text above and copy it.';}};
+  let rows=[];
+  const status=text=>{dialog.querySelector('.reel-links-status').textContent=text;};
+  const embedFor=url=>`<iframe src="${url}&embed=1" width="100%" height="${Math.min(900,330+trackCount*58)}" title="${esc(title)}" frameborder="0" loading="lazy" allow="autoplay"></iframe>`;
+  const sync=()=>{if(id===active?.id){links=rows;onChange();}};
+  function render(){
+   const list=dialog.querySelector('.reel-links-list');
+   list.innerHTML=rows.length?rows.map(l=>{
+    const url=shareUrl(l.token);
+    return `<div class="reel-link-row"><div class="reel-link-info"><strong>${esc(l.name)}</strong><span class="muted">Created ${esc(new Date(l.createdAt).toLocaleDateString())}${l.active?'':' · Disabled'}</span></div><div class="button-row"><label class="switch"><input type="checkbox" data-toggle-link="${esc(l.id)}" ${l.active?'checked':''} aria-label="${l.active?'Disable':'Enable'} ${esc(l.name)}"><span></span></label><button data-copy-link="${esc(url)}">Copy link</button><button data-copy-embed="${esc(embedFor(url))}">Copy embed</button><button class="danger" data-delete-link="${esc(l.id)}">Delete</button></div></div>`;
+   }).join(''):'<p class="muted">No share links yet. Create one below.</p>';
+   dialog.querySelectorAll('[data-toggle-link]').forEach(input=>input.onchange=async()=>{
+    const linkId=input.dataset.toggleLink;try{await post('toggle-link',{id:linkId,active:input.checked});const link=rows.find(l=>l.id===linkId);if(link)link.active=input.checked;render();sync();}catch(e){status(e.message);input.checked=!input.checked;}
+   });
+   dialog.querySelectorAll('[data-copy-link]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copyLink);status('Link copied');}catch{status('Select and copy the link manually.');}});
+   dialog.querySelectorAll('[data-copy-embed]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copyEmbed);status('Embed code copied');}catch{status('Select and copy the embed code manually.');}});
+   dialog.querySelectorAll('[data-delete-link]').forEach(b=>b.onclick=()=>{
+    const linkId=b.dataset.deleteLink;confirmDialog({title:'Delete this share link?',message:"Anyone using this specific link will lose access. Its listen history stays on the Analytics page.",confirmLabel:'Delete link',onConfirm:async()=>{await post('delete-link',{id:linkId});rows=rows.filter(l=>l.id!==linkId);render();sync();}});
+   });
+  }
+  libraryRequest(`/api/reels?action=links&id=${encodeURIComponent(id)}`).then(r=>{rows=r.links;render();sync();}).catch(e=>{dialog.querySelector('.reel-links-list').innerHTML=`<p class="project-error" role="alert">${esc(e.message)}</p>`;});
+  dialog.querySelector('.reel-links-create').onsubmit=async event=>{
+   event.preventDefault();
+   const input=dialog.querySelector('#reel-link-name'),name=input.value.trim();if(!name)return;
+   try{const {link}=await post('create-link',{id,name});rows=[link,...rows];input.value='';status('Link created');render();sync();}
+   catch(e){status(e.message);}
+  };
  }
  async function uploadFiles(files){
   if(uploading||busy)return;
@@ -163,38 +188,12 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
  const run=fn=>async()=>{try{error='';await fn();}catch(e){error=e.message;onChange();}};
 
  async function loadReels(){if(reelsLoading||!account.user)return;reelsLoading=true;try{savedReels=(await libraryRequest('/api/projects')).projects.filter(p=>p.type==='reel');reelsLoaded=true;}catch(e){error=e.message;reelsLoaded=true;}finally{reelsLoading=false;onChange();}}
- function reelsView(){return account.user?`<section class="saved-reels"><div class="section-title"><h2>Your reels</h2>${collectionCreateButton({label:"Create reel",attributes:"id=\"new-saved-reel\"",disabled:busy})}</div><div class="collection-list">${savedReels.map(p=>collectionRow({title:`<button class="project-title-link" data-edit-reel="${esc(p.id)}">${esc(p.title)}</button>`,detail:`${p.published?'Published':'Draft'}`,icon:'▷',metadata:projectDates(p,esc),actions:`<button data-edit-reel="${esc(p.id)}" ${busy?'disabled':''}>Edit</button>${p.published?`<button data-share-saved-reel="${esc(p.id)}" ${busy?'disabled':''}>Share</button><button data-stop-reel="${esc(p.id)}" ${busy?'disabled':''}>Stop sharing</button>`:''}`})).join('')||'<p class="muted">Saved reels appear here. Use Create project to start another reel.</p>'}</div></section>`:'';}
- async function loadAnalytics(){
-  if(!account.user || !active || analyticsLoading)return;
-  analyticsLoading=true;analyticsError='';onChange();
-  try{analytics=(await libraryRequest(`/api/reels?action=analytics&id=${encodeURIComponent(active.id)}`)).analytics;analyticsLoaded=true;}
-  catch(e){analyticsError=e.message;analyticsLoaded=true;}
-  finally{analyticsLoading=false;onChange();}
- }
- function describeAgent(ua){
-  if(!ua)return 'Unknown device';
-  const browser=/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Firefox\//.test(ua)?'Firefox':/Safari\//.test(ua)&&!/Chrome/.test(ua)?'Safari':'Browser';
-  const os=/iPhone|iPad/.test(ua)?'iOS':/Android/.test(ua)?'Android':/Mac OS/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':/Linux/.test(ua)?'Linux':'';
-  return [browser,os].filter(Boolean).join(' on ') || 'Unknown device';
- }
- function hostFor(url){try{return new URL(url).hostname;}catch{return '';}}
- function analyticsView(){
-  if(!account.user || !active)return '';
-  if(analyticsError)return `<section class="panel reel-analytics"><h2>Listener analytics</h2><p class="project-error" role="alert">${esc(analyticsError)}</p></section>`;
-  if(!analytics)return `<section class="panel reel-analytics"><h2>Listener analytics</h2><p class="muted">${analyticsLoading?'Loading analytics…':'Analytics appear once your reel has been shared.'}</p></section>`;
-  if(!analytics.opens)return `<section class="panel reel-analytics"><h2>Listener analytics</h2><p class="muted">No one has opened this reel's link yet. Check back after you've shared it.</p></section>`;
-  const trackRows=analytics.tracks.map(t=>`<li><span class="reel-analytics-track-title">${esc(t.trackTitle)}</span><span>${t.plays} play${t.plays===1?'':'s'}</span><span>${t.avgRatio==null?'—':`${Math.round(t.avgRatio*100)}% heard on average`}</span><span>${t.completions} finished</span></li>`).join('');
-  const recentRows=analytics.recent.slice(0,10).map(l=>{
-   const device=describeAgent(l.userAgent),host=l.referrer?hostFor(l.referrer):'';
-   const heard=l.tracks.length?l.tracks.map(t=>`${esc(t.trackTitle)} (${t.durationSeconds?Math.round(Math.min(1,t.maxSeconds/t.durationSeconds)*100):0}%)`).join(', '):'No tracks played';
-   return `<li><div class="reel-listen-meta"><span>${esc(new Date(l.openedAt).toLocaleString())}</span><span class="muted">${esc(device)}${host?` · from ${esc(host)}`:''}</span></div><p class="muted">${esc(heard)}</p></li>`;
-  }).join('');
-  return `<section class="panel reel-analytics"><div class="section-title"><h2>Listener analytics</h2><span class="muted">${analytics.opens} link open${analytics.opens===1?'':'s'}</span></div><ul class="reel-analytics-tracks">${trackRows}</ul><h3>Recent listens</h3><ul class="reel-analytics-recent">${recentRows}</ul></section>`;
- }
+ function reelsView(){return account.user?`<section class="saved-reels"><div class="section-title"><h2>Your reels</h2>${collectionCreateButton({label:"Create reel",attributes:"id=\"new-saved-reel\"",disabled:busy})}</div><div class="collection-list">${savedReels.map(p=>collectionRow({title:`<button class="project-title-link" data-edit-reel="${esc(p.id)}">${esc(p.title)}</button>`,detail:`${p.published?'Published':'Draft'}`,icon:'▷',metadata:projectDates(p,esc),actions:`<button data-edit-reel="${esc(p.id)}" ${busy?'disabled':''}>Edit</button>${p.published?`<button data-share-saved-reel="${esc(p.id)}" ${busy?'disabled':''}>Share</button><button data-view-analytics="${esc(p.id)}" ${busy?'disabled':''}>Analytics</button><button data-stop-reel="${esc(p.id)}" ${busy?'disabled':''}>Stop sharing</button>`:''}`})).join('')||'<p class="muted">Saved reels appear here. Use Create project to start another reel.</p>'}</div></section>`:'';}
  function bind(){
   document.querySelector('#published-reel-link')?.addEventListener('click',event=>event.target.select());
   document.querySelector('#copy-published-reel-link')?.addEventListener('click',async()=>{const input=document.querySelector('#published-reel-link'),status=document.querySelector('#reel-copy-status');try{await navigator.clipboard.writeText(input.value);status.textContent='Link copied';}catch{input.focus();input.select();status.textContent='Select the link and copy it.';}});
-  document.querySelectorAll('[data-share-saved-reel]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const id=button.dataset.shareSavedReel,[{publication:published},{project}]=await Promise.all([libraryRequest('/api/reels?id='+encodeURIComponent(id)),libraryRequest('/api/projects?id='+encodeURIComponent(id))]);if(!published)throw Error('This reel is no longer published.');showShare({token:published.token,title:savedReels.find(p=>p.id===id)?.title||'Reel',trackCount:project?.data?.audioIds?.length||0});}catch(e){error=e.message;onChange();}finally{button.disabled=false;}});
+  document.querySelectorAll('[data-share-saved-reel]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const id=button.dataset.shareSavedReel,{project}=await libraryRequest('/api/projects?id='+encodeURIComponent(id));showLinks({id,title:savedReels.find(p=>p.id===id)?.title||'Reel',trackCount:project?.data?.audioIds?.length||0});}catch(e){error=e.message;onChange();}finally{button.disabled=false;}});
+  document.querySelectorAll("[data-view-analytics]").forEach(button=>button.onclick=()=>onAnalytics?.(button.dataset.viewAnalytics));
 
   const appearance=()=>data.appearance||={accent:'#1ed760',theme:'dark',description:''};
   document.querySelectorAll('[data-reel-profile]').forEach(input=>input.oninput=()=>{data.profile||={name:'',email:'',occupation:'',bio:''};data.profile[input.dataset.reelProfile]=input.value;changed();});
@@ -212,14 +211,14 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
 
   document.querySelector("#new-saved-reel")?.addEventListener("click",()=>onCreate?.());
   document.querySelectorAll("[data-edit-reel]").forEach(button=>button.onclick=()=>onEdit?.(button.dataset.editReel));
-  document.querySelectorAll("[data-stop-reel]").forEach(button=>button.onclick=run(async()=>{const id=button.dataset.stopReel;await confirmDialog({title:"Stop sharing this reel?",message:"This reel’s link and embeds will stop working. Already loaded audio may keep playing briefly.",confirmLabel:"Stop sharing",onConfirm:async()=>{publicationEpoch++;await post("revoke",{id});if(active?.id===id)publication=null;notice="Sharing stopped. Publishing again creates a new link.";await loadReels();}});}));
+  document.querySelectorAll("[data-stop-reel]").forEach(button=>button.onclick=run(async()=>{const id=button.dataset.stopReel;await confirmDialog({title:"Stop sharing this reel?",message:"All of this reel’s share links and embeds will stop working. Already loaded audio may keep playing briefly.",confirmLabel:"Stop sharing",onConfirm:async()=>{publicationEpoch++;await post("revoke",{id});if(active?.id===id){publication=null;links=[];linksLoadedFor=null;}notice="Sharing stopped. Publish again, then create new share links.";await loadReels();}});}));
   if(account.user&&!reelsLoaded&&!reelsLoading&&!busy)loadReels();
-  if(account.user&&active&&!analyticsLoaded&&!analyticsLoading&&!busy)loadAnalytics();
   const title=document.querySelector('#reel-title');if(title)title.oninput=()=>{data.title=title.value;changed();const label=document.querySelector('.page-breadcrumb b');if(label)label.textContent=data.title || 'Untitled reel';};
   document.querySelector('#save-reel')?.addEventListener('click',run(save));
 
   document.querySelector('#publish-reel')?.addEventListener('click',run(()=>prepare(true)));
-  document.querySelector('#share-reel')?.addEventListener('click',()=>showShare());
+  document.querySelector('#share-reel')?.addEventListener('click',()=>showLinks());
+  document.querySelector('#view-reel-analytics')?.addEventListener('click',()=>onAnalytics?.(active.id));
 
   document.querySelector('#reel-upload')?.addEventListener('change',event=>uploadFiles([...event.target.files]));
   document.querySelector('#retry-reel-upload')?.addEventListener('click',()=>uploadFiles(pendingUploads));
@@ -230,7 +229,8 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
   for(const dir of ['up','down'])document.querySelectorAll(`[data-reel-${dir}]`).forEach(button=>button.onclick=()=>{const i=Number(button.dataset[dir==='up'?'reelUp':'reelDown']),j=i+(dir==='up'?-1:1);[data.audioIds[i],data.audioIds[j]]=[data.audioIds[j],data.audioIds[i]];changed();onChange();});
   renderPreview();schedulePreview();
   if(account.user&&active&&publicationLoaded!==active.id){const id=active.id,epoch=publicationEpoch;publicationLoaded=id;libraryRequest(`/api/reels?id=${id}`).then(async result=>{if(active?.id!==id||epoch!==publicationEpoch)return;publication=result.publication;onChange();}).catch(e=>{if(active?.id===id&&epoch===publicationEpoch){error=e.message;onChange();}});}
+  if(account.user&&active&&publication?.published&&linksLoadedFor!==active.id){const id=active.id;linksLoadedFor=id;libraryRequest(`/api/reels?action=links&id=${encodeURIComponent(id)}`).then(r=>{if(active?.id!==id)return;links=r.links;onChange();}).catch(()=>{});}
  }
- function reset(){clearTimeout(autoTimer);autoKey='';autoError='';trackCache.clear();localUrls.forEach(url=>URL.revokeObjectURL(url));localUrls=[];pendingUploads=[];publicationEpoch++;clearPreview();publication=null;publicationLoaded=null;error='';notice='';analytics=null;analyticsLoaded=false;analyticsError='';}
+ function reset(){clearTimeout(autoTimer);autoKey='';autoError='';trackCache.clear();localUrls.forEach(url=>URL.revokeObjectURL(url));localUrls=[];pendingUploads=[];publicationEpoch++;clearPreview();publication=null;publicationLoaded=null;error='';notice='';links=[];linksLoadedFor=null;}
  return {view,bind,save,dispose,activeId:()=>active?.id,showError(e){error=e.message;onChange();},async loadProject(id,isCurrent=()=>true){if(active?.id===id)return;const {project}=await libraryRequest("/api/projects?id="+encodeURIComponent(id));if(!isCurrent())return;if(project.data.type!=="reel")throw Error("This project is not a reel.");this.open(project);},isDirty:()=>dirty,isBusy:()=>busy||uploading,title:()=>data.title,newProject(){if(dirty)localStorage.setItem(key+':backup',JSON.stringify({data,active,dirty}));reset();data=blank();active=null;dirty=false;persist();},open(project){reset();data=project.data;active={id:project.id,revision:project.revision};dirty=false;persist();},async restore(){await audioLibrary.load();onChange();}};
 }

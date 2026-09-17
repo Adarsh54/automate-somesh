@@ -4,8 +4,8 @@ const speakerIcon=muted=>`<svg aria-hidden="true" width="20" height="20" viewBox
 export const reelTime=seconds=>`${Math.floor((Number(seconds)||0)/60)}:${String(Math.floor((Number(seconds)||0)%60)).padStart(2,'0')}`;
 // One player owns one audio element; mounting another view destroys the previous instance.
 export class ReelPlayer{
- constructor(root,{title,tracks,allowDownloads=false,source,download,onProgress,profile,appearance,resumeUrl}){
-  this.accent=/^#[0-9a-f]{6}$/i.test(appearance?.accent)?appearance.accent:null;this.root=root;this.tracks=tracks;this.source=source;this.download=download;this.onProgress=onProgress;this.played=false;this.lastReport=0;this.index=0;this.audio=new Audio();this.audio.preload='metadata';
+ constructor(root,{title,tracks,allowDownloads=false,source,download,onEvent,profile,appearance,resumeUrl}){
+  this.accent=/^#[0-9a-f]{6}$/i.test(appearance?.accent)?appearance.accent:null;this.root=root;this.tracks=tracks;this.source=source;this.download=download;this.onEvent=onEvent;this.playing=false;this.index=0;this.audio=new Audio();this.audio.preload='metadata';
   root.innerHTML=`<section class="reel-player" aria-label="${escape(title)}"><div class="reel-player-heading"><span class="reel-kicker">REEL</span><h2>${escape(title)}</h2></div><div class="reel-transport"><button class="reel-play" aria-label="Play">▶</button><div class="reel-wave-wrap"><div class="reel-wave" aria-hidden="true"></div><input class="reel-seek" aria-label="Seek through track" type="range" min="0" max="1000" value="0" step="1"></div><button class="reel-mute" aria-label="Mute">${speakerIcon(false)}</button><input class="reel-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><div class="reel-now"><span></span><time>0:00 / 0:00</time></div><p class="reel-player-error" role="alert" hidden></p><ol class="reel-playlist">${tracks.map((t,i)=>`<li><button data-reel-track="${i}"><span class="reel-track-number">${String(i+1).padStart(2,'0')}</span><span class="reel-track-title">${escape(t.title)}</span><time>${reelTime(t.duration)}</time></button>${allowDownloads&&download?`<button class="reel-download" data-reel-download="${i}" aria-label="Download ${escape(t.title)} as MP3" title="Download MP3">↓</button>`:''}</li>`).join('')}</ol></section>`;
   const section=root.querySelector('.reel-player');
   if(appearance?.theme)section.dataset.theme=appearance.theme;
@@ -18,18 +18,24 @@ export class ReelPlayer{
   this.play.onclick=()=>this.audio.paused?this.start():this.audio.pause();
   root.querySelector('.reel-mute').onclick=()=>{this.audio.muted=!this.audio.muted;this.volumeUI();};
   root.querySelector('.reel-volume').oninput=e=>{this.audio.volume=Number(e.target.value);this.audio.muted=false;this.volumeUI();};
-  this.seek.oninput=()=>{if(Number.isFinite(this.audio.duration)){this.audio.currentTime=Number(this.seek.value)/1000*this.audio.duration;this.update();}};
+  this.seek.oninput=()=>{
+   if(!Number.isFinite(this.audio.duration))return;
+   const from=this.audio.currentTime,to=Number(this.seek.value)/1000*this.audio.duration;
+   this.audio.currentTime=to;this.update();
+   this.emit('seek',{seekFrom:from,seekTo:to});
+  };
   root.querySelectorAll('[data-reel-track]').forEach(b=>b.onclick=()=>{if(this.index===Number(b.dataset.reelTrack)){this.audio.paused?this.start():this.audio.pause();}else{this.select(Number(b.dataset.reelTrack));this.start();}});
   root.querySelectorAll('[data-reel-download]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await download(tracks[Number(b.dataset.reelDownload)]);}catch{this.error('The download failed. Please try again.');}finally{b.disabled=false;}});
-  this.audio.ontimeupdate=this.audio.onloadedmetadata=()=>{this.update();this.report();};
-  this.audio.onplay=()=>{this.played=true;this.update();};
-  this.audio.onpause=()=>{this.update();this.report(true);};
+  this.audio.ontimeupdate=this.audio.onloadedmetadata=()=>this.update();
+  this.audio.onplay=()=>{this.playing=true;this.update();this.emit('play');};
+  this.audio.onpause=()=>{this.playing=false;this.update();if(!this.audio.ended)this.emit('pause');};
   this.audio.onerror=()=>this.error('This track could not be loaded. Refresh the reel and try again.');
-  this.audio.onended=()=>{this.report(true);if(this.index<tracks.length-1){this.select(this.index+1);this.start();}else this.update();};
+  this.audio.onended=()=>{this.playing=false;this.emit('ended');if(this.index<tracks.length-1){this.select(this.index+1);this.start();}else this.update();};
   if(tracks.length)this.select(0);else this.play.disabled=true;
  }
  select(index){
-  this.report(true);this.audio.pause();this.index=index;this.played=false;this.lastReport=0;const track=this.tracks[index];this.message.hidden=true;
+  if(index!==this.index)this.emit('switch');
+  this.audio.pause();this.index=index;this.playing=false;const track=this.tracks[index];this.message.hidden=true;
   const color=/^#[0-9a-f]{6}$/i.test(track.color)?track.color:this.accent;const section=this.root.querySelector('.reel-player');if(color)section.style.setProperty('--reel-accent',color);else section.style.removeProperty('--reel-accent');
   this.audio.src=this.source(track);this.audio.load();
   const peaks=track.peaks||Array(120).fill(.05);
@@ -49,14 +55,11 @@ export class ReelPlayer{
   const bars=this.wave.querySelectorAll('rect');bars.forEach((bar,i)=>bar.classList.toggle('played',i/bars.length<=ratio));
   this.root.querySelector('.reel-now time').textContent=`${reelTime(t)} / ${reelTime(d)}`;
  }
- report(final=false){
-  if(!this.onProgress || !this.played)return;
-  const t=this.audio.currentTime||0;
-  if(!final && t-this.lastReport<5)return;
-  this.lastReport=t;
-  this.onProgress(this.tracks[this.index],t,this.durationSeconds(),final);
+ emit(type,extra={}){
+  if(!this.onEvent)return;
+  this.onEvent(type,this.tracks[this.index],{position:this.audio.currentTime||0,duration:this.durationSeconds(),...extra});
  }
- destroy(){this.report(true);this.audio.onended=null;this.audio.onerror=null;this.audio.onplay=null;this.audio.onpause=null;this.audio.ontimeupdate=null;this.audio.onloadedmetadata=null;this.audio.pause();this.audio.removeAttribute('src');this.audio.load();}
+ destroy(){if(this.tracks.length){this.emit('close');this.playing=false;}this.audio.onended=null;this.audio.onerror=null;this.audio.onplay=null;this.audio.onpause=null;this.audio.ontimeupdate=null;this.audio.onloadedmetadata=null;this.audio.pause();this.audio.removeAttribute('src');this.audio.load();}
 }
 export async function downloadReelTrack(url,title){
  const response=await fetch(url);if(!response.ok)throw Error('Download failed');

@@ -595,16 +595,59 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 }
 .saved-reels { margin-top: 40px; }
 .saved-reels h2 { margin-bottom: 16px; }
-.reel-analytics { margin-top: 40px; }
-.reel-analytics h3 { margin: 24px 0 12px; font-size: 13px; }
-.reel-analytics-tracks,.reel-analytics-recent { list-style: none; padding: 0; margin: 0; }
-.reel-analytics-tracks li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-.reel-analytics-tracks li span { min-width: 0; overflow-wrap: anywhere; }
-.reel-analytics-track-title { flex: 1 1 160px; font-weight: 500; }
-.reel-analytics-recent li { padding: 10px 0; border-bottom: 1px solid var(--line); }
-.reel-analytics-recent li:last-child { border-bottom: none; }
-.reel-listen-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
-.reel-analytics-recent p { margin: 4px 0 0; font-size: 12px; }
+.reel-analytics-page { max-width: 760px; margin: 0 auto; }
+.reel-analytics-stats { margin-top: 8px; }
+.reel-session-card { display: grid; gap: 14px; }
+.reel-session-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.reel-session-head strong { font-size: 13px; }
+.reel-session-head .muted { display: block; margin-top: 3px; }
+.reel-session-head button { flex-shrink: 0; font-size: 12px; }
+.reel-session-metrics { display: flex; gap: 24px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.reel-session-metrics > div { display: flex; align-items: baseline; gap: 7px; }
+.reel-session-metrics strong { font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.reel-session-metrics span { font-size: 11px; color: var(--muted); }
+.reel-analytics-track-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.reel-analytics-track-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-bottom: 4px; }
+.reel-analytics-track-row span:first-child { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.reel-analytics-track-row span:last-child { flex-shrink: 0; color: var(--muted); }
+.reel-analytics-track-bar { height: 5px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+.reel-analytics-track-bar > div { height: 100%; background: var(--accent); border-radius: inherit; }
+.reel-analytics-events { list-style: none; padding: 12px 0 0; margin: 0; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.reel-analytics-events li { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.reel-analytics-event-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.reel-analytics-events time { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.reel-analytics-event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
+.reel-analytics-event-play,.reel-analytics-event-ended { background: var(--accent); }
+.reel-analytics-event-pause,.reel-analytics-event-switch { background: var(--warning); }
+.reel-analytics-event-seek { background: var(--danger); }
+.reel-analytics-event-close,.reel-analytics-event-stop { background: var(--muted); }
+.reel-link-badge { display: inline-block; margin: 0 8px 0 6px; padding: 2px 7px; border-radius: 999px; background: var(--raised); font-size: 10px; font-weight: 500; color: var(--muted); vertical-align: middle; }
+.reel-embed-badge { display: inline-block; margin-right: 8px; padding: 2px 7px; border-radius: 999px; background: var(--tint); font-size: 10px; font-weight: 500; color: var(--accent); vertical-align: middle; }
+.reel-analytics-sessions-heading { font-size: 13px; margin: 36px 0 16px; }
+.reel-analytics-rankings { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 24px; }
+.reel-analytics-rankings h3 { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.reel-analytics-trends .section-title { margin-bottom: 4px; }
+.reel-chart-range button { font-size: 11px; padding: 5px 9px; }
+.reel-chart-range button.active { background: var(--hover); border-color: var(--strong-line); }
+.reel-chart-legend { display: flex; gap: 16px; margin: 10px 0 14px; font-size: 11px; color: var(--muted); }
+.reel-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.reel-chart-dot { width: 8px; height: 8px; border-radius: 2px; }
+.reel-chart-dot.reel-chart-direct,rect.reel-chart-direct { fill: var(--accent); background: var(--accent); }
+.reel-chart-dot.reel-chart-embed,rect.reel-chart-embed { fill: var(--muted); background: var(--muted); }
+.reel-chart { width: 100%; height: 120px; }
+.reel-links-list { display: grid; gap: 10px; margin: 16px 0; }
+.reel-link-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.reel-link-info { display: grid; gap: 2px; min-width: 0; }
+.reel-link-info strong { overflow-wrap: anywhere; }
+.reel-link-row .button-row button { font-size: 11px; padding: 5px 9px; }
+.reel-links-create { display: flex; gap: 8px; margin-top: 8px; }
+.reel-links-create input { flex: 1 1 auto; }
+.switch { position: relative; display: inline-block; width: 34px; height: 20px; flex-shrink: 0; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; background: var(--raised); border: 1px solid var(--strong-line); border-radius: 999px; transition: background .15s; }
+.switch span::before { content: ""; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+.switch input:checked + span { background: var(--tint); border-color: var(--accent); }
+.switch input:checked + span::before { transform: translateX(14px); background: var(--accent); }
 @media(min-width:1001px) {
  .saved-projects .collection-actions { min-width: 124px; justify-content: flex-end; }
  .saved-reels .collection-actions { min-width: 180px; justify-content: flex-end; }
