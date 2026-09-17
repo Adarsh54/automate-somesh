@@ -25,3 +25,12 @@ test('missing media blocks a cloud save and analysis cannot race restoration',as
  workflow.busy=true;await assert.rejects(media.prepare(structuredClone(state),()=>{}),/Wait/);
  await assert.rejects(media.restore(()=>{}),/Wait/);
 });
+test('cue saves reuse the shared library upload instead of creating a second asset',async()=>{
+ const file=new File(['audio'],'score.wav');
+ const state={tracks:[{id:'track'}]},workflow={files:new Map([['track',file]])};
+ let libraryCalls=0;
+ const media=createCloudMedia({state,workflow,persist:()=>{},request:()=>{throw Error('Must use library upload');},saveAudio:async source=>{assert.equal(source,file);libraryCalls++;return {assetId:'saved-audio'};}});
+ const snapshot=structuredClone(state);await media.prepare(snapshot,()=>{});
+ assert.equal(snapshot.media.tracks.track,'saved-audio');assert.equal(state.media.tracks.track,'saved-audio');assert.equal(libraryCalls,1);
+ await media.prepare(structuredClone(state),()=>{});assert.equal(libraryCalls,1);
+});

@@ -1,6 +1,6 @@
 import {upload} from '@vercel/blob/client';
 import {MAX_MEDIA_BYTES,mediaType} from './media-policy.js';
-export function createCloudMedia({state,workflow,persist,request,uploadFile=upload}) {
+export function createCloudMedia({state,workflow,persist,request,uploadFile=upload,saveAudio}) {
   const uploaded=new WeakMap();
   async function prepare(snapshot,report) {
     if(workflow.busy || workflow.restoring)throw new Error('Wait for media loading or analysis to finish, then save again.');
@@ -13,6 +13,15 @@ export function createCloudMedia({state,workflow,persist,request,uploadFile=uplo
       const file=files.get(entry.key);
       if(!file)throw new Error('Reattach the missing audio or video before saving it to your account. Your draft is kept.');
       if(!mediaType(file.name) || file.size>MAX_MEDIA_BYTES)throw new Error('Use a supported audio/video file smaller than 2 GB.');
+      if(saveAudio && entry.key!=='movie' && mediaType(file.name)?.startsWith('audio/')){
+        const asset=await saveAudio(file);
+        if(!asset.assetId)throw new Error('Sign in to save audio to your account.');
+        snapshot.media.tracks[entry.key]=asset.assetId;
+        if(workflow.files.get(entry.key)===file && state.tracks.some(t=>t.id===entry.key)){
+          state.media ??= {tracks:{}};state.media.tracks[entry.key]=asset.assetId;persist();
+        }
+        continue;
+      }
       let asset=uploaded.get(file);
       if(!asset) {
         report(`Uploading ${file.name}…`);

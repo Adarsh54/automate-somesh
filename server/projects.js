@@ -13,6 +13,7 @@ const text=z.string().max(10000);
 const credit=z.object({id:identifier.optional(),role:z.enum(["Composer","Publisher"]),first:text.default(""),last:text.default(""),name:text.default(""),pro:text.default(""),ipi:text.default(""),share:z.union([z.string(),z.number().finite()])});
 const cue=z.object({id:identifier,trackId:identifier,title:text.optional(),start:text.optional(),end:text.optional(),usage:text.optional(),credits:z.array(credit).max(100).optional(),category:z.enum(["original","sourced","unknown"]).optional()}).passthrough();
 const stateSchema=z.object({
+  type:z.literal("cue").optional(),
   production:z.object({title:text,rate:z.enum(Object.keys(rates))}).catchall(text),
   tracks:z.array(z.object({id:identifier,title:text,filename:text,offset:text}).passthrough()).max(500),
   cues:z.array(cue).max(2000),
@@ -26,10 +27,11 @@ const stateSchema=z.object({
   status:z.enum(["draft","completed"]).optional(),
   media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
-const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:stateSchema});
+const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500)})])});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+  if(result.data.data.type==="reel"){if(new Set(result.data.data.audioIds).size!==result.data.data.audioIds.length)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});return result.data;}
   const ids=result.data.data.tracks.map(t=>t.id);
   if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)) || Object.keys(result.data.data.media?.tracks || {}).some(id=>!ids.includes(id)))
     throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
@@ -40,7 +42,7 @@ export function parseProject(input) {
 export function createProjectRepository(query) {
   return {
     async list(userId) {
-      return query`SELECT id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC LIMIT 100`;
+      return query`SELECT id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC LIMIT 100`;
     },
     async get(userId,id) {
       if(!z.uuid().safeParse(id).success) throw Object.assign(new Error("NOT_FOUND"),{status:404});
@@ -49,11 +51,11 @@ export function createProjectRepository(query) {
       return rows[0];
     },
     async save(userId,input) {
-      const {id,revision,data}=parseProject(input), title=data.production.title.trim() || "Untitled production";
+      const {id,revision,data}=parseProject(input), title=data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
       await createMediaRepository(query).validate(userId,data);
       const rows=revision===0
-        ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status`
-        : await query`UPDATE projects SET title=${title},data=${JSON.stringify(data)}::jsonb,revision=revision+1,updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${revision} RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status`;
+        ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`
+        : await query`UPDATE projects SET title=${title},data=${JSON.stringify(data)}::jsonb,revision=revision+1,updated_at=now() WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND COALESCE(data->>'type','cue')=${data.type || "cue"} RETURNING id,title,revision,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`;
       if(!rows[0]) throw Object.assign(new Error("PROJECT_CONFLICT"),{status:409});
       return rows[0];
     },

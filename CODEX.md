@@ -137,3 +137,15 @@ Run `npm run db:migrate` after pulling the profile feature (`004_user_profiles.s
 ### Account credit profiles
 
 `005_credit_profiles.sql` stores reusable credit presets in Neon, keyed by authenticated user and profile ID. The account API lists, saves and deletes only the signed-in user’s presets, with revision checks against stale edits. Existing account-scoped browser presets import once without overwriting newer server versions; guest presets are not imported. Applying a preset copies credits into the current cue sheet, while editing that sheet never updates the account preset.
+
+### Project types and shared audio
+
+Projects supports `cue` and `reel` records in the existing `projects.data` JSON. Old records without a type remain cue projects. Reel records currently contain only a title, draft status, and owned audio asset IDs; publishing, public sharing, embeds, visualization, and download permissions are not implemented. No database migration is needed for this change.
+
+The global plus and Create project open a type chooser. The sidebar has separate cue (`#/workspace/library` and the remaining workflow steps), reel (`#/reels/new`), and shared audio (`#/audio`) pages. Cue and reel drafts use separate account-scoped local storage keys.
+
+Audio submitted from the audio library, a cue import, or a reel upload goes into the shared library. Signed-in uploads use the existing private Blob reserve/upload/complete flow and `media_assets` table. `GET /api/media?action=list` returns only the signed-in user's completed audio uploads; video and unfinished uploads are excluded. The development Blob token is required for these uploads, even before a project is saved. Failed uploads stay locally available for retry. Reusing a saved library item attaches the existing asset rather than uploading a second copy.
+
+Guest audio is stored in IndexedDB on this device. It survives reloads but is not copied into an account at login. Clearing site data removes guest audio and drafts. Audio removal from a reel only removes its project reference; it does not delete the library file.
+
+Regression checks: `test/reel-projects.test.js` covers typed project persistence and ownership; `scripts/browser-project-types-check.cjs` and `scripts/browser-account-project-types-check.cjs` cover guest and account workflows. Set `PLAYWRIGHT_MODULE` and optionally `CUESTAMP_URL` as for the other browser checks.

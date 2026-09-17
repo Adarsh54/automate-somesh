@@ -9,8 +9,8 @@ import { applyMovieMetadata } from "./project.js";
 import AnalysisWorker from "./analysis.worker.js?worker&inline";
 
 export class Workflow {
-  constructor({ state, save, render, notify }) {
-    Object.assign(this, { state, save, render, notify });
+  constructor({ state, save, render, notify, onAudioAdded }) {
+    Object.assign(this, { state, save, render, notify, onAudioAdded });
     this.files = new Map();
     this.audio = new Map();
     this.urls = new Map();
@@ -99,9 +99,14 @@ export class Workflow {
       }
       if (!movie && !restoring && this.state.media) delete this.state.media.tracks[track.id];
       this.files.set(movie ? "movie" : track.id, file);
+      let libraryWarning='';
+      if(!movie && !restoring && this.onAudioAdded){
+        try{const asset=await this.onAudioAdded(file);if(asset?.id)track.audioLibraryId=asset.id;if(asset?.assetId){this.state.media ??= {tracks:{}};this.state.media.tracks[track.id]=asset.assetId;}}
+        catch(error){libraryWarning=` Audio library upload needs attention: ${error.message}`;}
+      }
       if (!restoring) this.save();
       this.notify(
-        `${file.name} is ready. ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
+        `${file.name} is ready.${libraryWarning} ${movie ? "Add reference cues, then match the movie." : "Audio ready for analysis and credit review."}`,
         false,
       );
       return movie ? this.movie : track;

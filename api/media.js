@@ -11,6 +11,7 @@ export function createMediaHandler({auth=authenticate,repository=mediaRepository
       if(!session)return reply(res,401,{error:'SIGN_IN_REQUIRED'});
       const repo=repository(),url=new URL(req.url,'http://localhost');
       if(req.method==='GET') {
+        if(url.searchParams.get('action')==='list')return reply(res,200,{assets:await repo.listAudio(session.user.id)});
         const asset=await repo.get(session.user.id,url.searchParams.get('id'));
         if(!asset.ready)return reply(res,409,{error:'MEDIA_NOT_READY'});
         const validUntil=Date.now()+5*60*1000;

@@ -1,3 +1,6 @@
+import {createAudioLibrary} from "./audio-library.js";
+import {createReelWorkspace} from "./reel-workspace.js";
+import {chooseProjectType} from "./project-type-dialog.js";
 import {collectionPage,collectionCreateButton,collectionRow} from "./collection-page.js";
 import {themeToggle} from "./theme.js";
 import {confirmDialog} from "./confirm-dialog.js";
@@ -102,6 +105,7 @@ const workflow = new Workflow({
   state,
   save,
   render,
+  onAudioAdded:file=>audioLibrary.add(file),
   notify: (text, refresh = true) => {
     message = text;
     if (refresh) render();
@@ -122,6 +126,9 @@ const $ = (s) => document.querySelector(s),
         })[c],
     );
 const id = () => crypto.randomUUID();
+const audioLibrary=createAudioLibrary({account,esc,onChange:()=>{if(tab==='audio'||tab==='reel')render();}});
+const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onChange:()=>{if(tab==='reel')render();}});
+
 const creditProfilesKey=account.user?`cuestamp-user:${account.user.id}:credit-profiles`:null;
 let creditProfiles=[],creditProfilesError='',creditProfilesLoading=false;
 let activeCreditProfileId=state.activeCreditProfileId || '';
@@ -170,18 +177,23 @@ function review() {
 let faqOpen = false;
 let faqAnswer = "";
 function faq() {
-  const questions = ["Which workflow should I choose?", "Why can't I export yet?", "What files can I use?", "What does review mean?", "Is my media uploaded?", "What if a cue is not found?", "How do I add credits?", "Can I enter timings myself?"];
+  const questions = ["What types of projects can I create?", "Where do my audio files go?", "Can I share or embed a reel yet?", "Can I reuse audio in another project?", "Are guest files saved to my account?", "Which workflow should I choose?", "Why can't I export yet?", "What files can I use?", "What does review mean?", "Is my media uploaded?", "What if a cue is not found?", "How do I add credits?", "Can I enter timings myself?"];
   return `<div class="faq"><button class="faq-launcher" id="faq-launcher" title="${faqOpen ? "Close" : "Open"} FAQ" aria-label="${faqOpen ? "Close" : "Open"} FAQ" aria-expanded="${faqOpen}" aria-controls="faq-panel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2 1-6a8 8 0 1 1 17-4Z"/><path d="M7 11h10M7 14h6"/></svg></button><section class="faq-panel${faqOpen ? " open" : ""}" id="faq-panel" aria-label="Frequently Asked Questions"><div class="faq-header"><div><span class="eyebrow">CUESTAMP GUIDE</span><h2>FAQ</h2></div><button class="text" id="faq-close" aria-label="Close FAQ">Close</button></div><p class="muted">Frequently asked questions. Select a question to see its answer.</p><div class="faq-questions">${questions.map((question) => `<button data-faq-question="${esc(question)}">${esc(question)}</button>`).join("")}</div>${faqAnswer ? `<div class="faq-answer" role="status">${esc(faqAnswer)}</div>` : ""}</section></div>`;
 }
 function answerFAQ(question) {
   const text = question.toLowerCase();
+  if(text.includes('types of projects'))return 'Projects contains Cues and Reels. Use the green plus or Create project, then choose a type. Cues follow the four-step cue sheet workflow; Reels currently let you name and save an audio draft.';
+  if(text.includes('audio files go'))return 'Audio Files Submitted is your shared library. Audio uploaded there, in a cue workspace, or in a reel is collected there. Signed-in uploads are saved privately to your account; guest files stay on this device.';
+  if(text.includes('share or embed'))return 'Not yet. Reel drafts support a title and audio collection. Share links, embedded players, visualizations, timestamps and download permissions will be added in a later stage.';
+  if(text.includes('reuse audio'))return 'Choose Add from audio library in a cue workspace or Choose from audio library in a reel draft. Removing audio from a reel only removes that attachment; the file remains in your library.';
+  if(text.includes('guest files'))return 'Guest audio and drafts are stored on this device, not in an account. Clearing site data removes them. Sign in before uploading to build an account library.';
   if (text.includes("workflow") || text.includes("choose")) return "Use Movie matching for a finished movie, Audio with offset for music-only exports, or Manual to enter timings yourself.";
   if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export, finish your cue sheet, then choose Excel, CSV, or PDF to download."; }
   if (text.includes("file") || text.includes("format")) return `For video, MP4/AAC or WebM/Opus works best. For audio, use WAV, MP3, M4A, FLAC, or OGG. Files up to ${BROWSER_MAX_MB} MB are analyzed in your browser; larger files are processed on the server.`;
-  if (text.includes("uploaded") || text.includes("private") || text.includes("media")) return `Files over ${BROWSER_MAX_MB} MB are uploaded privately for server processing. Comparisons against a large file also upload its reference files. Temporary processing files expire after 24 hours. Saving to an account keeps a separate copy of your media.`;
+  if (text.includes("uploaded") || text.includes("private") || text.includes("media")) return `Signed-in audio uploads are saved privately to your audio library. Files over ${BROWSER_MAX_MB} MB also use server processing; temporary processing copies expire after 24 hours. Guest library files stay on this device.`;
   if (text.includes("not found") || text.includes("no match") || text.includes("missing")) return "Check that the reference recording is the same speed and pitch as the movie audio. You can also add the placement manually in Timings & usage.";
   if (text.includes("review") || text.includes("confirm")) return "Review means checking detected cue boundaries, usage, timings, and credits. Automatic timings must be confirmed before export.";
-  if (text.includes("credit") || text.includes("composer") || text.includes("publisher")) return "Add shared composer and publisher details on Find your cues. A cue can override them later in Timings & usage.";
+  if (text.includes("credit") || text.includes("composer") || text.includes("publisher")) return "Choose a saved Credit profile in the cue workspace, or use Edit credits beside the selector. Create profile saves reusable composer and publisher details to your account. Individual cues can override them in Timings & usage.";
   if (text.includes("manual") || text.includes("myself") || text.includes("enter timing")) return "Choose Manual, add a cue recording, then enter Film in and Film out directly or mark them during playback.";
   if (text.includes("offset") || text.includes("timecode")) return "An offset is the film timecode where an audio file begins. It lets Cuestamp convert playback or detected positions into film timings.";
   if (text.includes("save") || text.includes("account")) return "Guest drafts stay in this browser. Sign in and click Save project to keep a project and its media in your account.";
@@ -197,6 +209,8 @@ function bindFAQ() {
   document.querySelectorAll("[data-faq-question]").forEach((button) => { button.onclick = () => { faqAnswer = answerFAQ(button.dataset.faqQuestion); faqOpen = true; render(); }; });
 }
 function pageBreadcrumb(){
+ if(tab==='reel')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Reel</span><span aria-hidden="true">›</span><b>${esc(reelWorkspace.title() || 'Untitled reel')}</b></div>`;
+ if(tab==='audio')return '<div class="page-breadcrumb"><span>Audio Files Submitted</span></div>';
  if(tab==='projects')return '<div class="page-breadcrumb" aria-label="Breadcrumb"><span aria-current="page">Projects</span></div>';
  if(steps.some(([key])=>key===tab))return `<div class="page-breadcrumb" aria-label="Breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Workspace</span><span aria-hidden="true">›</span><b>${esc(effectiveProduction(state).title || 'Untitled project')}</b></div>`;
  return `<div class="page-breadcrumb" aria-label="Breadcrumb"><span aria-current="page">${tab==='settings'?'Credit profiles':'Meet the team'}</span></div>`;
@@ -219,9 +233,12 @@ function render() {
     ).length;
   $("#app").innerHTML =
     `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#/projects" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div></aside><main><header>${pageBreadcrumb()}<div class="header-account"><div id="account-actions">${cloudWorkspace?.header() || ""}</div>${themeToggle()}</div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><label for="workspace-project-title">Project title</label><input id="workspace-project-title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name your project…" autocomplete="off"><span>Required to save your project. Use your film or production name.</span></div>` : ""}<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Find your cues", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div><nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav><div class="stats"><div><strong>${state.tracks.length}</strong><span>Tracks in library</span></div><div><strong>${state.cues.length}</strong><span>Cue placements</span></div><div><strong>${ready}</strong><span>Complete cues</span></div></div>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}<footer><span>CUESTAMP / MUSIC WORKSPACE</span><span>Made for the people behind the music.</span></footer></div></main>`;
+  document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${steps.some(([key])=>key===tab)?'active':''}" href="#/workspace" aria-label="New Cue Workspace" title="New Cue Workspace" ${steps.some(([key])=>key===tab)?'aria-current="page"':''}>${sidebarIcon('library')}<span class="nav-label">New Cue Workspace</span></a><a class="nav ${tab==='reel'?'active':''}" href="#/reels/new" aria-label="New Reel" title="New Reel" ${tab==='reel'?'aria-current="page"':''}>${sidebarIcon('reel')}<span class="nav-label">New Reel</span></a><a class="nav ${tab==='audio'?'active':''}" href="#/audio" aria-label="Audio Files Submitted" title="Audio Files Submitted" ${tab==='audio'?'aria-current="page"':''}>${sidebarIcon('audio')}<span class="nav-label">Audio Files Submitted</span></a>`);
   document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${tab === "settings" ? "active" : ""}" href="#/credit-profiles" ${tab === "settings" ? 'aria-current="page"' : ""} aria-label="Credit profiles" title="Credit profiles">${sidebarIcon("settings")}<span class="nav-label">Credit profiles</span></a><a class="nav" href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer" aria-label="BMI cue sheet guide" title="BMI cue sheet guide">${sidebarIcon("production")}<span class="nav-label">BMI cue sheet guide</span></a>`);
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
+  if (tab === "reel") document.querySelector(".content").innerHTML = reelWorkspace.view();
+  if (tab === "audio") document.querySelector(".content").innerHTML = audioLibrary.view();
   if (tab === "settings") document.querySelector(".content").innerHTML = settingsPage();
   if (tab === "team" || tab === "settings") {
     $("#cloud-workspace")?.remove();
@@ -232,6 +249,8 @@ function render() {
   bindFAQ();
   bindSidebar();
   cloudWorkspace?.bind();
+  if(tab==="audio")audioLibrary.bind();
+  if(tab==="reel")reelWorkspace.bind();
   document.querySelectorAll("details").forEach((el) => {
     if (openDetails.has(el.querySelector("summary")?.textContent))
       el.open = true;
@@ -253,7 +272,7 @@ function stepNavigation() {
 }
 function library() {
   return (
-    creditProfilePicker() + workflowView(state, workflow, { esc, field, select }) +
+    creditProfilePicker() + `<div class="library-reuse"><button id="cue-audio-library">Add from audio library</button><span class="muted">Cue audio uploads also appear in Audio Files Submitted.</span></div>` + workflowView(state, workflow, { esc, field, select }) +
     `<div class="section-title"><h2>Cue audio library <span>${state.tracks.length}</span></h2><span class="muted">Audio is shared across paths · select a file to preview or reattach audio</span></div>${state.tracks.length ? `<div class="library-grid"><div class="track-list">${state.tracks.map((t) => `<div class="track-row"><button class="track ${selected === t.id ? "selected" : ""}" data-track="${t.id}"><span class="track-icon">♪</span><span><strong>${esc(t.title)}</strong><small>${time(t.duration)} · ${workflow.audio.has(t.id) ? "Audio ready" : "Reattach audio to analyze"}</small></span><span class="badge ">Source audio</span></button>${state.mode === "movie" && !state.movieMetadata ? `<button class="text danger" data-remove-track="${t.id}" aria-label="Remove audio track ${esc(t.title)}" title="Remove track and its placements">Remove track</button>` : ""}</div>`).join("")}</div>${editor()}</div>` : '<div class="empty"><span>♫</span><h3>Add the music behind the picture</h3><p>Upload cue recordings or a music-only export using the selected workflow above.</p></div>'}`
   );
 }
@@ -373,6 +392,8 @@ function writeCreditField(element, key) {
 }
 function bind() {
   bindWorkflows();
+  if($('#cue-audio-library'))$('#cue-audio-library').onclick=async()=>{try{for(const audioId of await audioLibrary.pick()){await workflow.load(await audioLibrary.fileFor(audioId));}}catch(error){message=error.message;render();}};
+
   const titleInput=document.querySelector("#workspace-project-title");
   if(titleInput){
     titleInput.oninput=()=>{
@@ -811,8 +832,8 @@ function bindWorkflows() {
       };
   });
 }
-cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,beforeNewProject:()=>steps.some(([key])=>key===tab) && cloudWorkspace.hasUnsavedChanges()?askToLeave():Promise.resolve(true),onComplete:()=>{render();openDownloads(state);}});
-const pageRoutes={projects:'#/projects',settings:'#/credit-profiles',team:'#/team',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
+cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,saveAudio:file=>audioLibrary.add(file),isProjectBusy:()=>workflow.busy || reelWorkspace.isBusy() || audioLibrary.isBusy(),chooseType:chooseProjectType,beforeNewProject:()=>hasOpenEdits()?askToLeave():Promise.resolve(true),onNewReel:()=>{reelWorkspace.newProject();history.pushState(null,'','#/reels/new');showPage('reel');},onOpenReel:project=>{reelWorkspace.open(project);history.pushState(null,'','#/reels/new');showPage('reel');},onComplete:()=>{render();openDownloads(state);}});
+const pageRoutes={projects:'#/projects',settings:'#/credit-profiles',team:'#/team',reel:'#/reels/new',audio:'#/audio',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
 let workspaceTab='library';
 try {const saved=sessionStorage.getItem(storageKey+':step');if(steps.some(([key])=>key===saved))workspaceTab=saved;}catch{}
 function navigate(page){
@@ -821,17 +842,24 @@ function navigate(page){
  routePage();
 }
 let routeInitialized=false,leavePromptOpen=false;
+function hasOpenEdits(){return tab==='reel'?reelWorkspace.isDirty():steps.some(([key])=>key===tab)&&cloudWorkspace.hasUnsavedChanges();}
 async function askToLeave(){
  if(leavePromptOpen)return false;
  leavePromptOpen=true;
- try{return await confirmDialog({title:'Save before leaving?',message:account.user?'Your cue sheet has unsaved changes. Save them before returning to the rest of the app.':'Your draft is saved in this browser. Sign in from the workspace to save it to your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>cloudWorkspace.saveBeforeLeaving():undefined});}finally{leavePromptOpen=false;}
+ try{return await confirmDialog({title:'Save before leaving?',message:account.user?'Your project has unsaved changes. Save them before leaving.':'Your draft is stored on this device. Sign in to keep projects in your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>tab==='reel'?reelWorkspace.save():cloudWorkspace.saveBeforeLeaving():undefined});}finally{leavePromptOpen=false;}
 }
 function routePage(){
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
  let page=Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
  if(!page)page=account.user?'projects':'library';
- if(routeInitialized && steps.some(([key])=>key===tab) && !steps.some(([key])=>key===page) && cloudWorkspace.hasUnsavedChanges()){
+ if(routeInitialized && page!==tab && (reelWorkspace.isBusy() || audioLibrary.isBusy() || (steps.some(([key])=>key===tab)&&workflow.busy))){
+   history.replaceState(null,'',pageRoutes[tab]);
+   if(!document.querySelector('.confirm-dialog'))confirmDialog({title:'Work is still in progress',message:'Wait for the current upload, save or audio processing to finish before switching pages.',confirmLabel:'Got it'});
+   return;
+ }
+
+ if(routeInitialized && page!==tab && hasOpenEdits() && !(steps.some(([key])=>key===tab)&&steps.some(([key])=>key===page))){
    history.replaceState(null,'',pageRoutes[tab]);
    if(leavePromptOpen)return;
    askToLeave().then(leave=>{
@@ -849,12 +877,16 @@ function showPage(page){
  render();
  if(page==='projects')cloudWorkspace.loadProjects();
  if(page==='settings')loadAccountCreditProfiles();
+ if(page==='audio'||page==='reel')audioLibrary.load();
  window.scrollTo({top:0});
 }
 window.addEventListener('hashchange',routePage);
 window.addEventListener('popstate',routePage);
 routePage();
 cloudWorkspace.restore();
+if(!account.user){
+ (async()=>{for(const track of state.tracks){if(!track.audioLibraryId)continue;try{await workflow.load(await audioLibrary.fileFor(track.audioLibraryId),track,false,true);}catch(error){message=`Could not reopen ${track.filename}. Choose it from your audio library or upload it again.`;render();}}})();
+}
 cloudWorkspace.onboard();
 
 if(tab!=="settings")loadAccountCreditProfiles();
