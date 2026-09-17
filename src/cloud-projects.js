@@ -20,7 +20,7 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
   let active=null,projects=[],status="",busy=false,changes=0,dirty=false,loadingProjects=false,projectsError="",projectActionError="",autosaveTimer=null;
   const metaKey=storageKey+":project", dirtyKey=storageKey+":unsaved";
   try {active=JSON.parse(localStorage.getItem(metaKey));dirty=localStorage.getItem(dirtyKey)==="true";} catch {}
-  const update=()=>{document.querySelectorAll("[data-new-project]").forEach(button=>button.disabled=busy || isProjectBusy());const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
+  const update=()=>{document.querySelectorAll("[data-new-project]").forEach(button=>button.disabled=busy || isProjectBusy());const actions=document.querySelector("#account-actions");if(actions)actions.innerHTML=header();const profileEl=document.querySelector("#sidebar-profile");if(profileEl){const open=profileEl.querySelector("details")?.open;profileEl.innerHTML=profile();if(open)profileEl.querySelector("details").open=true;}const el=document.querySelector("#cloud-workspace");if(el)el.innerHTML=view();const page=document.querySelector("#projects-page");if(page)page.innerHTML=projectsPage();bind();const completionStatus=document.querySelector("#completion-status");if(completionStatus)completionStatus.textContent=status;const finish=document.querySelector("#cloud-finish");if(finish)finish.disabled=busy || !reviewProject(state).valid;};
   const stash=()=>{try {localStorage.setItem(storageKey+":backup",JSON.stringify(state));} catch {}};
   const replace=(project)=>{
     if(project.data.type==="reel"){onOpenReel(project);return;}
@@ -115,7 +115,17 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     const on=(selector,handler)=>{const button=document.querySelector(selector);if(button)button.onclick=handler;};
     document.querySelectorAll("[data-cloud-download]").forEach(button=>button.onclick=()=>run(async()=>{const {project}=await request("/api/projects?id="+encodeURIComponent(button.dataset.cloudDownload));if(project.data.type==='reel')await openReelDownloads(project,esc);else await download(project.data);}));
     on("#edit-user-profile",()=>openProfile(account,update));
-    on("#cloud-finish",()=>run(()=>save(false,true)));
+    on("#cloud-finish",()=>run(async()=>{
+      if(!reviewProject(state).valid)throw new Error("Complete all required checks before finishing your cue sheet.");
+      const snapshot=structuredClone(state);
+      snapshot.status="completed";
+      try { await save(false,true); }
+      catch(error) {
+        status=`Your cue sheet is ready to download, but saving to your account failed: ${error.message}`;
+        update();
+        await download(snapshot, {saved:false});
+      }
+    }));
     on("#cloud-save",()=>run(()=>save()));
     on("#cloud-copy",()=>run(()=>save(true)));
 

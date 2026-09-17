@@ -1,3 +1,4 @@
+import {cueSheetCsv} from "./export-csv.js";
 import {applyScoreOffset} from "./score-offset.js";
 import {createAudioLibrary} from "./audio-library.js";
 import {createReelWorkspace} from "./reel-workspace.js";
@@ -9,7 +10,6 @@ import {confirmDialog} from "./confirm-dialog.js";
 import {creditProfilesRequest} from "./account-credit-profiles.js";
 import {editCreditProfile} from "./credit-profile-editor.js";
 import {showDownloadDialog} from "./download-dialog.js";
-import {cueSheetCsv} from "./export-csv.js";
 import {createLocalAudio} from "./local-audio.js";
 import "./storage-migration.js";
 import "./style.css";
@@ -163,6 +163,32 @@ function applyCreditProfile(profileId){
   state.sharedCueDetails={category:profile.category,credits:structuredClone(profile.credits)};
   save();navigate('library');
 }
+async function pickCueProfile(cueIds, trackId = null) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'resume-workspace';
+  dialog.setAttribute('aria-label', 'Add credit profile');
+  dialog.innerHTML = '<h2>Add profile</h2><div data-profile-options role="status">Loading credit profiles…</div><div class="button-row"><button data-close>Cancel</button></div>';
+  dialog.querySelector('[data-close]').onclick = () => dialog.close();
+  dialog.onclose = () => dialog.remove();
+  document.body.append(dialog);dialog.showModal();
+  const content = dialog.querySelector('[data-profile-options]');
+  if (!account.user) { content.textContent = 'Sign in to use your saved Credit Profiles.'; return; }
+  try {
+    const {profiles} = await creditProfilesRequest();
+    if (!dialog.isConnected) return;
+    content.innerHTML = profiles.length ? profiles.map(profile => `<button type="button" data-pick-profile="${esc(profile.id)}">${esc(profile.name)}</button>`).join(' ') : '<p>No saved profiles yet. Create one in Credit Profiles.</p>';
+    content.querySelectorAll('[data-pick-profile]').forEach(button => button.onclick = () => {
+      const profile = profiles.find(p => p.id === button.dataset.pickProfile);
+      const track = state.tracks.find(t => t.id === trackId);
+      if (track) track.cueProfile = {category: profile.category, credits: structuredClone(profile.credits)};
+      state.cues.filter(c => cueIds.includes(c.id)).forEach(c => {
+        c.credits = structuredClone(profile.credits);
+        c.category = profile.category;
+      });
+      save();dialog.close();render();
+    });
+  } catch (error) { content.textContent = error.message; }
+}
 function save() {
   state.status="draft";
   try {
@@ -195,7 +221,7 @@ function answerFAQ(question) {
   if(text.includes('reuse audio'))return 'Choose Add from audio library in a cue workspace or Choose from audio library in a reel draft. Removing audio from a reel only removes that attachment; the file remains in your library.';
   if(text.includes('guest files'))return 'Guest audio and drafts are stored on this device, not in an account. Clearing site data removes them. Sign in before uploading to build an account library.';
   if (text.includes("workflow") || text.includes("choose")) return "Use a full score export to detect cue regions in music-only audio. Set each file’s starting film timecode, then detect and review the timings.";
-  if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export, finish your cue sheet, then choose Excel, CSV, or PDF to download."; }
+  if (text.includes("export") || text.includes("ready")) { const issues = review(); return issues.length ? `Export is waiting on ${issues.length} item${issues.length === 1 ? "" : "s"}. Open Review & export to see what needs attention.` : "Your cue sheet is ready. Open Review & export, finish your cue sheet, then choose Excel, CSV, PDF, or Google Sheets."; }
   if (text.includes("file") || text.includes("format")) return `For video, MP4/AAC or WebM/Opus works best. For audio, use WAV, MP3, M4A, FLAC, or OGG. Files up to ${BROWSER_MAX_MB} MB are analyzed in your browser; larger files are processed on the server.`;
   if (text.includes("uploaded") || text.includes("private") || text.includes("media")) return `Signed-in audio uploads are saved privately to your audio library. Files over ${BROWSER_MAX_MB} MB also use server processing; temporary processing copies expire after 24 hours. Guest library files stay on this device.`;
   if (text.includes("not found") || text.includes("no match") || text.includes("missing")) return "Check that the reference recording is the same speed and pitch as the movie audio. You can also add the placement manually in Timings & usage.";
@@ -316,7 +342,7 @@ function provenanceField(value) {
   return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
 }
 function cueCreditEditor(cue, shared = false) {
-  return `<div class="cue-credit-form"><p class="muted">${shared ? "Shared credits update all inheriting cues." : "Credits overridden for this cue only."} Confirm every contributor and enter each role’s shares out of 100%.</p>${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}" data-credit-id="${c.id}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
+  return `<div class="cue-credit-form">${shared ? '<p class="muted">Shared credits update all inheriting cues. Confirm every contributor and enter each role’s shares out of 100%.</p>' : ""}${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}" data-credit-id="${c.id}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
 }
 function production() {
   const p = effectiveProduction(state),
@@ -357,21 +383,20 @@ function production() {
 }
 function cues() {
   const cueNav = state.cues.length ? `<nav class="cue-navigation" aria-label="Jump to cue">${state.cues.map((c, i) => `<a href="#cue-${c.id}"><span>Cue ${i + 1}</span><strong>${esc(c.title || state.tracks.find(t => t.id === c.trackId)?.title || "Untitled cue")}</strong></a>`).join("")}</nav>` : "";
-  return `${cueNav}<div class="notice neutral">Film timeline · ${effectiveProduction(state).startTimecode ? esc(effectiveProduction(state).startTimecode) + " production start" : "Production start unknown; no assumed bounds"} · ${esc(rates[state.production.rate].label)}. Detected timings are rounded to the nearest project frame; signal boundaries have about 0.1s resolution for matching and 0.02s for silence detection. Review before export.</div><div class="section-title"><h2>Cue placements</h2><div class="button-row"><button id="confirm-detections" ${!state.cues.some((c) => c.method !== "manual" && !c.reviewed) ? "disabled" : ""}>Confirm detected timings</button><select id="cue-track" aria-label="Track for new cue">${state.tracks.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join("")}</select><button class="primary" id="new-cue" ${!state.tracks.length ? "disabled" : ""}>＋ Manual cue</button></div></div>${
+  return `${cueNav}<div class="section-title"><h2>Cue placements</h2><div class="button-row"><button class="primary" id="new-cue" ${!state.tracks.length ? "disabled" : ""}>＋ Manual cue</button></div></div>${
     state.cues.length
       ? state.cues
           .map((c, i) => {
             const t = state.tracks.find((t) => t.id === c.trackId),
               d = duration(c, state.production.rate);
-            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span><span data-cue-title>${esc(c.title || t.title)}</span></h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><p class="muted">Source: ${esc(t.filename)} · ${c.method === "movie" ? `Movie match · waveform similarity ${Math.round(c.score * 100)}% (not a probability)` : c.method === "offset" ? "Detected music-only region" : "Manual placement"}${c.fileOffset ? ` · file starts ${esc(c.fileOffset)}` : ""}</p><div class="form-grid cue-fields">${field("Cue title", "title", c.title || t.title)}${provenanceField(effectiveCue(c, state.sharedCueDetails).category)}<div class="inheritance"><span>${c.category == null ? "Provenance: follows shared details" : "Provenance: cue override"}</span>${c.category != null ? `<button data-reset-shared="category">Use shared provenance</button>` : ""}</div>${field("Film in (HH:MM:SS:FF)", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out (HH:MM:SS:FF)", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<audio data-cue-audio="${c.id}" controls preload="metadata" src="${urls.get(t.id)}"></audio>` : ""}${c.method === "manual" && urls.has(t.id) ? `<button data-mark-in="${c.id}">Mark in at playback</button><button data-mark-out="${c.id}">Mark out at playback</button><span class="muted">Playback + file offset ${esc(t.offset || "(not set)")}</span>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div>${c.credits != null ? `<div class="button-row"><strong>Credits: cue override</strong><button data-reset-shared="credits">Use shared credits</button></div>${cueCreditEditor(c)}` : `<div class="panel inherited-credits"><h3>Credits: follows shared details</h3><p>${esc(effectiveCue(c, state.sharedCueDetails).credits.map(p => p.role === "Composer" ? [p.first,p.last].filter(Boolean).join(" ") : p.name).filter(Boolean).join(" · ") || "No shared names entered yet")}</p><div class="button-row"><button data-override-credits>Customize credits for this cue</button></div></div>`}<p class="cue-status muted">${esc(cueIssues(c, t, effectiveProduction(state), state.sharedCueDetails).join(" · ") || "Placement and credits complete")}</p></section>`;
+            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span><input class="cue-heading-title" data-cue-title data-field="title" aria-label="Cue ${i + 1} title" value="${esc(c.title || t.title)}" placeholder="Cue title"></h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><div class="form-grid cue-fields">${field("Film in", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<audio data-cue-audio="${c.id}" controls preload="metadata" src="${urls.get(t.id)}"></audio>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div>${c.credits != null ? `${cueCreditEditor(c)}` : `<div class="panel inherited-credits"><div class="button-row"><button data-override-credits>+ Writers/publishers</button></div></div>`}</section>`;
           })
           .join("")
       : '<div class="empty"><h3>No placements yet</h3><p>Run an automatic workflow or add a manual cue above.</p></div>'
   }`;
 }
 function reviewPage(issues) {
-  const warnings = productionWarnings(state);
-  return `<div class="review-grid"><section class="panel"><p class="muted">Cue provenance: ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "original").length} original · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => c.category === "sourced").length} sourced · ${state.cues.map(c => effectiveCue(c, state.sharedCueDetails)).filter(c => !["original", "sourced"].includes(c.category)).length} unspecified</p><h2>${issues.length ? "A few details to finish" : "Ready for your review"}</h2><button class="text" data-tab="production">Edit production details →</button><p class="muted">${issues.length ? "Complete these items to finish your cue sheet." : "All required fields are filled. Verify the information with your production team before submission."}</p>${issues.length ? `<ul class="issues">${issues.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : '<div class="complete">✓ Production, placements and credits entered</div>'}${warnings.length ? `<div class="notice neutral"><strong>Unknown production information</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><p>Draft export leaves these fields blank. Complete applicable BMI information before submission.</p></div>` : ""}<p class="muted">${state.tracks.filter((t) => !state.cues.some((c) => c.trackId === t.id)).length} library tracks have no placements and will not appear in the cue sheet.</p></section><section class="panel export"><div class="sheet-icon">✓</div><h2>Your music cue sheet</h2><p>Finish your cue sheet, then download it as Excel, CSV or a printable PDF.</p>${state.status === "completed" ? `<button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ Download cue sheet</button>` : `<button class="primary" id="cloud-finish" ${issues.length ? "disabled" : ""}>Finish making cue sheet</button>`}${!account.user?'<p class="muted">Sign in to save a completed project to Projects.</p>':""}<p class="muted">Review draft · no automatic submission<br>BMI fields round to whole seconds.<br>The Frame timings worksheet preserves exact timecodes and rate.</p><div class="review-reference-links"><a href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI Cue Sheet Guide</a><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></div></section></div>`;
+  return `<div class="review-download"><section class="panel export"><div class="sheet-icon">✓</div><h2>Your music cue sheet</h2>${issues.length ? `<ul class="issues">${issues.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}<p>Finish your cue sheet, then download it as Excel, CSV or PDF, or import it into Google Sheets.</p>${state.status === "completed" ? `<button class="primary" id="export" ${issues.length ? "disabled" : ""}>↓ Download cue sheet</button>` : `<button class="primary" id="cloud-finish" ${issues.length ? "disabled" : ""}>Finish making cue sheet</button>`}<p id="completion-status" class="muted" role="status"></p>${!account.user?'<p class="muted">Sign in to save a completed project to Projects.</p>':""}<div class="review-reference-links"><a href="https://www.bmi.com/creators/what_is_a_cue_sheet" target="_blank" rel="noreferrer">BMI Cue Sheet Guide</a><a href="https://www.ascap.com/~/media/files/pdf/members/payment/cue-sheet-instructions.pdf" target="_blank" rel="noreferrer">ASCAP Cue Sheet Guide</a><a href="${import.meta.env.BASE_URL}bmi-cue-sheet-template.xlsx" download>View original BMI template ↗</a></div></section></div>`;
 }
 function credit(role) {
   return { id: id(), role, first: "", last: "", name: "", pro: "", ipi: "", share: "" };
@@ -407,6 +432,17 @@ function playPreview(player) {
   });
 }
 function bind() {
+  document.querySelectorAll('[data-track-profile]').forEach(button => button.onclick = () => pickCueProfile(state.cues.filter(c => c.trackId === button.dataset.trackProfile).map(c => c.id), button.dataset.trackProfile));
+
+  document.querySelectorAll(".cue-navigation a").forEach(link => {
+    link.onclick = event => {
+      event.preventDefault();
+      const cue = document.getElementById(link.getAttribute("href").slice(1));
+      if (!cue) return;
+      cue.focus({ preventScroll: true });
+      cue.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+    };
+  });
   bindWorkflows();
   const libraryButton = $("#cue-audio-library");
   if (libraryButton) libraryButton.onclick = async () => {
@@ -596,7 +632,7 @@ function bind() {
     .querySelectorAll("[data-add-cue]")
     .forEach((b) => (b.onclick = () => addCue(b.dataset.addCue)));
   if ($("#new-cue"))
-    $("#new-cue").onclick = () => addCue($("#cue-track").value);
+    $("#new-cue").onclick = () => addCue(state.tracks.find(t => t.id === selected)?.id || state.tracks[0]?.id);
   document.querySelectorAll("[data-remove-cue]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -635,9 +671,9 @@ function bind() {
   if ($("#cloud-finish") && !account.user) $("#cloud-finish").onclick=()=>{if(review().length)return;state.status="completed";localStorage.setItem(storageKey,JSON.stringify(state));render();openDownloads(state);};
   if ($("#export")) $("#export").onclick=()=>openDownloads(state);
 }
-function openDownloads(snapshot) {
+function openDownloads(snapshot, {saved = Boolean(account.user)} = {}) {
   const completed=structuredClone(snapshot);
-  showDownloadDialog({title:effectiveProduction(completed).title,saved:Boolean(account.user),download:format=>downloadCompletedProject(completed,format)});
+  showDownloadDialog({title:effectiveProduction(completed).title,saved,download:format=>downloadCompletedProject(completed,format)});
 }
 async function downloadCompletedProject(snapshot,format='xlsx') {
   if(snapshot.status!=="completed" || !reviewProject(snapshot).valid)throw new Error("Finish the cue sheet before downloading.");
@@ -675,14 +711,13 @@ function updateIndicators() {
     const c = state.cues.find((c) => c.id === el.dataset.cue),
       t = state.tracks.find((t) => t.id === c.trackId),
       d = duration(c, state.production.rate);
-    el.querySelector("[data-cue-title]").textContent = c.title || t.title;
+    const titleInput = el.querySelector("[data-cue-title]");
+    if (document.activeElement !== titleInput) titleInput.value = c.title || t.title;
+    el.setAttribute("aria-label", `Cue ${state.cues.indexOf(c) + 1}: ${c.title || t.title}`);
     const link = document.querySelector(`.cue-navigation a[href="#cue-${c.id}"] strong`);
     if (link) link.textContent = c.title || t.title;
     el.querySelector(".duration strong").textContent =
       d === null ? "Missing placement" : d.toFixed(3) + " s";
-    el.querySelector(".cue-status").textContent =
-      cueIssues(c, t, effectiveProduction(state), state.sharedCueDetails).join(" · ") ||
-      "Placement and credits complete";
     const checkbox = el.querySelector("[data-reviewed]");
     if (checkbox) checkbox.checked = Boolean(c.reviewed);
   });
