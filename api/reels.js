@@ -3,13 +3,14 @@ import {saveAudioEdit} from '../server/audio-edits.js';
 import {authenticate,requireOrigin,apiError} from '../server/auth.js';
 import {readJson,reply} from '../server/http.js';
 import {reelRepository} from '../server/reels.js';
+import {reelAnalyticsRepository} from '../server/reel-analytics.js';
 import {prepareAudio,signedAudio} from '../server/reel-processing.js';
-export function createReelHandler({auth=authenticate,repository=reelRepository,prepare=prepareAudio,sign=signedAudio}={}){
+export function createReelHandler({auth=authenticate,repository=reelRepository,analytics=reelAnalyticsRepository,prepare=prepareAudio,sign=signedAudio}={}){
  return async(req,res)=>{
   try{
    const url=new URL(req.url,'http://localhost'),action=url.searchParams.get('action');
    if(!['GET','POST'].includes(req.method)){res.setHeader('Allow','GET, POST');return reply(res,405,{error:'METHOD_NOT_ALLOWED'});}
-   const repo=repository();
+   const repo=repository();let cachedStats;const stats=()=>cachedStats||(cachedStats=analytics());
    if(req.method==='GET' && ['public','stream','download'].includes(action)){
     const manifest=await repo.publicReel(url.searchParams.get('token'));
     if(action==='public')return reply(res,200,{reel:{...manifest,tracks:manifest.tracks.map(({pathname,...track})=>track)}});
@@ -18,8 +19,14 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,p
     res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Location',await sign(track.pathname));res.status(302);return res.end();
    }
+   if(req.method==='POST' && ['open','progress'].includes(action)){
+    const body=await readJson(req);
+    if(action==='open')return reply(res,200,await stats().recordOpen(body.token,{userAgent:(req.headers['user-agent']||'').toString(),referrer:body.referrer}));
+    return reply(res,200,await stats().recordProgress(body.token,body));
+   }
    const session=await auth(req,res);if(!session)return reply(res,401,{error:'SIGN_IN_REQUIRED'});
    if(req.method==='GET'&&action==='preview'){res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(await repo.preview(session.user.id,url.searchParams.get('id'))));res.status(302);return res.end();}
+   if(req.method==='GET'&&action==='analytics')return reply(res,200,{analytics:await stats().summary(session.user.id,url.searchParams.get('id'))});
    if(req.method==='GET')return reply(res,200,{publication:await repo.owner(session.user.id,url.searchParams.get('id'))});
    requireOrigin(req);const body=await readJson(req);
    if(action==='edit-audio')return reply(res,200,{asset:await saveAudioEdit(mediaRepository(),session.user.id,body)});
