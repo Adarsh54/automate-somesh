@@ -140,7 +140,7 @@ Run `npm run db:migrate` after pulling the profile feature (`004_user_profiles.s
 
 ### Project types and shared audio
 
-Projects supports `cue` and `reel` records in the existing `projects.data` JSON. Old records without a type remain cue projects. Reel records currently contain only a title, draft status, and owned audio asset IDs; publishing, public sharing, embeds, visualization, and download permissions are not implemented. No database migration is needed for this change.
+Projects supports `cue` and `reel` records in the existing `projects.data` JSON. Old records without a type remain cue projects. Reel drafts contain a title, owned audio asset IDs, and optional track titles. Migration `006_reels.sql` adds cached playback audio and published snapshots; run `npm run db:migrate` after pulling.
 
 The global plus and Create project open a type chooser. The sidebar has separate cue (`#/workspace/library` and the remaining workflow steps), reel (`#/reels/new`), and shared audio (`#/audio`) pages. Cue and reel drafts use separate account-scoped local storage keys.
 
@@ -149,3 +149,23 @@ Audio submitted from the audio library, a cue import, or a reel upload goes into
 Guest audio is stored in IndexedDB on this device. It survives reloads but is not copied into an account at login. Clearing site data removes guest audio and drafts. Audio removal from a reel only removes its project reference; it does not delete the library file.
 
 Regression checks: `test/reel-projects.test.js` covers typed project persistence and ownership; `scripts/browser-project-types-check.cjs` and `scripts/browser-account-project-types-check.cjs` cover guest and account workflows. Set `PLAYWRIGHT_MODULE` and optionally `CUESTAMP_URL` as for the other browser checks.
+
+### Reel player and publishing
+
+Start both the API and Vite. **New Reel** supports track titles, ordering, preview, Publish reel, and Share & embed. Account previews and publishing use Vercel Functions to create 192 kbps MP3 playback files and 360-point waveforms. Guest previews use browser decoding (up to 100 MB per file); guests must sign in to publish. Supported reel limits: 50 tracks per publication, 20 minutes per track, and the existing 2 GiB upload limit. Preparation runs one track at a time with a 260-second deadline; Vercel's function limit is 300 seconds. Completed track preparation is reused after a retry.
+
+- `POST /api/reels?action=prepare`: authenticate ownership of a ready audio asset, claim a five-minute processing lease, then prepare/cache private playback audio.
+- `POST /api/reels?action=publish`: check ownership, revision and all prepared tracks; save a snapshot with an unguessable share token and download permission.
+- `POST /api/reels?action=revoke`: revoke a published link. Publishing again creates a different token.
+- `GET /api/reels?id=PROJECT_ID`: owner-only publication metadata.
+- `GET /api/reels?action=preview&id=ASSET_ID`: owner-only redirect to a short-lived playback URL.
+- `GET /api/reels?action=public&token=TOKEN`: published player metadata, never private object paths.
+- `GET /api/reels?action=stream|download&token=TOKEN&track=ASSET_ID`: check publication and track membership; downloads additionally require permission. Redirects expire after five minutes. Audio already fetched by listeners cannot be recalled.
+
+`/reel.html?token=TOKEN` is a separate Vite entry with no login gate. Add `&embed=1` for an iframe and optionally `&theme=light`. The public player is a reusable `ReelPlayer` class using native HTML audio and a seekable SVG waveform. No Wasm or browser transcoding is needed for published reels. MP3 downloads are optional; this is a download control, not DRM. Draft edits do not update a publication until **Update published reel** is pressed.
+
+Postgres stores waveform/manifest metadata. Original uploads and playback MP3s remain in private Blob. Prepared derivatives are reused and retained on unpublish; deleting unneeded Blob objects remains a manual operation. New files use the existing store token; no additional service credentials are needed. Keep `api/reels.js` native binary packaging and duration settings in `vercel.json`.
+
+Signed Blob URLs must encode literal object path segments for transport (`server/blob-url.js`). Stored upload paths already contain encoded filenames; failing to encode those percent signs in the URL causes 403s for filenames containing spaces or punctuation.
+
+Checks: `npm test`, `npm run build`, `scripts/browser-reel-check.cjs`, and `scripts/browser-reel-publish-check.cjs`. The latter mocks account endpoints to exercise editor failures, publish, share, and revoke. With local development credentials and both servers running, `node --env-file=.env.local scripts/reel-live-smoke.mjs` creates synthetic audio, tests the real Neon/Blob/FFmpeg/public-player round trip, then deletes its temporary account and assets. Set `PLAYWRIGHT_MODULE` and `PLAYWRIGHT_EXECUTABLE` as needed for your browser installation. The live check refuses non-local APP_URL values.

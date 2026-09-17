@@ -1,4 +1,5 @@
 import {handleUpload} from '@vercel/blob/client';
+import {encodeBlobUrlPath} from '../server/blob-url.js';
 import {head,put,del,issueSignedToken,presignUrl} from '@vercel/blob';
 import {z} from 'zod';
 import {requireOrigin,apiError,equalState} from '../server/auth.js';
@@ -12,7 +13,7 @@ const pcmPath=asset=>`analysis/${asset.id}/audio.f32`;
 async function signedUrl(pathname) {
   const validUntil=Date.now()+5*60*1000;
   const token=await issueSignedToken({pathname,operations:['get'],validUntil});
-  return (await presignUrl(token,{operation:'get',pathname,access:'private',validUntil})).presignedUrl;
+  return encodeBlobUrlPath((await presignUrl(token,{operation:'get',pathname,access:'private',validUntil})).presignedUrl,pathname);
 }
 async function readPcm(asset,signal) {
   const response=await fetch(await signedUrl(pcmPath(asset)),{signal});

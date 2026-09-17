@@ -1,3 +1,4 @@
+import {encodeBlobUrlPath} from '../server/blob-url.js';
 import {handleUpload} from '@vercel/blob/client';
 import {head,issueSignedToken,presignUrl} from '@vercel/blob';
 import {authenticate,requireOrigin,apiError} from '../server/auth.js';
@@ -17,7 +18,7 @@ export function createMediaHandler({auth=authenticate,repository=mediaRepository
         const validUntil=Date.now()+5*60*1000;
         const token=await sign({pathname:asset.pathname,operations:['get'],validUntil});
         const {presignedUrl}=await presign(token,{operation:'get',pathname:asset.pathname,access:'private',validUntil});
-        return reply(res,200,{url:presignedUrl,filename:asset.filename,contentType:asset.content_type,size:Number(asset.size)});
+        return reply(res,200,{url:encodeBlobUrlPath(presignedUrl,asset.pathname),filename:asset.filename,contentType:asset.content_type,size:Number(asset.size)});
       }
       requireOrigin(req);
       const body=await readJson(req);

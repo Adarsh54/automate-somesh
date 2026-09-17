@@ -1,5 +1,6 @@
 import {authenticate,requireOrigin,apiError} from "../server/auth.js";
 import {listProjects,getProject,saveProject} from "../server/projects.js";
+import {reelRepository} from "../server/reels.js";
 import {readJson,reply} from "../server/http.js";
 export default async function handler(req,res) {
   try {
@@ -11,6 +12,9 @@ export default async function handler(req,res) {
       return reply(res,200,{project:await saveProject(session.user.id,await readJson(req))});
     }
     const id=new URL(req.url,"http://localhost").searchParams.get("id");
-    return reply(res,200,id?{project:await getProject(session.user.id,id)}:{projects:await listProjects(session.user.id)});
+    if(id)return reply(res,200,{project:await getProject(session.user.id,id)});
+    const projects=await listProjects(session.user.id);
+    const published=new Set((await reelRepository().listPublished(session.user.id)).map(row=>row.project_id));
+    return reply(res,200,{projects:projects.map(project=>({...project,published:published.has(project.id)}))});
   } catch(error) {return apiError(res,error);}
 }

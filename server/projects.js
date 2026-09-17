@@ -27,7 +27,7 @@ const stateSchema=z.object({
   status:z.enum(["draft","completed"]).optional(),
   media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
-const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500)})])});
+const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional()})])});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
