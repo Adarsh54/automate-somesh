@@ -691,3 +691,19 @@ Run `test/experimental-meter-context.test.js` and
 `scripts/browser-experimental-meter-context-check.cjs` for validation, real playback
 context delivery, post-edit invalidation and persistence exclusion. Provider calls
 are mocked in these checks; real inference still requires configured credentials.
+
+Select a region and use Mute region / Unmute region in the inspector. Muted regions
+remain visible with a dashed, dimmed appearance and retain editable notes, media
+references and all settings. `region.set` accepts `mute` (boolean, defaults false
+for older sessions); undo/redo, duplication, repetition and saves preserve it.
+Playback, Cycle, recording accompaniment and all WAV bounce modes omit muted source
+regions and do not decode their files. Arrangement/export duration still includes
+muted regions so timeline alignment stays intact; bouncing a muted region yields
+silence. Muted movie regions are excluded from the video monitor.
+Export MIDI omits muted tracks and regions (solo does not filter MIDI export).
+Standard MIDI files do not retain the mute state or omitted content; export the
+Cuestamp project to retain all editable material. The internal writer supports
+`includeMuted: true` when an unfiltered MIDI serialization is explicitly needed.
+Run `test/experimental-region-mute.test.js` and
+`scripts/browser-experimental-region-mute-check.cjs` for default/history handling,
+asset exclusion, same-track independence, playback and actual WAV/MIDI downloads.

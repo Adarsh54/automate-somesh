@@ -905,3 +905,19 @@ revision invalidation and no persistence. Unit checks verify context propagation
 and rejection before provider calls. Real model behavior, continuous analysis,
 agent-triggered playback/measurement and loudness-aware mixing remain unverified
 or pending.
+
+### Per-region mute
+
+Regions now have a persisted mute flag controlled in the inspector and by shared
+`region.set` commands. Muting retains all material, IDs and timing, while playback
+and WAV rendering exclude that region and skip its source decoding. Timeline and
+bounce duration remain aligned. MIDI exports omit muted regions/tracks; project
+archives retain everything. MIDI serialization can explicitly include muted content
+internally, but the standard format cannot preserve a mute flag. Movie lookup skips
+muted regions as well. Solo does not affect MIDI export.
+
+196 tests and build pass. Browser verification covers visual state, independent
+regions on one track, undo/redo/reload, playback with unavailable muted media, WAV
+samples proving silence/audible separation and downloaded MIDI note omission.
+Unit checks cover defaults, asset planning, history and MIDI filtering. Bulk region
+mute controls and a dedicated MIDI export options panel remain pending.

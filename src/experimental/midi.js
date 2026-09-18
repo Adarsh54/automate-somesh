@@ -21,7 +21,7 @@ export function readMidi(buffer){
  tempos.sort((a,b)=>a.tick-b.tick);const seconds=tick=>{let last=0,time=0,tempo=500000;for(const point of tempos){if(point.tick>tick)break;time+=(point.tick-last)*tempo/ppq/1e6;last=point.tick;tempo=point.microseconds;}return time+(tick-last)*tempo/ppq/1e6;};
  return {markers:markers.map(m=>({name:m.name,time:seconds(m.tick)})),tempo:60000000/(tempos.filter(t=>t.tick===0).at(-1)?.microseconds||500000),tracks:tracks.filter(t=>t.notes.length||t.events.length).map(t=>({name:t.name,events:t.events.map(e=>({...e,start:seconds(e.start)})),notes:t.notes.map(n=>({id:crypto.randomUUID(),pitch:n.pitch,channel:n.channel,start:seconds(n.tick),duration:seconds(n.end)-seconds(n.tick),velocity:n.velocity}))}))};
 }
-export function writeMidi(session){
+export function writeMidi(session,{includeMuted=false}={}){
  const ppq=480,tempo=Math.round(60000000/session.tempo),chunks=[];
  const int=(n,bytes)=>Array.from({length:bytes},(_,i)=>(n>>>((bytes-1-i)*8))&255),str=s=>[...new TextEncoder().encode(s)];
  const vlq=n=>{let out=[n&127];while((n>>>=7)>0)out.unshift((n&127)|128);return out;};
@@ -29,7 +29,7 @@ export function writeMidi(session){
  const conductor=[0,255,81,3,...int(tempo,3)];let markerTick=0;
  for(const marker of [...(session.markers||[])].sort((a,b)=>a.time-b.time)){const tick=Math.round(marker.time*session.tempo/60*ppq),name=str(marker.name);conductor.push(...vlq(tick-markerTick),255,6,...vlq(name.length),...name);markerTick=tick;}
  conductor.push(0,255,47,0);chunks.push(chunk(conductor));
- for(const track of session.tracks.filter(t=>t.kind==='midi')){const events=[];for(const r of track.regions)for(const e of r.events||[])events.push({tick:Math.round((r.start+e.start)*session.tempo/60*ppq),priority:0,data:eventBytes(e)});for(const r of track.regions)for(const n of r.notes){if(n.velocity===0)continue;const start=Math.round((r.start+n.start)*session.tempo/60*ppq),end=Math.max(start+1,Math.round((r.start+n.start+n.duration)*session.tempo/60*ppq));events.push({tick:start,priority:2,data:[144|(n.channel||0),n.pitch,Math.max(1,Math.round(n.velocity*127))]},{tick:end,priority:1,data:[128|(n.channel||0),n.pitch,0]});}events.sort((a,b)=>a.tick-b.tick||a.priority-b.priority);let previous=0;const name=str(track.name),data=[0,255,3,...vlq(name.length),...name];for(const e of events){data.push(...vlq(e.tick-previous),...e.data);previous=e.tick;}data.push(0,255,47,0);chunks.push(chunk(data));}
+ for(const track of session.tracks.filter(t=>t.kind==='midi'&&(includeMuted||!t.mute))){const events=[];for(const r of track.regions.filter(r=>includeMuted||!r.mute))for(const e of r.events||[])events.push({tick:Math.round((r.start+e.start)*session.tempo/60*ppq),priority:0,data:eventBytes(e)});for(const r of track.regions.filter(r=>includeMuted||!r.mute))for(const n of r.notes){if(n.velocity===0)continue;const start=Math.round((r.start+n.start)*session.tempo/60*ppq),end=Math.max(start+1,Math.round((r.start+n.start+n.duration)*session.tempo/60*ppq));events.push({tick:start,priority:2,data:[144|(n.channel||0),n.pitch,Math.max(1,Math.round(n.velocity*127))]},{tick:end,priority:1,data:[128|(n.channel||0),n.pitch,0]});}events.sort((a,b)=>a.tick-b.tick||a.priority-b.priority);let previous=0;const name=str(track.name),data=[0,255,3,...vlq(name.length),...name];for(const e of events){data.push(...vlq(e.tick-previous),...e.data);previous=e.tick;}data.push(0,255,47,0);chunks.push(chunk(data));}
  return new Uint8Array([...str('MThd'),0,0,0,6,0,1,...int(chunks.length,2),...int(ppq,2),...chunks.flat()]);
 }
 
