@@ -1,3 +1,4 @@
+import {samplerRelease} from './sampler-envelope.js';
 import {automationView,bindAutomation} from './automation-editor.js';
 import {effectTail} from './effects.js';
 export const destinations=track=>[...(track.output?[track.output]:[]),...(track.sends||[]).map(s=>s.busId)];
@@ -16,7 +17,7 @@ export function audibleSources(session){
  function reachesSolo(track,visited=new Set()){if(visited.has(track.id))return false;visited.add(track.id);return track.solo||destinations(track).some(id=>tracks.has(id)&&reachesSolo(tracks.get(id),visited));}
  return session.tracks.filter(t=>!['bus','video'].includes(t.kind)&&!t.mute&&(!solo||reachesSolo(t))).map(t=>({...t,regions:t.regions.filter(r=>!r.mute)}));
 }
-export function routedTail(session,track){const byId=new Map(session.tracks.map(t=>[t.id,t]));function tail(t,seen=new Set()){if(seen.has(t.id))return 0;const next=new Set(seen).add(t.id);return effectTail(t.effects)+Math.max(0,...destinations(t).map(id=>byId.has(id)?tail(byId.get(id),next):0));}return tail(track);}
+export function routedTail(session,track){const byId=new Map(session.tracks.map(t=>[t.id,t]));function tail(t,seen=new Set()){if(seen.has(t.id))return 0;const next=new Set(seen).add(t.id);return samplerRelease(t)+effectTail(t.effects)+Math.max(0,...destinations(t).map(id=>byId.has(id)?tail(byId.get(id),next):0));}return tail(track);}
 export function stemSession(session,track){return {...session,tracks:[...session.tracks.filter(t=>t.kind==='bus'),track].map(t=>({...t,solo:false}))};}
 // Group by the final primary output bus, not by sends: each source belongs to
 // exactly one file. Keep buses/sends to render that group's full mix contribution.

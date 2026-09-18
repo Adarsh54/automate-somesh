@@ -1,3 +1,4 @@
+import {samplerRelease} from './sampler-envelope.js';
 import {audibleAssets} from './media-refs.js';
 import {audibleSources,stemGroups,stemSession,routedTail} from './routing.js';
 import {sessionDuration} from './audio-engine.js';
@@ -12,7 +13,7 @@ export function createBouncePlan(input,{mode='mix',stemMode='tracks',regionId}={
   if(!Number.isFinite(position)||position<0||!Number.isFinite(duration)||duration<=0)throw Error('Set a valid cycle start and end before exporting a range.');
   // Only media intersecting the requested window is needed. The existing seek
   // renderer restores automation/controllers, but not earlier effect history.
-  for(const track of session.tracks)track.regions=track.regions.filter(r=>r.start<session.loopEnd&&r.start+r.duration>position);
+  for(const track of session.tracks)track.regions=track.regions.filter(r=>r.start<session.loopEnd&&r.start+r.duration+samplerRelease(track)>position);
   entries=[{name:session.title+'-'+position.toFixed(2)+'s-'+session.loopEnd.toFixed(2)+'s.wav',document:session}];
  }else if(mode==='stems'){
   zip=true;entries=stemGroups(session,stemMode).map((group,i)=>({name:`${String(i+1).padStart(2,'0')}-${filename(group.name)}.wav`,document:group.document}));

@@ -1152,3 +1152,29 @@ Audio input enumeration now times out after five seconds with a retryable messag
 preventing a stalled browser device API from leaving Refresh inputs disabled. A
 unit test verifies timeout and successful retry. The sampler inspector screenshot
 was visually checked after the browser regression passed.
+
+### Sampler amplitude envelope
+
+Sampler tracks now expose attack and decay (0–10 seconds), sustain level (0–1),
+and release (0–30 seconds). Use sampler commits them as one undoable change.
+Shared track.add/set fields are sampleAttack, sampleDecay, sampleSustain and
+sampleRelease; defaults are 0.005, 0, 1 and 0.02 respectively. The editing agent
+receives these controls through the same validated command schema.
+
+The amplitude rises during attack, falls to sustain during decay, and fades from
+its current level after note-off or sustain-pedal release. Early note-off releases
+from the current attack/decay value. Arrangement notes are gated at region end;
+release can continue beyond it unless a region fade silences it. Looping samples
+continue looping during release. An unlooped sample can end before the envelope.
+Playback, accompaniment, offline bounces and live MIDI monitoring share envelope
+settings. Mix/stem/region exports reserve release tails, and range/seek playback
+can resume inside a release; exact range exports still stop at the requested end.
+Source audio is never rewritten.
+
+Validation: 240 unit/integration tests and production build pass. The sampler,
+loop and new envelope browser checks pass. Real Web Audio renders verify amplitude
+at attack/decay/sustain/release points, early note-off, instant decay at the attack
+boundary and post-region seeking. The browser also verifies controls/undo/redo
+and live monitor voice lifetime. Physical MIDI hardware and live model inference
+remain unverified. Multi-sample zones/layers, loop crossfades and filter/modulation
+envelopes remain pending.
