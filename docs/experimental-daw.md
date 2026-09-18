@@ -107,12 +107,12 @@ local storage and IndexedDB, import, playback and reload.
 ## Piano-roll editing checkpoint
 
 Notes support selection, pitch/start/length/velocity fields, drag movement in
-sixteenth-note increments, right-edge resizing, duplicate and explicit deletion.
+configurable musical increments, right-edge resizing, duplicate and explicit deletion.
 The inspector displays beats while shared commands store seconds. The selected
 note ID is passed to the agent. Invalid edits leave the prior document unchanged.
 The browser piano regression covers drag pitch/time, resize, selection without
 deletion, duplicate/delete/undo, edit rejection, region inspector and reload.
-Multiple-note selection, variable snap grids and graphical MIDI CC lanes remain pending.
+Variable snap grids are implemented. Multiple-note selection and graphical MIDI CC lanes remain pending.
 
 ## Region editing checkpoint
 
@@ -478,3 +478,23 @@ machine; that is one measured fixture, not a general performance guarantee. Unit
 tests also verify retention of 99 earlier undo entries and rejection of oversized
 note lists. Large-session real-time playback and piano-roll rendering still need
 separate performance work.
+
+## Piano-roll snap checkpoint
+
+Piano roll Snap offers Off, quarter/eighth/sixteenth/thirty-second notes, and eighth/
+sixteenth triplets. Grid lines and note placement follow the selected interval at
+the current tempo. Dragging moves/resizes in grid increments while preserving an
+existing timing offset; Quantize aligns starts to exact grid positions. Holding
+Shift temporarily bypasses snapping for placement, movement or resize. Off uses
+free positioning and a default sixteenth-note insertion length. Region boundaries
+and MIDI pitch/length limits still apply.
+
+Snap is a workspace UI preference, retained through edits but reset to 1/16 on
+reload. It is independent of the Quantize grid. The resulting note.add/note.set
+edits use the existing shared command harness, undo and persistence; agent commands
+remain precise seconds and are not constrained by a mouse-editing preference.
+
+150 unit tests and the build pass. Browser checks verify triplet insertion,
+relative-grid dragging, free movement/resize, Shift bypass, undo/redo, tempo-aware
+grid width and saved notes. Existing inspector, duplicate/delete, drag/resize and
+selected-note agent-context regression checks also pass.

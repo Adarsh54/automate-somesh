@@ -426,3 +426,9 @@ optional start seconds). Limits: 8 MB/file, 128 session tracks, 20,000 notes and
 imports undo as one action. Run `scripts/browser-experimental-midi-import-check.cjs`
 for a 10,001-note import, failure recovery, export and reload, and
 `test/experimental-midi-import.test.js` for history retention and size limits.
+
+Piano roll Snap supports straight/triplet grids and Off. Hold Shift for temporary
+free movement; drag increments preserve existing timing offsets. Quantize remains
+a separate operation for aligning starts exactly. Run
+`scripts/browser-experimental-piano-grid-check.cjs` for interaction/tempo/persistence
+checks and `test/experimental-piano-grid.test.js` for timing and boundary rules.
