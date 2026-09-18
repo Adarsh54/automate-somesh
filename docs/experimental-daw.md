@@ -30,7 +30,7 @@ separate compatible implementations or licensed integrations.
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; loop/drop-frame timecode pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
-| Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
+| Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts and pre-fader sends pending |
 | Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
@@ -60,7 +60,7 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 120 tests passing; Vite production build passing.
+- Entire repository: 122 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   heavy sessions, mobile editing.
 
@@ -213,3 +213,22 @@ browser video check generates a real MP4 with AAC audio and checks offset seekin
 frame navigation, shared source identity, audible WAV bounce and picture/transport
 synchronization. This does not establish frame-accurate sync across every codec
 or long movies.
+
+## Drum composition checkpoint
+
++ Drum track adds a MIDI track with an original synthesized kit. Add a MIDI region
+to edit kick, snare, closed/open hat, crash and ride hits on a bar-based sixteenth
+grid. The grid follows project meter and tempo; hits use ordinary channel-10 MIDI
+notes and are editable in the piano roll and through agent note commands. Velocity,
+bar selection and undo are supported. No recorded sample library or model generation
+is involved. Other pitches currently use a generic metallic percussion voice.
+
+The shared playback/offline engine renders deterministic PCM drum voices, honoring
+velocity, channel controllers, region fades, routing and effects. Percussion decays
+continue past MIDI note-off but stop at the region boundary. Pitch bend and sustain
+do not change drum voices. Sample-kit loading, per-drum sound controls, swing,
+probability, polymeters and pattern variations remain pending.
+
+Unit tests verify deterministic distinct voices and percussion-channel MIDI export.
+The browser drum check covers hit toggles, bar navigation, velocity, undo, exported
+notes and actual PCM output at the expected pattern positions.

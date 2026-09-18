@@ -332,3 +332,8 @@ stepping. Extract movie audio creates an independently editable track using the
 same original asset. Codec support and the 250 MB browser decode limit apply.
 `scripts/browser-experimental-video-check.cjs` generates an MP4 fixture using the
 installed FFmpeg binary and checks picture sync, offsets and audible extraction.
+
++ Drum track creates a MIDI track using the synthesized drum kit. Add a MIDI region
+to open its bar-based step sequencer; hits remain ordinary MIDI notes editable in
+the piano roll. Run `scripts/browser-experimental-drums-check.cjs` for pattern,
+velocity, undo, MIDI export and actual audio-render checks.
