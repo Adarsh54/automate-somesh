@@ -639,3 +639,28 @@ early-save disabling, no pre-roll in saved material, placement, cancel cleanup,
 persistence and PCM click stopping/continuation. Existing synthetic microphone and
 MIDI lifecycle checks also pass. Physical devices, hardware latency and suspended
 background-tab timing still require verification; overdub/monitoring remain open.
+
+## Piano-roll multi-selection checkpoint
+
+Ctrl/Cmd-click toggles notes; Select all notes and Clear selection complement it.
+Selected notes move together by drag or relative beat/semitone fields. Dragging
+clamps the whole group to time/pitch boundaries, preserving internal spacing and
+intervals. Shift remains the temporary snap bypass. Right-edge resizing affects
+only that note. Duplicate selection places copies after the selected span; Delete
+selection removes the group. Timing & feel can target the selected group. The
+existing region-wide transpose button is explicitly labeled as region-wide.
+
+Bulk notes.move/delete/duplicate commands operate atomically on comma-separated
+noteIds under a region. Missing, duplicate or out-of-region IDs fail without edits;
+invalid resulting pitches/times and note limits fail full session validation. IDs
+are preserved on move and regenerated on duplication. Bulk changes use one undo
+entry even above the 100-command batch limit. Agent requests include selected note
+IDs and reject stale/duplicate selections before contacting the provider. Existing
+single-note selection remains in the request for compatibility.
+
+168 unit tests and build pass. Tests include 1,001-note atomic movement/undo, group
+transform scoping and mocked provider validation. Browser checks cover selection,
+group dragging, relative edits, copy/delete/undo, agent context, timing scope and
+saved edits. Existing single-note and timing/feel browser checks pass. Selection
+is transient and not persisted; marquee selection, multi-region selection and group
+resize remain pending. Real model inference remains unverified.

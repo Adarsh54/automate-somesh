@@ -496,3 +496,16 @@ and Cancel discards the preparation. Settings persist through undoable
 `session.set` → `countInBars` (integer 0..2; old projects default to 0).
 Run `scripts/browser-experimental-count-in-check.cjs` for audio/MIDI pre-roll,
 placement, cleanup, persisted settings and click continuation audio checks.
+
+Piano roll multi-selection: Ctrl/Cmd-click toggles notes; Select all notes and Clear
+selection are available above the editor. Dragging moves the selected group with
+relative timing/pitch preserved and joint boundary limits. With multiple notes,
+Move selected notes accepts relative beats and semitones. Duplicate selection
+copies the group after its span; Delete selection removes it. Right-edge resizing
+still changes one note. Timing & feel → Selected notes now supports the whole group.
+Each bulk edit is one undo step. Selection itself is transient and resets on reload.
+The agent receives validated selectedNoteIds, and `notes.move`, `notes.duplicate`,
+`notes.delete` accept comma-separated `noteIds` in one command targeting a MIDI
+region (omission means all notes). Quantize/humanize accept noteIds as an alternative
+to noteId. Run `scripts/browser-experimental-note-selection-check.cjs` and
+`test/experimental-note-selection.test.js` for these behaviors.

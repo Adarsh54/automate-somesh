@@ -1,3 +1,4 @@
+import {selectedMidiNotes} from './note-selection.js';
 import {readMidi,decodeMidiImport} from './midi.js';
 import {quantizeNotes,humanizeNotes} from './note-transforms.js';
 import {frameRates} from './timecode.js';
@@ -12,7 +13,7 @@ const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(
 const track=z.object({id:ident,name:z.string().max(200),kind:z.enum(['audio','midi','video','bus']),gainDb:db,pan:z.number().min(-1).max(1),mute:z.boolean(),solo:z.boolean(),instrument:z.enum(['sine','triangle','square','sawtooth','drumKit']),regions:z.array(region).max(1000),output:ident.nullable().default(null),sends:z.array(z.object({busId:ident,gainDb:db,tap:z.enum(['preFader','postFader','postPan']).default('postPan'),automation:z.array(automationSchema.refine(p=>p.parameter==='gainDb','Send automation supports gain only.')).max(2000).default([])})).max(16).default([]),effects:z.array(effectSchema).max(16).default([]),automation:z.array(automationSchema).max(2000).default([])});
 export const sessionSchema=z.object({version:z.literal(1),id:ident,title:z.string().max(200),revision:z.number().int().nonnegative(),tempo:z.number().min(20).max(300),meter:z.number().int().min(1).max(16),metronomeEnabled:z.boolean().default(false),metronomeRecordEnabled:z.boolean().default(false),countInBars:z.number().int().min(0).max(2).default(0),metronomeDb:z.number().min(-60).max(0).default(-18),masterDb:db,masterPan:z.number().min(-1).max(1).default(0),masterAutomation:z.array(automationSchema).max(2000).default([]),masterEffects:z.array(effectSchema).max(16).default([]),loopEnabled:z.boolean().default(false),loopStart:time.default(0),loopEnd:time.default(4),frameRate:z.number().refine(value=>frameRates.includes(value),'Unsupported frame rate.').default(24),tracks:z.array(track).max(128),markers:z.array(z.object({id:ident,name:z.string().max(200),time})).max(1000)});
 export const newSession=()=>({version:1,id:crypto.randomUUID(),title:'Untitled session',revision:0,tempo:120,meter:4,masterDb:0,masterPan:0,masterAutomation:[],masterEffects:[],tracks:[],markers:[]});
-export const operations=['midi.import','session.set','track.add','track.set','track.delete','send.set','send.delete','send.automation.point','send.automation.clear','region.add','region.extractAudio','region.trim','region.set','region.delete','region.split','region.duplicate','event.add','event.set','event.delete','note.add','note.set','note.delete','notes.quantize','notes.humanize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.set','automation.delete','automation.clear'];
+export const operations=['midi.import','session.set','track.add','track.set','track.delete','send.set','send.delete','send.automation.point','send.automation.clear','region.add','region.extractAudio','region.trim','region.set','region.delete','region.split','region.duplicate','event.add','event.set','event.delete','note.add','note.set','note.delete','notes.move','notes.delete','notes.duplicate','notes.quantize','notes.humanize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.set','automation.delete','automation.clear'];
 export const commandSchema=z.object({op:z.enum(operations),target:z.string().max(100).optional(),values:z.record(z.string(),z.union([z.string(),z.number(),z.boolean(),z.null()])).default({})}).strict();
 export const batchSchema=z.array(commandSchema).min(1).max(100);
 const pick=(values,allowed)=>{for(const key of Object.keys(values))if(!allowed.includes(key))throw Error(`Unsupported field: ${key}`);return values;};
@@ -63,6 +64,16 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'note.add':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');r.notes.push(note.parse({id:crypto.randomUUID(),pitch:60,start:0,duration:.5,velocity:.8,...pick(v,['id','pitch','start','duration','velocity','channel'])}));break;
    case 'note.set':Object.assign(need(n,'Note'),pick(v,['pitch','start','duration','velocity','channel']));break;
    case 'note.delete':need(n,'Note');noteRegion.notes=noteRegion.notes.filter(x=>x!==n);break;
+   case 'notes.move':case 'notes.delete':case 'notes.duplicate':{
+    need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');
+    pick(v,op==='notes.delete'?['noteIds']:op==='notes.duplicate'?['noteIds','seconds']:['noteIds','seconds','semitones']);
+    const notes=selectedMidiNotes(r,v),seconds=v.seconds??0,semitones=v.semitones??0;
+    if(!Number.isFinite(seconds)||!Number.isInteger(semitones))throw Error('Use finite seconds and whole semitones.');
+    if(op==='notes.delete'){const ids=new Set(notes.map(n=>n.id));r.notes=r.notes.filter(n=>!ids.has(n.id));}
+    else if(op==='notes.duplicate')r.notes.push(...notes.map(n=>({...n,id:crypto.randomUUID(),start:n.start+seconds})));
+    else for(const n of notes){n.start+=seconds;n.pitch+=semitones;}
+    break;
+   }
    case 'notes.quantize':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');quantizeNotes(r,v);break;
    case 'notes.humanize':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');humanizeNotes(r,v);break;
    case 'notes.transpose':need(r,'Region');pick(v,['semitones']);if(!Number.isInteger(v.semitones))throw Error('Enter whole semitones.');for(const n of r.notes)n.pitch+=v.semitones;break;
