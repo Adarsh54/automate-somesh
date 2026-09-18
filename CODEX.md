@@ -783,3 +783,15 @@ slot, not a timestamped version history or cloud autosave system. Run
 `test/experimental-recovery.test.js` and
 `scripts/browser-experimental-recovery-check.cjs` for restore/swap, corruption,
 quota rollback, missing-media warnings, account isolation and reload behavior.
+
+The piano roll includes a velocity lane below the note grid, sharing its horizontal
+scroll. Drag vertical controls or use arrow keys. Selected notes change together
+by a relative amount, independently clamped to 0–127; an unselected note changes
+alone. Simultaneous notes fan out horizontally for access. Each completed change
+is one undo step, with keyboard focus retained after repaint. The shared agent
+command `notes.velocity` targets a MIDI region with optional comma-separated
+`noteIds` and exactly one of `velocity` (absolute 0–1) or `delta` (-1–1). Omitting
+noteIds edits all notes in that region. It preserves note timing/pitch/channel.
+Run `test/experimental-velocity.test.js` and
+`scripts/browser-experimental-velocity-check.cjs`. Continuous CC/pitch-bend drawing
+and expression automation lanes remain pending; this lane edits note velocity.

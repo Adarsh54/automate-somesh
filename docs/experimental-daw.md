@@ -1003,3 +1003,19 @@ notice, new identity, exact track preservation, swap, reload, corrupt backup
 preservation/download and absence of cloud writes. Unit tests exercise account-key
 isolation, revision reset, stale backup and storage rollback. Timestamped history,
 cloud autosave and recovery of media deleted from the device remain pending.
+
+### Visual MIDI velocity editing
+
+A velocity lane now sits below the piano roll. Its vertical controls support
+pointer and keyboard input, selected-group relative adjustment, individual-note
+editing, displayed MIDI values, and one-step undo/redo. It shares horizontal
+scroll with the piano grid; same-time notes are placed side by side. Shared
+`notes.velocity` commands support absolute or relative changes to selected/all
+notes with validation, independent clamping, and atomic history; the agent prompt
+includes the command. Note pitch, timing and channel are preserved.
+
+210 tests and build pass. Browser checks cover actual keyboard/pointer edits,
+selection scope, persistence, keyboard focus and undo/redo. Unit checks cover
+clamping, absolute-zero velocity and rollback for invalid values/selections.
+Real model execution remains unverified. This is a note-velocity lane; graphical
+controller/pitch-bend lanes and continuous expression recording remain pending.
