@@ -1295,3 +1295,30 @@ scroll behavior. Existing conversation, cancellation, persistence-failure and
 session-isolation checks pass. The verification report was visually inspected.
 Model responses remain mocked; live inference, automatic corrective iterations,
 per-track analysis, true-peak/LUFS and the broader DAW scope remain ongoing.
+
+### Unsent agent instruction drafts
+
+The instruction textarea now keeps account- and session-scoped drafts separately
+from project documents, so mixer/selection changes, analysis and other redraws do
+not erase typing or change the project revision. Drafts are stored on this device
+under the account namespace, bounded to ten recently edited sessions and 6,000
+characters each. Reload restores the current session's draft. Switching sessions
+shows that session's own draft, never the previous project's instruction. Text is
+escaped when rendered; drafts are not automatically submitted or sent to the model.
+Storage failure retains text in memory and shows that the page must remain open.
+
+A request leaves its instruction available while running. Successful replies or
+applied edits clear only the unchanged submitted draft; typing a new instruction
+while waiting protects the newer text. Failed/canceled/discarded requests retain
+the draft for retry. Already-applied edits count as applied even if verification
+fails, avoiding an automatic retry of an edit that already happened. Clear
+conversation leaves unsent text alone. Draft storage does not persist model
+conversation history or provide cross-device sync. Active textarea focus and
+selection survive same-session redraws without overwriting newer draft state.
+
+272 tests and build pass. Unit tests cover account/session isolation, reload,
+version-aware clearing, limits and storage failure. Browser checks cover escaped
+text, repaint/reload, caret selection, typing during a pending request, success,
+failure, cancel, switching projects and memory fallback. The measured-edit and
+post-edit verification browser workflow also passes. The draft indicator was
+visually inspected. Live model verification and the broader DAW scope remain ongoing.
