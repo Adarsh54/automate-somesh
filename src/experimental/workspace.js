@@ -187,7 +187,7 @@ export function createExperimentalWorkspace({account,esc}){
    event.preventDefault();if(agentBusy||busy||recordAbort||midiInput.active)throw Error('Finish the current operation first.');
    const instruction=root.querySelector('#daw-instruction').value.trim();if(!instruction)return;
    const original=history,before=structuredClone(session()),revision=before.revision,request=new AbortController();agentController=request;const recent=structuredClone(conversation);trace.push({role:'user',text:instruction});agentBusy=true;paint();
-   let outcome='failed',summary='',applied=false;const timer=setTimeout(()=>request.abort(new Error('The agent request timed out. No edits applied.')),300000);
+   let outcome='failed',summary='',applied=false,appliedSession,verifying=false;const timer=setTimeout(()=>request.abort(new Error('The agent request timed out.')),300000);
    try{
     const selection=region()?.notes.some(n=>n.id===selectedNote)?selectedNote:selected,selectedNoteIds=noteTools.selectionRegion===region()?.id?[...(noteTools.selectedIds||[])]:[];
     let result;
@@ -202,10 +202,11 @@ export function createExperimentalWorkspace({account,esc}){
      if(!root?.isConnected||history!==original||session().revision!==revision){outcome='discarded';throw Error('The session changed. Run the instruction again.');}
     }
     summary=String(result.summary||'No edits requested.').slice(0,2000);
-    if(result.commands?.length){const previous=history.session;try{execute(result.commands,summary,revision);}finally{applied=history.session!==previous;}outcome='applied';}else{outcome='replied';trace.push({role:'assistant',text:summary});}
-   }catch(error){const message=String(error?.message||error||'The agent request failed.');if(applied)outcome='applied';else if(request.signal.aborted)outcome='canceled';summary=applied?'Edits applied, but '+message:outcome==='canceled'?(request.signal.reason?.name==='AbortError'?'Request canceled. No edits applied.':request.signal.reason?.message||'Request canceled. No edits applied.'):message;
+    if(result.commands?.length){const previous=history.session;try{execute(result.commands,summary,revision);}finally{applied=history.session!==previous;if(applied)appliedSession=structuredClone(session());}outcome='applied';
+     if(result.verifyMix===true||result.commands.some(c=>c.op==='master.gain.offset')){verifying=true;trace.push({role:'assistant',text:'Checking the mix after the edit…'});await analyzeMix({agentRequest:request});const measured=currentMixAnalysis(mixAnalysis,session());if(!measured)throw Error('The mix changed before verification completed.');const peak=Math.max(...measured.channels.map(c=>c.peakDb??-Infinity)),over=measured.channels.reduce((sum,c)=>sum+c.overSamples,0),verification=`After the edit: sample peak ${Number.isFinite(peak)?peak.toFixed(2)+' dBFS':'Silence'}; ${over} samples over 0 dBFS. Measured the full mix.`;trace.push({role:'assistant',text:verification});summary=summary.slice(0,1600)+' '+verification;status=verification;}}else{outcome='replied';trace.push({role:'assistant',text:summary});}
+   }catch(error){const message=String(error?.message||error||'The agent request failed.');if(applied)outcome='applied';else if(request.signal.aborted)outcome='canceled';summary=applied?(verifying?'Edits applied; mix verification did not complete: ':'Edits applied, but ')+message:outcome==='canceled'?(request.signal.reason?.name==='AbortError'?'Request canceled. No edits applied.':request.signal.reason?.message||'Request canceled. No edits applied.'):message;
     if(history===original&&root?.isConnected){trace.push({role:'assistant',text:summary});status=summary;}
-   }finally{clearTimeout(timer);try{if(history===original&&root?.isConnected)appendConversation(conversation,conversationTurn({before,after:session(),instruction,summary,outcome}));}finally{if(agentController===request){agentController=null;agentBusy=false;}paint();}}
+   }finally{clearTimeout(timer);try{if(history===original&&root?.isConnected)appendConversation(conversation,conversationTurn({before,after:appliedSession||session(),instruction,summary,outcome}));}finally{if(agentController===request){agentController=null;agentBusy=false;}paint();}}
   });
  }
  return {view,openProject,bind(){root=document.querySelector('#experimental-root');midiInput.activate();audioInputs.activate();paint();load();},dispose(){agentController?.abort();audioInputs.dispose();midiInput.dispose();if(recordAbort)cancelRecording();stop();root=null;},getSession:session};

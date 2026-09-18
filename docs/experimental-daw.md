@@ -1508,3 +1508,32 @@ panel was visually inspected. Live model inference is not verified by these test
 Official OpenAI function-calling documentation (application executes tool code and
 makes a subsequent model request with results):
 https://developers.openai.com/api/docs/guides/function-calling
+
+### Post-edit mix verification
+
+Agent edit plans now accept optional verifyMix=true. After applying the batch,
+the browser renders and measures the new full mix and reports its actual sample
+peak and over-range sample count in the agent log. master.gain.offset always
+triggers this verification. The post-edit render uses normal playback processing,
+not export-bypass settings; it adds no undo step and performs no further edits.
+The model response before execution cannot claim the measurement already occurred.
+Successful fresh results become current mixAnalysis for future requests. This
+extends the bounded workflow to at most two renders (one prerequisite and one
+verification) and two model requests per submission under the existing five-minute
+overall deadline. There is no extra model call for the verification report.
+
+Canceling or failing verification keeps the already applied edit and clearly
+reports that verification did not complete; the user can undo it. History captures
+the exact post-command snapshot before verification starts, so intervening manual
+edits are not attributed to the agent. Old measurement results are rejected if the
+session changes during rendering. Model-request timeouts no longer incorrectly
+say no edits were applied after an edit has succeeded. The log follows new output
+when already at the bottom and preserves a user's scrolled-back reading position.
+
+270 tests and build pass. Browser tests use real audio renders to verify a -12 dBFS
+post-edit peak, current analysis display and conversation history, cancellation
+after application, manual-edit races during verification, preserved undo and
+scroll behavior. Existing conversation, cancellation, persistence-failure and
+session-isolation checks pass. The verification report was visually inspected.
+Model responses remain mocked; live inference, automatic corrective iterations,
+per-track analysis, true-peak/LUFS and the broader DAW scope remain ongoing.

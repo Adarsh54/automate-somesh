@@ -12,3 +12,7 @@ test('agent can request a bounded browser analysis only when available and curre
  await assert.rejects(planDawEdit({session:s,instruction:'Measure',allowAnalysis:true},reply([{...call,arguments:'{"commands":[]}'}])));
  await assert.rejects(planDawEdit({session:s,instruction:'Measure',allowAnalysis:true},reply([call,{type:'function_call',name:'edit_session',arguments:'{}'}])),/Unexpected/);
 });
+test('model edit plans can request post-edit verification with a boolean flag',async()=>{
+ const {s}=fixture();let sent;const options=value=>({key:'test',model:'test',fetchImpl:async(_,request)=>{sent=JSON.parse(request.body);return {ok:true,json:async()=>({output:[{type:'function_call',name:'edit_session',arguments:JSON.stringify({summary:'Adjusted master gain; verification follows.',commands:[{op:'master.gain.offset',values:{deltaDb:-3}}],verifyMix:value})}]})};}});
+ const plan=await planDawEdit({session:s,instruction:'Reduce and verify'},options(true));assert.equal(plan.verifyMix,true);assert.equal(plan.commands[0].values.deltaDb,-3);assert.equal(sent.tools.find(t=>t.name==='edit_session').parameters.properties.verifyMix.type,'boolean');await assert.rejects(planDawEdit({session:s,instruction:'Reduce and verify'},options('true')));
+});

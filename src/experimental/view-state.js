@@ -6,6 +6,7 @@ function key(element,root){
  return parts.join(' > ');
 }
 export function captureViewState(root,{drafts=false,editor=false}={}){
+ const log=root.querySelector('.daw-agent-log'),logState=log?{top:log.scrollTop,bottom:log.scrollHeight-log.clientHeight-log.scrollTop<8}:null;
  const details=Array.from(root.querySelectorAll('details')).map(el=>({selector:key(el,root),label:el.querySelector('summary')?.textContent,open:el.open}));
  const scrolls=editor?Array.from(root.querySelectorAll('.daw-scroll,.daw-note-scroll,.daw-note-grid,.daw-controller-scroll')).map(el=>({selector:key(el,root),top:el.scrollTop,left:el.scrollLeft})):[];
  const fields=drafts?Array.from(root.querySelectorAll('input:not([type=file]),select,textarea')).map(el=>({selector:key(el,root),tag:el.tagName,name:el.name,value:el.value,checked:el.checked,options:el.tagName==='SELECT'?el.innerHTML:null})):[];
@@ -17,5 +18,6 @@ export function captureViewState(root,{drafts=false,editor=false}={}){
   if(chordPreview!==null&&root.querySelector('[data-chord-preview]'))root.querySelector('[data-chord-preview]').textContent=chordPreview;
   for(const saved of scrolls){const el=root.querySelector(saved.selector);if(el){el.scrollTop=saved.top;el.scrollLeft=saved.left;}}
   if(focus){const el=root.querySelector(focus.selector);if(el&&!el.disabled){el.focus({preventScroll:true});if(typeof focus.start==='number'&&el.setSelectionRange)try{el.setSelectionRange(focus.start,focus.end);}catch{}}}
+  const nextLog=root.querySelector('.daw-agent-log');if(nextLog)nextLog.scrollTop=!logState||logState.bottom?nextLog.scrollHeight:logState.top;
  };
 }
