@@ -795,3 +795,17 @@ noteIds edits all notes in that region. It preserves note timing/pitch/channel.
 Run `test/experimental-velocity.test.js` and
 `scripts/browser-experimental-velocity-check.cjs`. Continuous CC/pitch-bend drawing
 and expression automation lanes remain pending; this lane edits note velocity.
+
+The piano roll also has a graphical MIDI controller lane for expression (CC11),
+volume (CC7), pan (CC10), sustain (CC64) and pitch bend, filtered by MIDI channel.
+Click to add a point, drag to edit time/value, and use Delete/Backspace to remove.
+Arrow keys change time by the piano snap (1/16 when snap is off) or value by one
+MIDI step (128 for pitch bend). Home/End choose the value limits; 0 restores the
+controller default, including exact pitch-bend center 8192. Shift-drag bypasses
+snap. Clicking an existing snapped time updates its point instead of adding one.
+The graph shows held/step values, matching event playback rather than implying
+smooth interpolation. Edits use shared event.add/set/delete, with one undo per
+completed gesture. Existing event forms remain available for precise values and
+other event types. This is point editing, not freehand drawing or real-time CC
+record automation. Run `test/experimental-controller-lane.test.js` and
+`scripts/browser-experimental-controller-lane-check.cjs`.

@@ -1019,3 +1019,18 @@ selection scope, persistence, keyboard focus and undo/redo. Unit checks cover
 clamping, absolute-zero velocity and rollback for invalid values/selections.
 Real model execution remains unverified. This is a note-velocity lane; graphical
 controller/pitch-bend lanes and continuous expression recording remain pending.
+
+### Graphical MIDI controller lane
+
+Expression, volume, pan, sustain and pitch bend now have channel-filtered timeline
+points below the piano roll. Users can add or drag points, nudge time/value with
+keys, reset defaults/limits and delete. The lane displays step holds and controller
+defaults; Shift bypasses time snap. It uses existing validated event commands and
+atomic history, so playback/export and agent edits share the same data. Exact-time
+clicks update an existing point; imported event forms remain available.
+
+212 unit tests and production build pass. Browser checks cover point creation,
+same-time update, MIDI-channel isolation, full pitch-bend limits and exact center,
+keyboard/delete, pointer drag, persistence and undo. Unit checks cover filtering,
+sorting without mutation, snap/bounds and coordinate ranges. Freehand/ramp drawing,
+pressure lanes and live controller automation workflows remain pending.
