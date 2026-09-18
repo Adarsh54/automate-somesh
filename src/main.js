@@ -1006,6 +1006,8 @@ async function askToLeave(){
  try{return await confirmDialog({title:'Save before leaving?',message:account.user?'Your project has unsaved changes. Save them before leaving.':'Your draft is stored on this device. Sign in to keep projects in your account.',cancelLabel:'Keep editing',confirmLabel:account.user?'Save and leave':'Leave workspace',secondaryLabel:account.user?'Leave without saving':undefined,onConfirm:account.user?()=>tab==='reel'?reelWorkspace.save():cloudWorkspace.saveBeforeLeaving():undefined});}finally{leavePromptOpen=false;}
 }
 async function routePage(){
+ // Keep the destination captured by the original navigation while its dialog saves.
+ if(leavePromptOpen){history.replaceState(null,'',currentRoute);return;}
  let hash=location.hash;
  if(hash==='#/workspace')hash=pageRoutes[workspaceTab];
  const edit=hash.match(/^#\/reels\/([0-9a-f-]{36})\/edit$/i);
