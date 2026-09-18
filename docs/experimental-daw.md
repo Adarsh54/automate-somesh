@@ -1219,3 +1219,38 @@ Implementation reference: native EQ gain uses decibels, and native AudioParam
 linear ramps interpolate parameter values:
 https://developer.mozilla.org/en-US/docs/Web/API/BiquadFilterNode/gain
 https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/linearRampToValueAtTime
+
+### Audio crossfades and fade curves
+
+Select an audio region and use Crossfade in the region inspector to choose an
+overlapping region on the same track. Linear and equal-power modes set the earlier
+region's fade-out and later region's fade-in across the entire overlap in one
+undoable edit. Positions, source offsets and recordings remain unchanged. One
+region must start and end earlier than the other; touching, separated, contained
+or different-track regions are rejected. Existing outer fades must leave room.
+The form shows eligible pairs and explains the overlap requirement when none fit.
+
+Shared command: region.crossfade targets either region with otherRegionId and
+optional shape (linear or equalPower, default equalPower). region.set also accepts
+fadeInShape/fadeOutShape (default linear) independently of fadeIn/fadeOut duration.
+Curves work for audio and MIDI region gain envelopes; paired crossfades are audio
+only. The agent prompt documents the operation and constraints. Timeline envelopes
+show curved shapes. Shapes persist through saves, duplication and trimming.
+
+Equal-power curves use complementary sine fades, approximated with 64 linear
+segments per fade in playback/export. Linear fades preserve the summed amplitude
+of identical aligned material; equal-power fades preserve the sum of squared gains
+and can boost correlated material. Existing region gains and downstream effects
+still apply. Seek starts at the proper envelope value. These are paired edits,
+not linked region objects: reapply after moving/trimming a pair. Automatic overlap
+creation, persistent crossfade links and adjustable curve tension remain pending.
+
+248 tests and build pass. Unit checks cover paired edits/undo, rejection and atomic
+rollback, energy/amplitude relationships, shape persistence and unchanged source
+references. The browser verifies the form, fade drawing, independent curve edits,
+undo/reload, real stereo linear/equal-power renders, seek and stem rendering. The
+crossfade inspector was visually inspected. This is incremental progress on the
+full DAW scope; hardware recording and live model execution remain unverified.
+
+Reference workflow: Apple's overlapping-region crossfades:
+https://support.apple.com/en-gb/guide/logicpro/lgcp9260fa9c/10.7/mac/11.0

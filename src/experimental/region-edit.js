@@ -1,3 +1,4 @@
+import {regionEnvelopePoints} from './region-fades.js';
 import {chasedEvents,sustainedEnd} from './midi-events.js';
 // Timeline boundaries are absolute seconds. Source offsets always describe the
 // unreversed recording, even when a region is auditioned backwards.
@@ -26,7 +27,7 @@ export function trimmedMidiRegion(region,start,end){
  const fadeIn=Math.min(region.fadeIn,duration),fadeOut=Math.min(region.fadeOut,duration-fadeIn);
  return {start,duration,offset:0,notes,events,fadeIn,fadeOut};
 }
-export function regionHandles(region,kind){return `<span class="daw-trim start" data-region-handle="trim-start" title="Trim start"></span><span class="daw-trim end" data-region-handle="trim-end" title="Trim end"></span>${kind!=='video'?`<svg class="daw-fade-envelope" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M 0 ${region.fadeIn?100:0} L ${region.fadeIn/region.duration*100} 0 L ${100-region.fadeOut/region.duration*100} 0 L 100 ${region.fadeOut?100:0}"/></svg><span class="daw-fade-handle" data-region-handle="fadeIn" style="left:${region.fadeIn/region.duration*100}%" title="Fade in"></span><span class="daw-fade-handle end" data-region-handle="fadeOut" style="right:${region.fadeOut/region.duration*100}%" title="Fade out"></span>`:''}`;}
+export function regionHandles(region,kind){return `<span class="daw-trim start" data-region-handle="trim-start" title="Trim start"></span><span class="daw-trim end" data-region-handle="trim-end" title="Trim end"></span>${kind!=='video'?`<svg class="daw-fade-envelope" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${regionEnvelopePoints(region).map((p,i)=>`${i?'L':'M'} ${p.time/region.duration*100} ${(1-p.value)*100}`).join(' ')}"/></svg><span class="daw-fade-handle" data-region-handle="fadeIn" style="left:${region.fadeIn/region.duration*100}%" title="Fade in"></span><span class="daw-fade-handle end" data-region-handle="fadeOut" style="right:${region.fadeOut/region.duration*100}%" title="Fade out"></span>`:''}`;}
 export function bindRegions(root,{session,zoom,select,seek,execute,guard,sourceDuration}){
  root.querySelectorAll('[data-region]').forEach(el=>{
   const owner=session.tracks.find(t=>t.regions.some(r=>r.id===el.dataset.region)),region=owner.regions.find(r=>r.id===el.dataset.region);
