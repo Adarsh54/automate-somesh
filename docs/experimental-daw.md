@@ -887,3 +887,21 @@ stereo channel separation, >0 dBFS float headroom, held/reset peaks, Cycle, clea
 and unchanged output samples. These are sampled 2,048-frame window peaks, not a
 continuous clip counter or true-peak/loudness measurement. RMS/LUFS, limiter,
 recording/agent meter telemetry and per-track Cycle metering remain pending.
+
+### Measured playback context for agent edits
+
+Agent requests now carry recent client-reported meter observations: session
+identity/revision, age, position, mode and sampled current/held stereo peaks. These
+survive Stop for two minutes, expire on edit/project replacement/reset, and remain
+outside saved documents. Shared validation rejects stale, malformed, duplicated,
+unknown or inconsistent readings before model access. Cycle only permits master
+telemetry. Prompt guidance distinguishes sampled observations from full-file
+analysis, accounts for automation overriding static gain and requires replay to
+verify estimated adjustments. No audio data is sent with these observations.
+
+194 tests and build pass. Browser verification uses actual playback measurements
+with mocked model responses to inspect request context, after-stop availability,
+revision invalidation and no persistence. Unit checks verify context propagation
+and rejection before provider calls. Real model behavior, continuous analysis,
+agent-triggered playback/measurement and loudness-aware mixing remain unverified
+or pending.

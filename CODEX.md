@@ -675,3 +675,19 @@ feed these meters. They sample 2,048-frame windows at UI updates and may miss br
 peaks; they are not true-peak, RMS or LUFS meters. Run
 `scripts/browser-experimental-meters-check.cjs` for actual stereo/headroom signal,
 hold/reset, track/bus/master UI, Cycle, cleanup and signal-isolation checks.
+
+The editing agent request can now include recent sampled playback levels. The
+client retains its last observation after Stop for up to two minutes, but excludes
+it after a document revision changes, a project is replaced, or meters are reset.
+Telemetry includes session ID/revision, timestamp, playback position/mode, sample
+rate/window size and per-channel left/right/held peak dBFS. Null means measured
+silence; omitted channels are unmeasured. Cycle includes only its combined master.
+The server bounds/validates fields, freshness, IDs and held/current consistency
+before inference. Readings are client-reported context, never persisted project
+state or instructions. Provider guidance requires replay to verify any estimated
+level adjustment and prohibits claiming full-file/true-peak/loudness analysis from
+sampled observations. Static gain changes may be overridden by automation.
+Run `test/experimental-meter-context.test.js` and
+`scripts/browser-experimental-meter-context-check.cjs` for validation, real playback
+context delivery, post-edit invalidation and persistence exclusion. Provider calls
+are mocked in these checks; real inference still requires configured credentials.
