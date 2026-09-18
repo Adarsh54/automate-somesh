@@ -352,3 +352,22 @@ DAW. The existing 1 MB JSON limit applies; media uploads are separate.
 `scripts/browser-experimental-cloud-check.cjs` mocks services to test account UI and
 retry behavior; `test/experimental-cloud-projects.test.js` verifies ownership and
 revision rules in PGlite. Neither replaces a live Neon/Blob smoke test.
+
+### Live Experimental account-storage check
+
+With the local frontend running and development credentials loaded:
+
+```sh
+node --env-file=.env.local scripts/daw-live-smoke.mjs
+```
+
+Set the standard `PLAYWRIGHT_MODULE` and `PLAYWRIGHT_EXECUTABLE` variables if needed.
+The script refuses any APP_URL or Neon branch outside the documented development
+setup. It uses a synthetic identity (not a real WorkOS sign-in), real Neon and private
+Blob multipart uploads, then clears device data and checks exact source restoration,
+playback and revision updates without duplicate uploads. It removes its test data.
+
+If project loading reports `column "folder_id" does not exist`, the existing folder
+migration has not been applied. Confirm the development branch and run
+`npm run db:migrate` before retrying. This occurred during DAW live verification;
+the local-development branch is now migrated through `010_folders.sql`.

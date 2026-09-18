@@ -37,7 +37,7 @@ separate compatible implementations or licensed integrations.
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
-| Account/storage | Durable project/media save, restore, ownership, version conflicts | Existing Projects/Neon and private Blob integration added; ownership/revision and browser mock checks pass; live account smoke pending |
+| Account/storage | Durable project/media save, restore, ownership, version conflicts | Existing Projects/Neon and private Blob integration added; ownership/revision and browser checks pass; live development Neon/Blob round trip verified with synthetic authentication |
 | Reliability | Unit, audio-render, MIDI-fixture, browser, accessibility and load checks | Pending |
 
 ## Architecture
@@ -61,7 +61,7 @@ until all capability groups have authoritative implementation and verification.
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
 - Entire repository: 126 tests passing; Vite production build passing.
-- Not verified: actual model inference, microphone/MIDI hardware, live cloud DAW round trip,
+- Not verified: actual model inference, microphone/MIDI hardware, production DAW save,
   heavy sessions, mobile editing.
 
 Current limitations are substantive: simple oscillator instruments, no automation recording,
@@ -71,7 +71,7 @@ decoding currently caps individual audio at 250 MB; offline bounce caps ten minu
 Movie audio can be extracted to a separate track and mixed when the browser supports its codec. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; account save/reopen now uses the existing project and media services. The full goal remains active.
 
-Next implementation priorities: live cloud verification; MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
+Next implementation priorities: MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -277,5 +277,23 @@ user-facing local-backup recovery browser remain pending.
 
 PGlite tests cover source ownership/readiness, map validation, stale revisions and
 read isolation. The browser account check mocks API/Blob interactions and verifies
-save/copy/conflict, Projects opening, and retry without duplicate uploads. A live
-Neon/Blob round trip is still required before claiming production verification.
+save/copy/conflict, Projects opening, and retry without duplicate uploads. The live development Neon/Blob round trip now passes; production and real WorkOS
+authentication were not exercised by that check.
+
+## Live account storage verification
+
+`scripts/daw-live-smoke.mjs` passes against the documented development Neon branch
+and configured private Blob store. It drives the browser's real multipart upload,
+token/completion handler and signed source download, while using a temporary test
+identity instead of WorkOS. Project requests exercise the real repository through
+a test transport adapter. After clearing localStorage/IndexedDB, reopening from
+Projects restores the exact original bytes and plays the audio. A subsequent save
+increments the project revision without creating another media asset.
+
+The first run exposed an unapplied existing folder migration on the development
+branch. The branch was confirmed through `current_setting('neon.branch_id', true)`
+against CODEX.md, and the repository migrations were applied. The smoke script now
+checks that exact development branch and folder schema before creating fixtures.
+Both test runs cleaned up their synthetic Blob objects and database records.
+This verifies development storage integration, not production deployment or a real
+WorkOS sign-in.
