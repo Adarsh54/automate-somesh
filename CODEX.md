@@ -532,3 +532,14 @@ work and decode only media used by the render. Editing during a bounce does not
 change that export. Run `scripts/browser-experimental-region-bounce-check.cjs` for
 actual WAV isolation, source offset, delay tail, automation, MIDI and snapshot checks,
 and `test/experimental-bounce-plan.test.js` for plan/asset/limit coverage.
+
+Play arrangement while recording enables audio/MIDI overdubbing into a new track.
+The persisted/undoable field is `recordWithPlayback` (default false). Audible audio
+is decoded before recording starts; playback uses a fixed session snapshot with
+mixer routing, effects and automation, beginning at the take's post-count-in start.
+The recording clock, playhead and movie monitor advance during the take. Cycle is
+ignored for recording: playback runs linearly from the selected position. New
+notes are not auditioned live, and microphone monitoring/latency calibration remain
+pending. Headphones prevent accompaniment bleeding acoustically into the input.
+Run `scripts/browser-experimental-overdub-check.cjs` for audio/MIDI take placement,
+backing cleanup, scheduled/seek PCM and digital isolation of microphone recordings.

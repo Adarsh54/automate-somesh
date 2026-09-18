@@ -39,3 +39,4 @@ form.daw-note-editor{margin-top:8px}
 .daw-piano [data-action="transpose"]{min-width:max-content}
 .daw-note-grid{position:relative;touch-action:none}
 .daw-note-grid .daw-note-marquee{position:absolute;display:block;background:color-mix(in srgb,var(--accent) 15%,transparent);border:1px solid var(--accent);z-index:5;pointer-events:none;font-size:0}
+.daw-recording-options{margin-top:12px;display:grid;gap:6px;font-size:12px}.daw-recording-options label{display:flex;align-items:center;gap:8px}.daw-recording-options input{width:16px;height:16px;accent-color:var(--accent)}

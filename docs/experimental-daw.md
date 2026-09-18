@@ -709,3 +709,25 @@ format and summed PCM checks pass. DSP state begins at the region boundary; prec
 regions and their effect history are intentionally absent, so this is not a slice
 of the fully mixed arrangement. In-place rendering, arbitrary time-range export,
 movie muxing and master-processing bypass remain pending.
+
+## Recording with arrangement playback checkpoint
+
+Play arrangement while recording is a persistent, undoable `recordWithPlayback`
+setting, off by default. Audio/MIDI takes continue creating new tracks while the
+existing arrangement plays through the shared routing/effects/automation renderer.
+Only audible audio sources are prepared. A fixed document snapshot is captured
+before decoding, and edits are locked during a take. The microphone capture graph
+remains separate from accompaniment and click output. Count-in starts backing at
+the capture boundary; MIDI maps performance timestamps to the audio clock without
+hardware latency compensation. Clock/playhead and movie preview advance with the
+recording progress. Stop/cancel/disconnect/navigation release backing playback.
+
+173 unit tests and build pass. Browser checks cover actual audio/MIDI takes, new
+track placement, transport advancement, cancel cleanup, saved settings, backing
+PCM starting at the requested time with seeked gain automation, and a silent input
+remaining silent while backing synthesis runs. Existing count-in and MIDI lifecycle
+checks pass. Tests use synthetic devices. Video behavior is wired to the existing
+monitor but synchronized recording against a real movie/hardware setup still needs
+verification. Recording is linear even when Cycle is enabled. Live input audition,
+recording into existing tracks, take lanes, loop recording, punch/comping and
+calibrated latency remain pending.
