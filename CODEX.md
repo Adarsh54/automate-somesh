@@ -260,3 +260,29 @@ ownership, publication snapshot and PDF limits in the server tests.
 Published reels display their share URL directly beneath the preview, with Copy
 link and Open reel controls. Each published item under Your reels also exposes
 Share without changing the currently edited reel. Drafts do not expose share URLs.
+
+### Experimental DAW (in development)
+
+`#/experimental` is a separate composer workspace. It currently stores its session
+in account-scoped localStorage and original imported files in IndexedDB, not Neon.
+Audio/video/MIDI import, arrangement, basic note editing, mixer gain/pan/mute/solo,
+undo/redo, local playback and WAV/MIDI export are initial implementations. See
+[the full scope ledger](docs/experimental-daw.md) for missing features and evidence;
+this is not yet Logic Pro parity. JSON session export does not bundle source files.
+
+Manual actions and agent batches use `src/experimental/session.js`. The command
+executor validates the complete result before commit, rejects stale revisions and
+supports undo. `/api/daw` uses the same validation before returning a model plan.
+No arbitrary code or shell execution is exposed to the model.
+
+For the OpenAI adapter, configure server-only `OPENAI_API_KEY` and `DAW_AGENT_MODEL`
+in local `.env.local` or the intended Vercel environment. Choose a model available
+to that API project that supports Responses function calls. Never use a `VITE_`
+variable for these values. Restart the local API after changes. A configured status
+means variables are present, not that a real request has succeeded. Requests require
+login and same-origin checks; requests send the session document/selection, not
+source media. Production usage quotas and provider alternatives remain pending.
+
+Checks: `npm test`, `npm run build`, and `scripts/browser-experimental-check.cjs`
+with the standard Playwright variables. The browser agent check mocks inference;
+a real provider test is still required after credentials are configured.

@@ -1,4 +1,5 @@
 import {cueSheetCsv} from "./export-csv.js";
+import {createExperimentalWorkspace} from './experimental/workspace.js';
 import {applyScoreOffset} from "./score-offset.js";
 import {createAudioLibrary} from "./audio-library.js";
 import {createReelWorkspace} from "./reel-workspace.js";
@@ -138,6 +139,7 @@ const reelWorkspace=createReelWorkspace({account,audioLibrary,esc,onEdit:id=>goT
 const reelAnalyticsView=createReelAnalyticsView({esc,onChange:()=>{if(tab==='reel-analytics')render();},onBack:()=>history.back()});
 const reelAccountAnalyticsView=createReelAccountAnalyticsView({esc,onChange:()=>{if(tab==='reel-account-analytics')render();},onOpenReel:id=>goToReelAnalytics(id)});
 
+const experimental=createExperimentalWorkspace({account,esc});
 const creditProfilesKey=account.user?`cuestamp-user:${account.user.id}:credit-profiles`:null;
 let creditProfiles=[],creditProfilesError='',creditProfilesLoading=false;
 let activeCreditProfileId=state.activeCreditProfileId || '';
@@ -244,6 +246,7 @@ function bindFAQ() {
   document.querySelectorAll("[data-faq-question]").forEach((button) => { button.onclick = () => { faqQuestion = faqQuestion === button.dataset.faqQuestion ? "" : button.dataset.faqQuestion; faqOpen = true; render(); }; });
 }
 function pageBreadcrumb(){
+ if(tab==='experimental')return '<div class="page-breadcrumb"><span>Experimental</span></div>';
  if(tab==='reel')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Reel</span><span aria-hidden="true">›</span><b>${esc(reelWorkspace.title() || 'Untitled reel')}</b></div>`;
  if(tab==='reel-analytics')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>Analytics</span><span aria-hidden="true">›</span><b>${esc(reelAnalyticsView.title() || 'Reel')}</b></div>`;
  if(tab==='reel-account-analytics')return `<div class="page-breadcrumb"><a href="#/projects">Projects</a><span aria-hidden="true">›</span><span>All reels</span></div>`;
@@ -253,6 +256,7 @@ function pageBreadcrumb(){
  return `<div class="page-breadcrumb" aria-label="Breadcrumb"><span aria-current="page">${tab==='settings'?'Credit Profiles':'Meet the team'}</span></div>`;
 }
 function render() {
+  if(tab!=='experimental')experimental.dispose();
   reelWorkspace.dispose();
   if(tab!=="audio")audioLibrary.disposePreview();
   const previousPlayer = document.querySelector("#track-preview");
@@ -268,6 +272,8 @@ function render() {
     `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#/projects" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div></aside><main><header>${pageBreadcrumb()}<div class="header-account"><div id="account-actions">${cloudWorkspace?.header() || ""}</div>${themeToggle()}</div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><input id="workspace-project-title" aria-label="Cue sheet title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name cue sheet" autocomplete="off"><span>Required to save your cue sheet.</span></div>` : ""}${tab === "library" ? "" : `<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Full Score to Cue Sheet", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div>`}<nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}</div></main>`;
   document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${steps.some(([key])=>key===tab)?'active':''}" href="#/workspace" aria-label="Add Cue Sheet" title="Add Cue Sheet" ${steps.some(([key])=>key===tab)?'aria-current="page"':''}>${sidebarIcon('library')}<span class="nav-label">Add Cue Sheet</span></a><a class="nav ${tab==='reel'&&location.hash==='#/reels/new'?'active':''}" href="#/reels/new" aria-label="New Reel" title="New Reel" ${tab==='reel'&&location.hash==='#/reels/new'?'aria-current="page"':''}>${sidebarIcon('reel')}<span class="nav-label">New Reel</span></a><a class="nav ${tab==='audio'?'active':''}" href="#/audio" aria-label="Audio Library" title="Audio Library" ${tab==='audio'?'aria-current="page"':''}>${sidebarIcon('audio')}<span class="nav-label">Audio Library</span></a>`);
   document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${tab === "settings" ? "active" : ""}" href="#/credit-profiles" ${tab === "settings" ? 'aria-current="page"' : ""} aria-label="Credit Profiles" title="Credit Profiles">${sidebarIcon("settings")}<span class="nav-label">Credit Profiles</span></a>`);
+  document.querySelector('#sidebar-nav')?.insertAdjacentHTML('beforeend',`<a class="nav ${tab==='experimental'?'active':''}" href="#/experimental" aria-label="Experimental" ${tab==='experimental'?'aria-current="page"':''}>${sidebarIcon('reel')}<span class="nav-label">Experimental</span></a>`);
+  if(tab==='experimental')document.querySelector('.content').innerHTML=experimental.view();
   if (tab === "projects") document.querySelector(".content").innerHTML = `<section id="projects-page">${cloudWorkspace?.projectsPage() || ""}</section>`;
   if (tab === "team") document.querySelector(".content").innerHTML = teamPage();
   if (tab === "reel") document.querySelector(".content").innerHTML = reelWorkspace.view();
@@ -290,6 +296,7 @@ function render() {
   bindFAQ();
   bindSidebar();
   cloudWorkspace?.bind();
+  if(tab==='experimental')experimental.bind();
   if(tab==="audio")audioLibrary.bind();
   if(tab==="reel")reelWorkspace.bind();
   if(tab==="reel-analytics")reelAnalyticsView.bind();
@@ -944,7 +951,7 @@ function bindWorkflows() {
   });
 }
 cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,saveAudio:file=>audioLibrary.add(file),isProjectBusy:()=>workflow.busy || reelWorkspace.isBusy() || audioLibrary.isBusy(),chooseType:chooseProjectType,beforeNewProject:()=>hasOpenEdits()?askToLeave():Promise.resolve(true),onNewReel:()=>{reelWorkspace.newProject();history.pushState(null,'','#/reels/new');showPage('reel');},onOpenReel:project=>{reelWorkspace.open(project);const route=`#/reels/${project.id}/edit`;history.pushState(null,'',route);showPage('reel',route);},onComplete:()=>{render();openDownloads(state);}});
-const pageRoutes={projects:'#/projects',settings:'#/credit-profiles',team:'#/team',reel:'#/reels/new',audio:'#/audio',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
+const pageRoutes={experimental:'#/experimental',projects:'#/projects',settings:'#/credit-profiles',team:'#/team',reel:'#/reels/new',audio:'#/audio',library:'#/workspace/library',cues:'#/workspace/cues',production:'#/workspace/production',review:'#/workspace/review'};
 let workspaceTab='library';
 try {const saved=sessionStorage.getItem(storageKey+':step');if(steps.some(([key])=>key===saved))workspaceTab=saved;}catch{}
 function navigate(page){
