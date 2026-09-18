@@ -648,3 +648,15 @@ within the 86,400-second timeline bound. Run
 `test/experimental-repeat-region.test.js` and
 `scripts/browser-experimental-repeat-region-check.cjs` for content/bounds, beat
 spacing, independent edits, history/persistence and rendered phrase timing.
+
+Drag a track name onto the upper/lower half of another track header to place it
+before/after that track. An accent line shows the insertion edge. Track actions →
+Move track up/down provides keyboard-accessible alternatives; boundary buttons are
+disabled. Arrangement lanes and mixer order follow the document order. All track,
+region and routing IDs stay unchanged, and each move is one undo step.
+`track.move` targets a track ID with `index`, the zero-based final position in the
+track list. Invalid positions reject atomically. Run
+`test/experimental-track-order.test.js` and
+`scripts/browser-experimental-track-order-check.cjs` for insertion math, validation,
+drag/controls, history, persistence, routing and unchanged rendered audio. Track
+multi-selection, folders and automatic scrolling while dragging remain pending.

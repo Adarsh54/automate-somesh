@@ -859,3 +859,16 @@ placement, rollback and limits. The browser check verifies beat spacing, one-ste
 undo/redo, independent note edits, reload and four rendered phrases separated by
 silence. Linked region aliases, repeat-to-locator and multiple-region patterns
 remain pending.
+
+### Track reordering
+
+Track name headers support before/after drag insertion with edge feedback. Move
+track up/down provides an accessible alternative in Track actions. The shared
+`track.move` command takes a zero-based final index, preserving track content,
+identities and routing while changing document/arrangement/mixer order. Moves are
+validated atomically and undoable. Drags from outside the workspace are ignored.
+
+191 tests and build pass. Browser checks cover actual header dragging, lane order,
+up/down boundary controls, undo/redo, reload and unchanged audio through preserved
+bus routing. Unit coverage includes both insertion directions and invalid commands.
+Multiple-track reordering, track folders and drag autoscroll remain pending.
