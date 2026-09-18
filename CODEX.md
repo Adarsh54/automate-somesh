@@ -836,3 +836,12 @@ out-of-range pitches, invalid inversions, region overflow and the note limit.
 The agent is instructed to insert only explicitly requested chords, not invent
 progressions. This is deterministic note entry, not generated audio. Run
 `test/experimental-chords.test.js` and `scripts/browser-experimental-chords-check.cjs`.
+
+Workspace redraws preserve expanded panels and timeline/piano/controller scroll
+positions while staying in the same session and selected region. Background initial
+loading also preserves unfinished fields and text focus/selection; audio device
+refreshes update only the audio-input controls, leaving editor drafts untouched.
+Routine document edits still render committed form values. View state is transient
+and is not serialized into project files. Run
+`scripts/browser-experimental-view-state-check.cjs` for delayed initialization,
+device-change events, drafts, expanded panels, scroll, and undo behavior.

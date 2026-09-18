@@ -1067,3 +1067,17 @@ rejection and MIDI export/re-import. Unit checks cover chord intervals, inversio
 ranges, IDs, capacity and atomic rollback. Live model execution remains unverified;
 scale/key maps, chord tracks, notation, custom voicings and extended harmony tools
 remain pending.
+
+### Preserve editing state during redraws
+
+Audio input enumeration now updates only its controls, preventing a device-change
+notification from closing editor panels or discarding unfinished forms. Whole
+workspace redraws retain panel expansion and same-region editor scroll. Background
+initial load additionally preserves fields, focus and text selection. This state
+is local to the rendered view, not part of the project document.
+
+218 tests and build pass. A browser regression delays configuration loading while
+text is entered, emits device changes while a chord form is unfinished, and checks
+text/focus/selection, form preservation, expanded panels, editor scroll and undo.
+Chord, controller-ramp and selected-input recording browser regressions also pass.
+A broader incremental-rendering architecture and persistent layouts remain pending.
