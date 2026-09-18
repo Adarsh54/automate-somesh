@@ -780,3 +780,20 @@ with manual actions through validated atomic batches and undo/redo.
 177 tests and build pass. Browser verification covers creation/order, rename/move,
 delete, jumps, undo/redo, escaping, reload and distant-marker rendering. Range
 markers, arrangement sections and SMF marker import/export are still pending.
+
+### MIDI marker interchange
+
+SMF marker meta-events now round-trip through the conductor track. Import converts
+marker ticks with the source tempo map and places them at the same start offset as
+notes/controller tracks. Marker-only MIDI files work; IDs are fresh on each import.
+The entire import remains atomic and undoable, including marker limits and bounds.
+Export uses the current session tempo and 480 PPQ, so timing is tick-quantized;
+source tempo maps are not preserved. UTF-8 works within Cuestamp, while non-ASCII
+label compatibility with legacy DAWs is not verified. Cue-point events remain
+unsupported. Reference: https://midi.org/standard-midi-files-specification
+
+180 tests and build pass. Unit coverage includes a hand-authored tempo-change MIDI
+fixture, label/timing round-trip, combined note/marker placement, fresh IDs, rollback
+and undo. The browser marker check exports and re-imports an actual downloaded
+marker-only MIDI file and verifies all markers are restored without creating empty
+instrument tracks. Import into a third-party desktop DAW remains unverified.

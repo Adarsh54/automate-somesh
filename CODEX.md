@@ -579,4 +579,17 @@ visible arrangement, with at most 1,000 ruler labels. They do not extend audio e
 with name and/or time; `marker.delete` removes it. IDs remain unique across the
 whole session. Run `scripts/browser-experimental-markers-check.cjs` for UI,
 navigation, persistence and undo, plus `test/experimental-markers.test.js` for
-atomic validation and ordering. MIDI-file marker import/export remains pending.
+atomic validation and ordering. MIDI-file marker import/export is supported as described below.
+
+MIDI import/export now carries SMF marker meta-events (FF 06). Exports write them
+in chronological order in the conductor track; marker-only files are supported.
+Import converts ticks through the source tempo map and adds the selected playhead
+offset to both markers and tracks. Both are committed as one undoable operation.
+Imported markers receive fresh IDs, so repeated imports preserve both copies.
+Limits remain 1,000 markers per session, 200 characters per name (long imported
+names are truncated), and 0..86400 seconds after placement. UTF-8 labels round-trip
+in Cuestamp; legacy MIDI applications may interpret non-ASCII text differently.
+Tempo maps themselves are still flattened on export to the session tempo. Cue-point
+meta-events (FF 07) are not treated as markers. The marker browser check downloads
+and re-imports the actual MIDI file; `test/experimental-midi-markers.test.js` covers
+tempo changes, offset, IDs, bounds and atomic undo.
