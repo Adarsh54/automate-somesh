@@ -1466,3 +1466,42 @@ The browser script spaces its many downloads to avoid rapid-download throttling.
 Reference: Apple's PCM bounce controls include dither for integer bit-depth
 reduction. This implementation uses plain TPDF, not Apple's proprietary options:
 https://support.apple.com/en-ie/guide/logicpro/lgcpb7e35135/10.7/mac/11.0
+
+
+### Chromatic and scale-step MIDI transposition
+
+The piano roll now has a Transpose notes panel instead of the fixed +1-semitone
+button. Choose all notes or the current selection, enter a signed semitone or
+scale-step shift, preview the affected count, then apply. Octave presets set
+±12 semitones or one complete scale cycle (7 degrees in major/minor, 5 in
+pentatonic, 12 in chromatic). They set the shift and do not immediately edit.
+The controls validate before applying and disable empty, fractional, no-op,
+missing-selection and out-of-range edits. Octave actions stay grouped when the
+form wraps. Manual edits persist normally and are one undo step.
+
+The existing notes.transpose command retains {semitones} compatibility and now
+accepts optional mode=chromatic plus noteId or comma-separated noteIds. Diatonic
+mode instead requires {mode:'diatonic',steps,root,scale}; root is 0..11, scale uses
+the existing scale names and steps is an integer -127..127. Each degree advances
+to the next allowed pitch, crossing octave boundaries. All selected pitches
+must already be in the chosen scale; use the separate Key & scale tool first
+when intentional snapping is wanted. Invalid inputs or any result outside MIDI
+0..127 reject the entire batch rather than clamp. Audio/video targets reject.
+Timing, velocity, channel, note IDs, MIDI controller/pressure events and unrelated
+notes remain unchanged. Drum-kit pitches also identify instruments; transposing
+them changes the drum sounds. This edits note data, not a live transpose insert
+or a non-destructive global transposition track. The agent prompt describes the
+same shared command and selection semantics; live model access remains
+unconfigured locally.
+
+291 tests and production build pass. Unit coverage includes all supported scales
+in all 12 keys, octave crossings, legacy/selected operation, metadata and event
+preservation, invalid batch rollback, undo/redo and MIDI export roundtrip.
+Browser checks verify visible controls and validation, selected/all scope,
+persistence, undo/redo and real offline sine renders (C4 to D4 for one C-major
+step). The panel was visually inspected and its octave buttons grouped after
+checking the wrapped layout.
+
+Reference workflow: Apple's transposer combines pitch shifting with key/scale
+controls; the implementation above operates on selected stored notes:
+https://support.apple.com/en-bn/guide/logicpro/lgceee5a5e6f/10.7/mac/11.0
