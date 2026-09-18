@@ -294,7 +294,7 @@ volume/pan automation. Playback and offline rendering share the same signal chai
 Bounce stems exports aligned per-track WAVs in a ZIP; muted tracks are excluded,
 solo is ignored, and master gain is included. Edits stop playback. Run
 `scripts/browser-experimental-effects-check.cjs` for controls, stem packaging and
-actual browser PCM regression checks. Bus/send routing is not implemented yet.
+actual browser PCM regression checks. Bus outputs and post-fader sends are available through + Bus and the mixer routing section.
 
 Run `scripts/browser-experimental-archive-check.cjs` to verify portable project
 export, import into cleared storage, restored playback and reload.
@@ -315,3 +315,9 @@ the active take and releases the microphone. Overdub/monitoring are not implemen
 `scripts/browser-experimental-recording-check.cjs` uses Chromium's fake microphone;
 it does not access physical recording hardware. Microphone access requires HTTPS
 or a trusted loopback origin.
+
+Experimental buses support nested outputs, post-fader sends, shared effects and
+volume/pan automation. Routing validation rejects feedback cycles. Bus deletion
+clears references reversibly. Run `scripts/browser-experimental-routing-check.cjs`
+for routing controls and real PCM checks. Per-track stem exports retain bus effects;
+shared nonlinear effects can make summed stems differ from the full mix.

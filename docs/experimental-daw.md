@@ -32,7 +32,7 @@ separate compatible implementations or licensed integrations.
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; CC/device/humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
-| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; buses/sends/master inserts pending |
+| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts and pre-fader sends pending |
 | Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
@@ -60,18 +60,18 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 111 tests passing; Vite production build passing.
+- Entire repository: 114 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   real-video synchronization, heavy sessions, mobile editing.
 
-Current limitations are substantive: simple oscillator instruments, no buses/sends, automation recording,
+Current limitations are substantive: simple oscillator instruments, no automation recording,
 overdub/comping, professional time stretching/pitch editing,
 notation, full MIDI event preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
 Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; cloud project storage is still pending. The full goal remains active.
 
-Next implementation priorities: cloud project storage; MIDI event/device tools; recording; bus/send routing; crossfades; movie-audio treatment and timecode; connected model validation.
+Next implementation priorities: cloud project storage; MIDI event/device tools; recording; master processing; crossfades; movie-audio treatment and timecode; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -87,7 +87,7 @@ interpolates linearly. Edits currently stop transport. Seeking initializes curve
 but does not preroll previous reverb/delay history. Stem exports exclude muted and
 video tracks, ignore solo, and include each track's inserts, automation and master
 gain. All files share the full arrangement length plus effect tails. They are
-16-bit PCM WAVs; grouped buses and higher-resolution export remain pending. ZIP
+16-bit PCM WAVs; grouped-bus export and higher-resolution export remain pending. ZIP
 creation holds rendered stems in memory, so large sessions need further work.
 
 ## Portable project checkpoint
@@ -150,3 +150,23 @@ The browser recording check uses Chromium's synthetic microphone, verifies nonze
 PCM, timeline placement, persistence, cancellation and navigation cleanup. Physical
 hardware, device selection, monitoring and latency calibration are not verified.
 Implementation reference: https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process
+
+## Bus routing checkpoint
+
++ Bus creates a mixer channel that receives track outputs and post-fader/post-pan
+sends. Bus channels support the existing insert effects and volume/pan automation.
+Outputs can route through nested buses; the command executor rejects nonexistent
+destinations and feedback cycles. Deleting a bus returns its upstream outputs to
+Master and removes sends to it, with undo restoring the routing.
+
+Bus solo includes its upstream sources, including their other output paths. This
+is source auditioning, not isolated bus-return solo. Pre-fader sends, send-level
+automation and explicit grouped-bus export remain pending. Per-track stem rendering
+keeps the bus graph, effects and tails. Shared nonlinear bus effects (such as
+compression) process each isolated stem differently from the combined full mix,
+so summing those stems need not reproduce the mix exactly.
+
+Unit tests cover cycle rejection, references/deletion/undo, bus solo, tails and
+stem routing. The browser routing check exercises output/send controls and actual
+PCM bus gain, summed sends, mute and isolated-stem signal paths. The effects browser
+regression continues to verify EQ/dynamics/delay/reverb/automation and ZIP export.
