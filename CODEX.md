@@ -290,6 +290,27 @@ Checks: `npm test`, `npm run build`, and `scripts/browser-experimental-check.cjs
 with the standard Playwright variables. The browser agent check mocks inference;
 a real provider test is still required after credentials are configured.
 
+Run the credential-free preflight with:
+
+```sh
+npm run check:daw-agent -- --config-only
+```
+
+After setting both variables in ignored `.env.local`, run:
+
+```sh
+npm run check:daw-agent
+```
+
+The full check makes up to two billable requests to the configured model using a
+disposable in-memory session. It verifies a -6 dB track edit, then a contextual
+follow-up to -3 dB, with no other state changes. It never saves projects/media or
+prints credentials/provider payloads. It exits nonzero for missing configuration,
+a failed request, an invalid plan or an incorrect result. Configuration-only mode
+makes no model request. This direct adapter check does not test WorkOS login,
+Vercel environment settings, browser audio rendering or production quotas.
+
+
 The Experimental mixer includes ordered EQ/compressor/delay/reverb inserts and
 volume/pan automation. Playback and offline rendering share the same signal chain.
 Bounce stems exports aligned per-track WAVs in a ZIP; muted tracks are excluded,

@@ -1564,3 +1564,23 @@ text, repaint/reload, caret selection, typing during a pending request, success,
 failure, cancel, switching projects and memory fallback. The measured-edit and
 post-edit verification browser workflow also passes. The draft indicator was
 visually inspected. Live model verification and the broader DAW scope remain ongoing.
+
+### Live editing-agent connection check
+
+Added npm run check:daw-agent, which loads ignored local environment settings and
+uses the real configured adapter for at most two planning requests against a
+synthetic, disposable session. It checks exact post-command state, including an
+untouched second track, then sends actual conversation deltas for a follow-up.
+The requested gains are -6 dB followed by half the reduction (-3 dB). Invalid,
+stale, absent or extra edits fail. No project, audio, credentials or provider
+payload is written or printed. Failures report only the stage and safe guidance.
+The --config-only option checks required variables without provider calls.
+
+The local preflight currently fails because OPENAI_API_KEY and DAW_AGENT_MODEL are
+both absent; no live model request was made. Configure them server-side in ignored
+.env.local, restart the API, and run the full check to obtain live evidence. A pass
+would establish these two adapter/edit behaviors, not complete DAW reliability,
+production authentication, metering, quota enforcement or general model accuracy.
+Unit tests use injected planners and do not establish live inference. They verify
+preflight request suppression, actual state comparisons, follow-up context, stale
+and unrelated edit rejection, and error redaction. The broader goal remains active.
