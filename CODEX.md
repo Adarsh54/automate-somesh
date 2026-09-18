@@ -390,7 +390,7 @@ These effects share track controls and command operations (`effect.add` targets
 the session ID). Older projects default to an empty master chain. Run
 `scripts/browser-experimental-master-check.cjs` for controls, persistence and PCM
 render checks. Stems include master processing individually; nonlinear effects may
-make their sum differ from the mix. Master meters are not implemented.
+make their sum differ from the mix. Live master metering is available as described below.
 
 The Master channel also shares the track automation editor for volume and pan.
 Master curves override static master volume/pan; clear the corresponding curve to
@@ -660,3 +660,18 @@ track list. Invalid positions reject atomically. Run
 `scripts/browser-experimental-track-order-check.cjs` for insertion math, validation,
 drag/controls, history, persistence, routing and unchanged rendered audio. Track
 multi-selection, folders and automatic scrolling while dragging remain pending.
+
+Mixer level meters show sampled stereo peaks after each track/bus volume and pan,
+plus the processed master output. Bars span -60..0 dBFS; the numeric peak holds the
+highest sampled level (including values above 0 dBFS) until Reset peak or a playback
+restart. Red text indicates a held level at/above 0 dBFS, not destructive clipping
+inside the floating-point mixer. Stop clears the displays and disconnects all meter
+nodes. No live reading is shown as “—”, rather than implying measured silence.
+Meters observe playback only; they do not alter the session or exported audio.
+Cycle playback meters its combined pre-rendered master buffer (including click when
+enabled); individual track/bus values are unavailable there. Linear playback's
+metronome bypasses the mixer meters. Recording accompaniment/input monitors do not
+feed these meters. They sample 2,048-frame windows at UI updates and may miss brief
+peaks; they are not true-peak, RMS or LUFS meters. Run
+`scripts/browser-experimental-meters-check.cjs` for actual stereo/headroom signal,
+hold/reset, track/bus/master UI, Cycle, cleanup and signal-isolation checks.

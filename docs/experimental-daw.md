@@ -872,3 +872,18 @@ validated atomically and undoable. Drags from outside the workspace are ignored.
 up/down boundary controls, undo/redo, reload and unchanged audio through preserved
 bus routing. Unit coverage includes both insertion directions and invalid commands.
 Multiple-track reordering, track folders and drag autoscroll remain pending.
+
+### Live mixer metering
+
+Added stereo track/bus meters after fader/pan and a master meter after master
+processing. Metering branches have silent outputs and leave the audio signal
+unchanged. Held sample peaks, reset controls, -60..0 dBFS bars and above-full-scale
+indication are transient playback state. Offline exports allocate no meters.
+Cycle playback exposes only its pre-rendered combined master (including metronome),
+while unavailable strips show a dash. Stop disposes the analyser graph and clears UI.
+
+192 tests and build pass. Real browser audio checks cover source/bus/master output,
+stereo channel separation, >0 dBFS float headroom, held/reset peaks, Cycle, cleanup
+and unchanged output samples. These are sampled 2,048-frame window peaks, not a
+continuous clip counter or true-peak/loudness measurement. RMS/LUFS, limiter,
+recording/agent meter telemetry and per-track Cycle metering remain pending.
