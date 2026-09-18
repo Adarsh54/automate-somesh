@@ -616,3 +616,26 @@ click active (saved PCM stays silent). Simulated MIDI tests cover click cleanup
 on stop/cancel/disconnect, save retry, late device open and late audio resume.
 Physical device latency, acoustic bleed, OS scheduling and browser support still
 need hardware verification. Count-in, monitoring and overdub remain pending.
+
+## Recording count-in checkpoint
+
+Audio and MIDI recording now support zero, one or two bars of count-in using the
+current BPM and quarter-note beats per bar. Pre-roll click is independent of the
+During recording checkbox; that option controls click after recording begins.
+Click phase follows the selected playhead, including mid-bar starts. The document
+field `countInBars` defaults to zero and uses shared command validation/undo.
+
+Audio capture gates on the scheduled post-count-in frame. MIDI capture ignores
+messages timestamped before its calculated capture start, including pre-roll note
+ons and controllers. Early input does not enter the saved take; held notes begun
+before recording are not retriggered. MIDI performance timestamps are mapped to
+the audio clock during preparation, without hardware-latency compensation. Save
+is disabled during count-in, while Cancel/navigation release active input and click.
+Ten-minute recording limits count the take, not pre-roll.
+
+163 unit tests and build pass. New tests cover duration/frame rounding, MIDI pre-roll
+exclusion and setting validation. Browser tests verify audio/MIDI count-in display,
+early-save disabling, no pre-roll in saved material, placement, cancel cleanup,
+persistence and PCM click stopping/continuation. Existing synthetic microphone and
+MIDI lifecycle checks also pass. Physical devices, hardware latency and suspended
+background-tab timing still require verification; overdub/monitoring remain open.

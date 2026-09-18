@@ -6,6 +6,7 @@ export function createMidiCapture(startedAt,{maxSeconds=600,maxItems=20000}={}){
  return {
   push(data,time){
    if(closed||!Number.isFinite(time))return false;
+   if(time<startedAt)return true;
    if(time-startedAt>=maxSeconds*1000)return false;
    const status=data?.[0],type=status>>4,channel=status&15,length=type===12||type===13?2:3;
    if(status<128||status>=240||data?.length!==length||[...data].slice(1).some(n=>!Number.isInteger(n)||n<0||n>127))return true;

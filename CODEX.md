@@ -487,3 +487,12 @@ Count-in, monitoring, overdub and calibrated hardware latency remain pending.
 The existing microphone and MIDI input browser checks now verify click lifecycle;
 the microphone check also records silence with click enabled and verifies the
 saved file remains silent. Tests use simulated devices, not physical hardware.
+
+Metronome → Count-in supports Off, 1 bar or 2 bars for both audio and MIDI takes.
+It plays pre-roll click even when During recording is off; that checkbox controls
+whether click continues into the take. The selected playhead stays the take's
+start. Input during pre-roll is excluded, Save is disabled until recording begins,
+and Cancel discards the preparation. Settings persist through undoable
+`session.set` → `countInBars` (integer 0..2; old projects default to 0).
+Run `scripts/browser-experimental-count-in-check.cjs` for audio/MIDI pre-roll,
+placement, cleanup, persisted settings and click continuation audio checks.
