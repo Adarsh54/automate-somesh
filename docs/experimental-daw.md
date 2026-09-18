@@ -1472,3 +1472,39 @@ inspected. Broader DAW parity and live model verification remain ongoing.
 
 Reference: Apple's Gain utility provides gain, polarity, swap and mono controls:
 https://support.apple.com/en-ie/guide/logicpro/lgcef2d8c650/mac
+
+### Agent-requested mix analysis
+
+The editing agent can now request analyze_mix when a level question or edit needs
+current full-mix sample measurements. The browser renders and measures the same
+unchanged session, then makes a fresh planning request with the original user
+instruction, document, selection, bounded conversation and validated mixAnalysis.
+This is a stateless two-request workflow: no raw provider reasoning or tool-call
+history is replayed. The application supplies the measured data as normal context.
+The server exposes the empty-argument analysis tool only when allowAnalysis is
+true and current measurements are absent. Old clients default to false. Mixed
+analysis/edit responses, unknown tools, invalid arguments and multiple calls are
+rejected. The second request disables analysis, preventing repeated render loops.
+
+Each user submission permits at most one render and two model requests, with a
+five-minute overall browser deadline (each server model request still has its
+90-second timeout). The browser checks session identity/revision before analysis,
+after rendering and before edits. Analysis uses the original playback master,
+not export-bypass settings. Cancellation prevents continuation and cancels sample
+scanning; an already running OfflineAudioContext render or source decode may finish
+before cancellation unwinds. Upstream model cancellation is not guaranteed.
+Missing media/render failures stop the request without edits. A successful edit
+remains one undo step. Its previous measurements become stale; automatic post-edit
+verification, per-track measurements, LUFS and true-peak are still pending.
+
+269 tests and build pass. Server tests cover tool availability, strict arguments,
+current/stale measurement rules and mixed-tool rejection. Browser tests perform
+real rendering and worker scanning with mocked model responses, then apply a
+measurement-derived edit. They verify cancellation during rendering, an intervening
+manual edit, repeated-tool rejection and render failure cleanup. Existing agent
+conversation, persistence-failure and session-isolation tests also pass. The agent
+panel was visually inspected. Live model inference is not verified by these tests.
+
+Official OpenAI function-calling documentation (application executes tool code and
+makes a subsequent model request with results):
+https://developers.openai.com/api/docs/guides/function-calling
