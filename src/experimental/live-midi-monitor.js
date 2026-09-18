@@ -1,8 +1,9 @@
 import {drumBuffer} from './drums.js';
 // Live audition is independent of capture: count-in notes sound but are not saved.
-export function createLiveMidiMonitor(context, {destination=context.destination,maxVoices=64,instrument='triangle'}={}) {
+export function createLiveMidiMonitor(context, {destination=context.destination,maxVoices=64,instrument='triangle',sampleBuffer=null,sampleRoot=60}={}) {
  if(!Number.isInteger(maxVoices)||maxVoices<1||maxVoices>128)throw Error('Live MIDI supports 1–128 voices.');
- if(!['triangle','sine','square','sawtooth','drumKit'].includes(instrument))throw Error('Unsupported monitor instrument.');
+ if(!['triangle','sine','square','sawtooth','drumKit','sampler'].includes(instrument))throw Error('Unsupported monitor instrument.');
+ if(instrument==='sampler'&&!sampleBuffer)throw Error('Assign a sampler source before monitoring MIDI.');
  const voices=new Set(),channels=new Map();let disposed=false;
  function channel(id){if(!channels.has(id)){const gain=context.createGain(),pan=context.createStereoPanner();gain.connect(pan);pan.connect(destination);channels.set(id,{gain,pan,volume:1,expression:1,bend:0,sustain:false});update(channels.get(id));}return channels.get(id);}
  function update(c){c.gain.gain.setValueAtTime(c.volume*c.expression,context.currentTime);}
@@ -14,8 +15,8 @@ export function createLiveMidiMonitor(context, {destination=context.destination,
   const c=channel(id),matching=()=>[...voices].filter(v=>v.channel===id);
   if(kind===0x90&&b){
    while(voices.size>=maxVoices)release(voices.values().next().value,true);
-   const drum=instrument==='drumKit',osc=drum?context.createBufferSource():context.createOscillator(),gain=context.createGain(),now=context.currentTime;
-   if(drum){osc.buffer=drumBuffer(context,a);gain.gain.value=b/127;}else{osc.type=instrument;osc.frequency.value=440*2**((a-69)/12);osc.detune.value=c.bend*200;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(b/127*.18,now+.008);}
+   const drum=instrument==='drumKit',sampler=instrument==='sampler',osc=(drum||sampler)?context.createBufferSource():context.createOscillator(),gain=context.createGain(),now=context.currentTime;
+   if(drum){osc.buffer=drumBuffer(context,a);gain.gain.value=b/127;}else if(sampler){osc.buffer=sampleBuffer;osc.playbackRate.value=2**((a-sampleRoot)/12);osc.detune.value=c.bend*200;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(b/127,now+.005);}else{osc.type=instrument;osc.frequency.value=440*2**((a-69)/12);osc.detune.value=c.bend*200;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(b/127*.18,now+.008);}
    osc.connect(gain);gain.connect(c.gain);const v={osc,gain,drum,channel:id,pitch:a,held:true,released:false};voices.add(v);osc.onended=()=>destroy(v);osc.start();
   }else if(kind===0x80||(kind===0x90&&!b)){
    const v=matching().find(v=>v.pitch===a&&v.held);if(v){v.held=false;if(!c.sustain&&!v.drum)release(v);}

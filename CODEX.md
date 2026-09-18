@@ -859,3 +859,24 @@ locrian, majorPentatonic, minorPentatonic, chromatic), optional `direction`
 Omitting selection targets all notes in the region. Directional requests with no
 valid pitch inside MIDI 0–127 reject atomically. Run
 `test/experimental-scales.test.js` and `scripts/browser-experimental-scales-check.cjs`.
+
+MIDI tracks now support a single-sample instrument. The track/region inspector's
+Sampler section can upload an audio file or choose an existing device-cached audio
+source and set its root MIDI note (C4=60). Assignment selects the sampler without
+creating an extra audio track. Notes transpose by playback speed, preserve the
+source, follow velocity/CC7/11/10/64 and ±2-semitone pitch bend, and stop at note
+release/region end or the end of the sample. Source playback does not loop or time
+stretch. Seeking integrates earlier pitch-bend rates to resume at the source offset.
+Live MIDI monitoring uses the sample too; physical hardware latency is unverified.
+
+Shared track.add/set accept instrument `sampler`, nullable `sampleAssetId` and
+`sampleRoot` (0–127, default 60). Source dependencies include samples for playback,
+recording accompaniment, mix/stem/region/range bounces, account saves and portable
+archives. Archive/cloud restoration remaps sample IDs together with region IDs;
+server project validation requires their media mappings. Missing samples fail
+clearly. Sample upload/decode currently has the existing 250 MB browser limit.
+Run `test/experimental-sampler.test.js` and
+`scripts/browser-experimental-sampler-check.cjs` for schema/history, source
+references, archive bytes, server mappings, pitched render, live voice cleanup,
+mock cloud save/restore and reload. Multi-sample zones, looping/envelope controls,
+velocity layers, slicing and pitch-independent time stretching remain pending.

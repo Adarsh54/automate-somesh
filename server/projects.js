@@ -1,3 +1,4 @@
+import {referencedAssets} from '../src/experimental/media-refs.js';
 import {sessionSchema,applyCommands} from '../src/experimental/session.js';
 import {neon} from "@neondatabase/serverless";
 import {z} from "zod";
@@ -34,7 +35,7 @@ const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
-  if(result.data.data.type==='daw'){const data=result.data.data;try{if(!data.session.title.trim())throw Error();applyCommands(data.session,[{op:'session.set',values:{}}]);const ids=[...new Set(data.session.tracks.flatMap(t=>t.regions.map(r=>r.assetId).filter(Boolean)))];if(ids.length!==Object.keys(data.assets).length||ids.some(id=>!Object.hasOwn(data.assets,id)))throw Error();}catch{throw Object.assign(new Error('INVALID_DAW_PROJECT'),{status:400});}return result.data;}
+  if(result.data.data.type==='daw'){const data=result.data.data;try{if(!data.session.title.trim())throw Error();applyCommands(data.session,[{op:'session.set',values:{}}]);const ids=referencedAssets(data.session);if(ids.length!==Object.keys(data.assets).length||ids.some(id=>!Object.hasOwn(data.assets,id)))throw Error();}catch{throw Object.assign(new Error('INVALID_DAW_PROJECT'),{status:400});}return result.data;}
   if(result.data.data.type==="reel"){if(new Set(result.data.data.audioIds).size!==result.data.data.audioIds.length)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});return result.data;}
   const ids=result.data.data.tracks.map(t=>t.id);
   if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)) || Object.keys(result.data.data.media?.tracks || {}).some(id=>!ids.includes(id)))

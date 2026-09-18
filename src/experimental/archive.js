@@ -1,8 +1,9 @@
+import {referencedAssets as assetIds,remapAssets} from './media-refs.js';
 import JSZip from 'jszip';
 import {sessionSchema,applyCommands} from './session.js';
 const LIMIT=512*1024*1024,DOCUMENT_LIMIT=10*1024*1024;
 function validate(document){const parsed=sessionSchema.parse(document);applyCommands(parsed,[{op:'session.set',values:{}}]);return parsed;}
-const assetIds=session=>[...new Set(session.tracks.flatMap(t=>t.regions.map(r=>r.assetId).filter(Boolean)))];
+
 export async function exportArchive(document,files){
  const session=validate(document),zip=new JSZip(),assets=[];let bytes=0;
  for(const [index,id]of assetIds(session).entries()){
@@ -28,6 +29,6 @@ export async function importArchive(data){
   const bytes=await readEntry(entry,remaining);remaining-=bytes.length;
   const id=crypto.randomUUID();mapping.set(asset.id,id);records.push({id,file:new File([bytes],asset.name,{type:asset.type,lastModified:Number.isFinite(asset.lastModified)?asset.lastModified:0})});
  }
- for(const track of session.tracks)for(const region of track.regions)if(region.assetId)region.assetId=mapping.get(region.assetId);
+ remapAssets(session,mapping);
  session.id=crypto.randomUUID();session.revision=0;return {session,records};
 }

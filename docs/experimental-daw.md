@@ -1098,3 +1098,22 @@ history. Browser coverage checks previews, selected/all scope, key highlighting,
 nonmutation before Apply, preserved non-pitch fields, settings and undo. Persisted
 key-signature maps, score notation and diatonic transposition remain pending; real
 model execution is unverified.
+
+### Single-sample MIDI instrument
+
+Sampler tracks now use an uploaded/existing audio source and root MIDI pitch.
+Notes drive pitched buffer voices through the MIDI controller, region, track, bus
+and master paths. Velocity, sustain and ±2-semitone bend apply; seeking integrates
+prior bend rates for source position. Live MIDI audition supports the same sample.
+Upload assignment creates no extra track and is undoable. Sample dependencies flow
+through decode, recording accompaniment, bounces, cloud saving/validation and
+portable archive remapping. Account projects cannot omit sampler source mappings.
+
+224 tests and build pass. Browser rendering checks root/octave frequency, source
+assignment/root undo, bounce assets, live voice cleanup, stored source reload and
+mock cloud save/restore mapping. Unit tests cover sample settings, muted dependency
+selection, unchanged archive media bytes/shared remapping, server asset validation
+and pitch-bend seek offsets. Real cloud deployment, hardware latency and real-model
+execution were not verified in this change. This is one sample per track; looping,
+multisample zones, layers, slicing, envelope controls and independent time stretching
+remain pending. Pitch currently changes playback speed and sample duration.

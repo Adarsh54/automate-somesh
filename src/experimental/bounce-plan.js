@@ -1,3 +1,4 @@
+import {audibleAssets} from './media-refs.js';
 import {audibleSources,stemGroups,stemSession,routedTail} from './routing.js';
 import {sessionDuration} from './audio-engine.js';
 import {effectTail} from './effects.js';
@@ -23,6 +24,6 @@ export function createBouncePlan(input,{mode='mix',stemMode='tracks',regionId}={
   entries=[{name:session.title+'-'+filename(region.name)+'.wav',document:stemSession(session,{...track,regions:[region]})}];
  }else throw Error('Unknown bounce mode.');
  if(duration>600)throw Error('Experimental offline bounce currently supports up to 10 minutes.');
- const assets=new Set(entries.flatMap(entry=>audibleSources(entry.document).filter(t=>t.kind==='audio').flatMap(t=>t.regions.map(r=>r.assetId))));
+ const assets=new Set(entries.flatMap(entry=>audibleAssets(entry.document)));
  return {title:session.title,position,duration,entries,zip,assets:[...assets]};
 }
