@@ -1415,3 +1415,32 @@ export confirms original master settings remain intact. The older browser script
 was updated to respect preserved disclosure state rather than toggling an already
 open panel closed. Export settings were visually inspected. Broader DAW scope,
 agent-controlled exports and live model validation remain ongoing.
+
+### Reverse MIDI note timing
+
+The piano roll has a Reverse note timing panel with all/selected-note scope and
+phrase/entire-region bounds. Phrase bounds use the earliest selected start and
+latest selected end. The operation mirrors complete note intervals, preserving
+lengths, pitches, velocities, channels and IDs. Repeating it restores the original
+phrase (within floating-point precision). Unequal-length notes that originally
+start together may start at different times after interval reversal. Controller
+events, sustain pedal, instrument envelopes and audio samples are not reversed.
+A preview counts moved notes; empty selection and no-op submissions are disabled.
+
+Shared command notes.reverse targets a MIDI region with optional bounds phrase
+(default) or region, plus noteId or comma-separated noteIds. Omit selection fields
+for all notes. The formula is boundStart + boundEnd - start - duration. Invalid
+selection, unsupported fields, non-MIDI targets and out-of-region results reject
+the atomic batch. The editing-agent prompt describes the command. One operation
+is one undo step and changes persist in the ordinary session document.
+
+267 tests and build pass. Unit checks verify interval positions, preserved note
+attributes/controller events, two-pass reversal, undo/redo and invalid-batch
+rollback. Browser checks cover phrase/region modes, selection/no-op feedback,
+undo/reload and actual offline audio showing the note moved out of its original
+time window. The panel was visually inspected. Live model execution and broader
+DAW parity remain unverified or ongoing.
+
+Reference: Apple's MIDI Transform documentation describes reversing selected
+positions around a pivot. This implementation explicitly mirrors note intervals:
+https://support.apple.com/en-sg/guide/logicpro/lgcp21584fd3/10.7/mac/11.0
