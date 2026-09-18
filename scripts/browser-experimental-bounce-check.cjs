@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
 const JSZip=require('jszip');
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE,headless:true});
+ const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE,headless:true,args:['--disable-audio-output']});
  try {
   const page=await browser.newPage({viewport:{width:1600,height:1100}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -11,14 +11,16 @@ const JSZip=require('jszip');
   await page.route('**/api/projects*',r=>r.fulfill({json:{projects:[]}}));
   await page.route('**/api/daw',r=>r.fulfill({json:{configured:false}}));
   await page.goto((process.env.CUESTAMP_URL||'http://127.0.0.1:5190/')+'#/experimental');
-  await page.getByText('Command harness',{exact:true}).click();
+  await page.getByText('Session restored on this device.',{exact:true}).waitFor();
+  await page.waitForFunction(()=>!document.querySelector('[data-audio-input-refresh]')?.disabled);
+  if(!await page.locator('#daw-json').isVisible())await page.getByText('Command harness',{exact:true}).click();
   await page.locator('#daw-json').fill(JSON.stringify([
    {op:'track.add',values:{id:'tone',kind:'midi',name:'Tone'}},
    {op:'region.add',target:'tone',values:{id:'region',duration:1}},
    {op:'note.add',target:'region',values:{pitch:69,start:0,duration:.5,velocity:1}}
   ]));
   await page.getByRole('button',{name:'Execute commands',exact:true}).click();
-  await page.locator('.daw-bounce-settings summary').click();
+  if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.locator('[data-bounce-rate]').selectOption('48000');
   await page.locator('[data-bounce-depth]').selectOption('24');
   const download=async name=>{const pending=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();return fs.readFile(await (await pending).path());};
@@ -28,7 +30,7 @@ const JSZip=require('jszip');
   // The note must already sound at 10 ms, not after the real-time 25 ms startup delay.
   let peak=0;for(let frame=480;frame<600;frame++){peak=Math.max(peak,Math.abs(wav.readIntLE(44+frame*6,3)));}
   assert.ok(peak>1000,`Unexpected silent leading padding: ${peak}`);
-  await page.locator('.daw-bounce-settings summary').click();
+  if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.locator('[data-bounce-depth]').selectOption('32');
   const zip=await JSZip.loadAsync(await download('Bounce stems'));
   const entries=Object.values(zip.files).filter(f=>!f.dir);assert.equal(entries.length,1);
@@ -39,7 +41,7 @@ const JSZip=require('jszip');
   const decoded=await page.evaluate(async bytes=>{const ctx=new AudioContext();try{const b=await ctx.decodeAudioData(new Uint8Array(bytes).buffer);return {duration:b.duration,channels:b.numberOfChannels};}finally{await ctx.close();}},[...float]);
   assert.equal(decoded.duration,1);assert.equal(decoded.channels,2);
   // Grouped export must sum routed instruments before shared bus processing.
-  await page.getByText('Command harness',{exact:true}).click();
+  if(!await page.locator('#daw-json').isVisible())await page.getByText('Command harness',{exact:true}).click();
   await page.locator('#daw-json').fill(JSON.stringify([
    {op:'track.add',values:{id:'group',kind:'bus',name:'Drums'}},
    {op:'track.set',target:'tone',values:{output:'group'}},
@@ -53,7 +55,7 @@ const JSZip=require('jszip');
    {op:'note.add',target:'direct-region',values:{pitch:48,start:.2,duration:.5,velocity:.7}}
   ]));
   await page.getByRole('button',{name:'Execute commands',exact:true}).click();
-  await page.locator('.daw-bounce-settings summary').click();
+  if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.locator('[data-bounce-stems]').selectOption('groups');
   const groupedZip=await JSZip.loadAsync(await download('Bounce stems'));
   const groupedEntries=Object.values(groupedZip.files).filter(f=>!f.dir);
@@ -69,9 +71,28 @@ const JSZip=require('jszip');
    peakError=Math.max(peakError,Math.abs(sum-mix.readFloatLE(offset)));energy+=sum*sum;
   }
   assert.ok(energy>1);assert.ok(peakError<.000001,`Group sum mismatch: ${peakError}`);
-  await page.locator('.daw-bounce-settings summary').click();
+  const beforeMaster=JSON.parse((await download('Export session JSON')).toString());
+  if(!await page.locator('#daw-json').isVisible())await page.getByText('Command harness',{exact:true}).click();
+  await page.locator('#daw-json').fill(JSON.stringify([
+   {op:'session.set',values:{masterDb:-6,masterPan:1}},
+   {op:'automation.point',target:beforeMaster.id,values:{parameter:'gainDb',time:0,value:-12}},
+   {op:'effect.add',target:beforeMaster.id,values:{kind:'eq',type:'lowpass',frequency:20,q:.7}}
+  ]));await page.getByRole('button',{name:'Execute commands',exact:true}).click();
+  const full=await download('Bounce WAV');
+  const setMaster=async value=>{await page.locator('.daw-bounce-settings').evaluate(el=>{el.open=true;});await page.locator('[data-bounce-master]').selectOption(value);};
+  await setMaster('noInserts');const noInserts=await download('Bounce WAV');
+  await setMaster('bypass');const bypass=await download('Bounce WAV');
+  let fullEnergy=0,noInsertEnergy=0,originalEnergy=0;
+  for(let offset=56;offset<mix.length;offset+=4){const original=mix.readFloatLE(offset);originalEnergy+=original*original;fullEnergy+=full.readFloatLE(offset)**2;noInsertEnergy+=noInserts.readFloatLE(offset)**2;assert.ok(Math.abs(bypass.readFloatLE(offset)-original)<1e-6);if((offset-56)%8===0)assert.ok(Math.abs(noInserts.readFloatLE(offset))<1e-6);}
+  assert.ok(fullEnergy<noInsertEnergy*.05,'Master lowpass should strongly attenuate these notes');
+  // Hard-right Web Audio stereo panning sums these identical L/R channels.
+  assert.ok(Math.abs(noInsertEnergy/originalEnergy-2*10**(-12/10))<1e-5,`Master gain automation must survive insert bypass: ${noInsertEnergy/originalEnergy}`);
+  const bypassZip=await JSZip.loadAsync(await download('Bounce stems')),stemBuffers=await Promise.all(Object.values(bypassZip.files).filter(f=>!f.dir).map(f=>f.async('nodebuffer')));
+  for(let offset=56;offset<mix.length;offset+=4)assert.ok(Math.abs(stemBuffers.reduce((sum,b)=>sum+b.readFloatLE(offset),0)-mix.readFloatLE(offset))<1e-6);
+  const afterMaster=JSON.parse((await download('Export session JSON')).toString());assert.equal(afterMaster.masterEffects.length,1);assert.equal(afterMaster.masterDb,-6);assert.equal(afterMaster.masterPan,1);assert.equal(afterMaster.masterAutomation[0].value,-12);
+  if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.screenshot({path:'/tmp/cuestamp-bounce-settings.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS selectable mix/stem WAV formats, sample rate, exact timeline start float WAV decoding, grouped ZIP names/alignment and PCM mix reconstruction.');
+  console.log('PASS master insert/channel bypass PCM verification, untouched session, selectable mix/stem WAV formats, sample rate, exact timeline start float WAV decoding, grouped ZIP names/alignment and PCM mix reconstruction.');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});

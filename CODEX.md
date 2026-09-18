@@ -1150,3 +1150,26 @@ renders to reach a -12 dBFS target with master automation, pan and an EQ insert,
 checks preserved automation/effects and undo, and rejects stale/silent use. The
 analysis panel was visually inspected. Provider responses remain mocked in this
 test; live model inference and the broader DAW scope remain ongoing.
+
+### Export master-processing options
+
+Export settings now offers Include master processing (the default), Bypass master
+inserts, and Bypass entire master. Insert bypass removes only master effects and
+their tails; master gain/pan and their automation remain. Entire-master bypass
+also sets unity master gain, centered pan and no master automation in the export
+snapshot. Track/bus inserts, faders, automation, routing and sends stay included.
+The setting applies to mix, individual/grouped stems, selected-region and range
+bounces. Range duration stays exact; other exports omit bypassed master tails.
+Playback, mix analysis, saved documents and undo history are unchanged. Export
+settings remain transient UI state. Analyze mix describes the processed playback
+mix, so its measured peak is not a measurement of a bypassed export. Bypassing
+master processing does not eliminate nonlinear processing shared across buses.
+
+265 tests and build pass. Unit checks cover every bounce mode, tail durations,
+invalid settings and source-document immutability. Real downloaded browser WAVs
+verify insert attenuation, retained gain automation/pan, entire-master bypass
+against an unprocessed reference and grouped-stem reconstruction. The session
+export confirms original master settings remain intact. The older browser script
+was updated to respect preserved disclosure state rather than toggling an already
+open panel closed. Export settings were visually inspected. Broader DAW scope,
+agent-controlled exports and live model validation remain ongoing.

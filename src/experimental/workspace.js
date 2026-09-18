@@ -116,7 +116,7 @@ export function createExperimentalWorkspace({account,esc}){
   }finally{busy=false;paint();}
  }
  async function bounce(mode='mix'){
-  if(busy)return;const plan=createBouncePlan(session(),{mode,stemMode:bounceSettings.stemMode,regionId:region()?.id}),settings={...bounceSettings};
+  if(busy)return;const plan=createBouncePlan(session(),{mode,stemMode:bounceSettings.stemMode,masterMode:bounceSettings.masterMode,regionId:region()?.id}),settings={...bounceSettings};
   stop();busy=true;status='Rendering stereo WAV…';paint();
   try{
    for(const id of plan.assets)await decode(id);

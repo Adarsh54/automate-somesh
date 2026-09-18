@@ -25,3 +25,13 @@ test('range bounce uses a snapshot of cycle bounds, audible overlapping media an
  const plan=createBouncePlan(s,{mode:'range'});assert.equal(plan.position,1000.5);assert.equal(plan.duration,1);assert.deepEqual(plan.assets,['source']);assert.equal(plan.entries[0].document.tracks[0].regions.length,1);assert.equal(plan.entries[0].document.tracks[0].output,'bus');assert.equal(plan.zip,false);s.loopEnd=2000;s.tracks[0].regions[0].offset=8;assert.equal(plan.entries[0].document.loopEnd,1001.5);assert.equal(plan.entries[0].document.tracks[0].regions[0].offset,2);
  assert.throws(()=>createBouncePlan(s,{mode:'range'}),/10 minutes/);s.loopEnd=s.loopStart;assert.throws(()=>createBouncePlan(s,{mode:'range'}),/valid cycle/);
 });
+test('export master bypass is snapshot-only and preserves track/bus processing across all modes',()=>{
+ const s=fixture();s.tracks.forEach(t=>{t.solo=false;t.regions.forEach(r=>r.start=0);});s.loopStart=0;s.loopEnd=1;s.masterDb=-6;s.masterPan=.4;s.masterAutomation=[{id:'master-point',parameter:'gainDb',time:0,value:-9}];
+ const withMaster=applyCommands(s,[{op:'effect.add',target:s.id,values:{id:'master-reverb',kind:'reverb',decay:2}}]),before=structuredClone(withMaster);
+ for(const mode of ['mix','stems','region','range'])for(const masterMode of ['full','noInserts','bypass']){
+  const plan=createBouncePlan(withMaster,{mode,masterMode,regionId:'r'});
+  assert.equal(plan.duration,mode==='range'?1:masterMode==='full'?5:3);
+  for(const {document:d}of plan.entries){assert.equal(d.masterEffects.length,masterMode==='full'?1:0);assert.equal(d.masterDb,masterMode==='bypass'?0:-6);assert.equal(d.masterPan,masterMode==='bypass'?0:.4);assert.deepEqual(d.masterAutomation,masterMode==='bypass'?[]:before.masterAutomation);assert.deepEqual(d.tracks.find(t=>t.id==='bus').effects,before.tracks.find(t=>t.id==='bus').effects);}
+ }
+ assert.deepEqual(withMaster,before);assert.throws(()=>createBouncePlan(withMaster,{masterMode:'invalid'}),/master processing/);
+});

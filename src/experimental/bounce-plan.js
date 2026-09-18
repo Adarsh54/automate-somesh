@@ -5,8 +5,12 @@ import {sessionDuration} from './audio-engine.js';
 import {effectTail} from './effects.js';
 const filename=name=>name.replace(/[^a-z0-9 _-]/gi,'').slice(0,80)||'region';
 // Capture the complete document before any asynchronous decoding/rendering.
-export function createBouncePlan(input,{mode='mix',stemMode='tracks',regionId}={}){
- const session=structuredClone(input);let position=0,duration=sessionDuration(session),entries,zip=false;
+export function createBouncePlan(input,{mode='mix',stemMode='tracks',masterMode='full',regionId}={}){
+ if(!['full','noInserts','bypass'].includes(masterMode))throw Error('Choose a valid master processing mode.');
+ const session=structuredClone(input);
+ if(masterMode!=='full')session.masterEffects=[];
+ if(masterMode==='bypass'){session.masterDb=0;session.masterPan=0;session.masterAutomation=[];}
+ let position=0,duration=sessionDuration(session),entries,zip=false;
  if(mode==='mix')entries=[{name:session.title+'.wav',document:session}];
  else if(mode==='range'){
   position=session.loopStart;duration=session.loopEnd-position;
