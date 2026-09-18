@@ -1647,3 +1647,33 @@ inspected. Live inference, momentary correlation and broader DAW parity remain o
 
 Reference: Apple's correlation meter and mono compatibility guidance:
 https://support.apple.com/en-ca/guide/logicpro/lgcef24f430f/mac
+
+### Stretch a complete MIDI region
+
+The MIDI region inspector now includes Stretch MIDI region. Enter a new duration
+or use Half length / Double length, review the note/controller count and apply.
+All note onsets/lengths, every MIDI event timestamp, fades and the region duration
+scale together relative to its existing start. Sustain, pitch bend, expression,
+program changes and pressure retain their relative timing and original values.
+Timeline start, source offset, pitches, channels, velocities, project tempo,
+track/master automation and neighboring regions stay unchanged. Expansion can
+overlap another region; this is not ripple editing. Instrument envelope times and
+effect delays remain in seconds. Undo restores the entire original region.
+
+Shared region.timeScale accepts only factor 0.0625..16 and a MIDI-region target.
+It validates region/note/event limits before committing the atomic batch. Fades
+are bounded against tiny floating-point rounding at the new region edge. Empty
+MIDI regions can also be resized. Audio/video regions reject this operation; the
+existing notes.timeScale remains available for notes-only selected-phrase edits.
+The agent prompt explains which command includes controller data.
+
+285 tests and build pass. Unit checks cover event types/channels/values, notes,
+fades, unchanged neighboring regions and automation, invalid factors/limits,
+non-MIDI targets, undo/redo and MIDI roundtrip. Browser checks verify inspector
+presets/custom lengths, validation, persistence, and a real synth render proving
+that sustain-pedal timing stretches with the notes. The inspector was visually
+inspected. Audio stretching, graphical time handles, tempo maps and broader DAW
+parity remain ongoing; live model access is still unconfigured locally.
+
+Reference: Apple's MIDI region time-stretch workflow:
+https://support.apple.com/en-gb/guide/logicpro/lgcpf7c0ebee/10.7/mac/11.0
