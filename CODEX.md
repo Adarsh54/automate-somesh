@@ -1343,3 +1343,34 @@ text, repaint/reload, caret selection, typing during a pending request, success,
 failure, cancel, switching projects and memory fallback. The measured-edit and
 post-edit verification browser workflow also passes. The draft indicator was
 visually inspected. Live model verification and the broader DAW scope remain ongoing.
+
+### MIDI phrase time scaling
+
+Scale note timing in the piano roll changes spacing from either the first chosen
+note or the region start. It supports all/selected notes, 6.25% to 1600% scaling,
+and Double speed (50%) / Half speed (200%) presets. Scale note lengths is enabled
+by default; disabling it changes onsets only. Preview counts changed notes and
+shows the resulting phrase end. Notes that exceed the region reject the edit
+unless Extend region to fit is enabled. That option grows the region only; it
+never shrinks it or moves neighboring regions. Its existing fade-out therefore
+moves later. Controllers, pitches, velocities, channels, tempo and other regions
+stay unchanged. This edits MIDI timing, not audio time-stretching or tempo maps.
+
+Shared notes.timeScale targets a MIDI region with required factor 0.0625..16,
+anchor phrase/region (default phrase), scaleLengths (default true), extendRegion
+(default false), and optional noteId or comma-separated noteIds. Onset formula:
+anchor + (oldStart - anchor) * factor. Lengths scale only when requested. Results
+must respect 3,600-second note and 86,400-second region limits; invalid selections
+or values reject the entire batch. Chords retain aligned starts. It is one undo
+step, persists normally and exports through MIDI. The agent prompt documents it.
+
+279 tests and build pass. Unit checks cover chords, preserved metadata/events,
+selection and anchors, lengths/onsets, region extension, rollback, undo/redo and
+MIDI roundtrip. Browser checks exercise presets and custom input, selection,
+validation, undo/reload and a real offline render showing the earlier note onset.
+The controls were visually inspected. Live model configuration and the broader
+DAW parity work remain ongoing.
+
+Reference workflows: Apple's MIDI Double/Half Speed and piano-roll time handles:
+https://support.apple.com/en-gb/guide/logicpro/lgcp215831be/mac
+https://support.apple.com/en-ie/guide/logicpro/lgcp4a739b4b/10.7/mac/11.0
