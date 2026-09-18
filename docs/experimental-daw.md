@@ -987,3 +987,19 @@ actual PCM from separate +0.2/-0.4 synthetic channels for all three modes. Offli
 monitor renders confirm stereo separation and centered mono. Tests also verify
 unavailable-channel rejection, device cleanup and control locking. Real hardware
 channel maps/latency remain unverified, and broader recording/comping remains open.
+
+### Local session backup recovery
+
+The existing per-account backup slot now has a preview/confirm recovery action and
+raw JSON download. Validated backups reopen as independent local copies, preserving
+arrangement and media IDs while resetting document identity/revision and undo/agent
+history. The current session replaces the backup, allowing a subsequent recovery
+back to it. Corrupt or stale backups do not replace the session; quota failures
+restore the original backup. Missing media is reported before confirmation and is
+not falsely represented as recovered. No account write happens automatically.
+
+208 tests and build pass. Browser coverage verifies preview/cancel, missing-media
+notice, new identity, exact track preservation, swap, reload, corrupt backup
+preservation/download and absence of cloud writes. Unit tests exercise account-key
+isolation, revision reset, stale backup and storage rollback. Timestamped history,
+cloud autosave and recovery of media deleted from the device remain pending.

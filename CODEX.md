@@ -768,3 +768,18 @@ assignment, simultaneous independent armed tracks and latency calibration remain
 pending. Run `test/experimental-recording-channels.test.js` and
 `scripts/browser-experimental-recording-channels-check.cjs`; the latter measures
 separate left/right synthetic signals in saved PCM and monitor output.
+
+Experimental's Recover backup previews the account-scoped local backup created by
+New session or opening another account session. It displays title, track count,
+revision and missing source-media count before confirmation. Recovery creates a
+new local session identity/revision with the arrangement intact and a '(recovered)'
+title suffix; account projects are untouched until an explicit save. The displaced
+current session becomes the next backup. A failed primary storage write rolls the
+backup back; parsing/validation and stale-backup checks happen before mutation.
+Undo history and agent trace reset on recovery. Source media still comes from this
+account's device cache; the backup JSON is not a media archive. Download backup
+exports its raw JSON even if damaged, without replacing it. This is one recovery
+slot, not a timestamped version history or cloud autosave system. Run
+`test/experimental-recovery.test.js` and
+`scripts/browser-experimental-recovery-check.cjs` for restore/swap, corruption,
+quota rollback, missing-media warnings, account isolation and reload behavior.
