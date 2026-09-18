@@ -1366,3 +1366,29 @@ peak navigation, stale-context omission, an edit during rendering, worker error/
 cancellation and preservation of the rendered buffer. Model responses are mocked;
 live inference remains unverified. Existing agent conversation/race checks also
 pass. The analysis panel was visually inspected. Full DAW parity remains ongoing.
+
+### Master sample-peak normalization
+
+After Analyze mix, set Target sample peak (-60 to 0 dBFS) and Apply peak target.
+The adjustment offsets the master fader and every master gain automation point
+by the same decibel amount, preserving the curve, pan and insert settings. It is
+one undoable session edit, followed automatically by a fresh full-mix render.
+The measured result is displayed; a failed or interrupted reanalysis does not
+undo the level adjustment. Undo is available, and old measurements remain stale.
+Targets already within 0.001 dB, silent mixes, stale analysis and adjustments
+outside the master/automation range (-96 to +12 dB) cannot be applied. The target
+is a transient UI preference, not saved project data. This changes the session's
+master level for playback and export; it is not an export-only setting, limiter,
+LUFS normalization or true-peak protection. Analysis respects mute/solo.
+
+Shared command master.gain.offset accepts deltaDb (-108..108) and optional current
+session ID. It validates all resulting levels before committing; it never silently
+clips the automation curve. The agent prompt documents deriving the offset from
+current full-mix measurements and a requested target, and requiring new analysis
+afterward. The agent itself does not yet initiate an analysis tool loop.
+
+264 unit/server tests and the build pass. Browser verification uses real offline
+renders to reach a -12 dBFS target with master automation, pan and an EQ insert,
+checks preserved automation/effects and undo, and rejects stale/silent use. The
+analysis panel was visually inspected. Provider responses remain mocked in this
+test; live model inference and the broader DAW scope remain ongoing.
