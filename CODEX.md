@@ -385,9 +385,15 @@ and MIDI-download checks; `test/experimental-note-transforms.test.js` covers com
 bounds, determinism and agent validation. Tool defaults reset on reload; note edits
 persist. Humanization is destructive but undoable, so undo before comparing seeds.
 
-Experimental Mixer → Master effects edits the summed mix before master volume.
+Experimental Mixer → Master channel edits the summed mix before master volume.
 These effects share track controls and command operations (`effect.add` targets
 the session ID). Older projects default to an empty master chain. Run
 `scripts/browser-experimental-master-check.cjs` for controls, persistence and PCM
 render checks. Stems include master processing individually; nonlinear effects may
-make their sum differ from the mix. Master meters/automation are not implemented.
+make their sum differ from the mix. Master meters are not implemented.
+
+The Master channel also shares the track automation editor for volume and pan.
+Master curves override static master volume/pan; clear the corresponding curve to
+return to static controls. `automation.point` and `automation.clear` use the session
+ID for master edits. The master browser check includes rendered fades, panning and
+seek restoration; unit coverage is in `test/experimental-master-automation.test.js`.

@@ -33,7 +33,7 @@ separate compatible implementations or licensed integrations.
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts implemented; pre-fader sends pending |
-| Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
+| Automation | Editable parameter curves with playback/export parity | Track and master volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
@@ -71,7 +71,7 @@ decoding currently caps individual audio at 250 MB; offline bounce caps ten minu
 Movie audio can be extracted to a separate track and mixed when the browser supports its codec. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; account save/reopen now uses the existing project and media services. The full goal remains active.
 
-Next implementation priorities: MIDI event/device tools; recording; master metering/automation; crossfades; movie render/export; connected model validation.
+Next implementation priorities: MIDI event/device tools; recording; master metering; crossfades; movie render/export; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -356,10 +356,32 @@ The shared renderer applies these inserts in transport, cycle and offline WAV
 rendering; arrangement duration includes their tails. Per-track stems include the
 master chain, processed separately for each exported track, so nonlinear processing
 can prevent their sum from reproducing the complete mix. Cycle effects still reset
-at each loop boundary. Master metering, master automation, limiting, and export
+at each loop boundary. Master metering, limiting, and export
 options to omit master processing remain pending.
 
 137 unit tests and the build pass. The master browser check verifies controls,
 reorder/bypass/removal/undo, persistence, real PCM filtering/compression and bypass,
 cancellation of opposite signals before master processing, post-effect master
 gain, and rendered reverb tails. Existing track effects/automation/stem checks pass.
+
+## Master automation checkpoint
+
+Master channel now has the shared volume/pan automation editor and a static master
+pan control. `session.set` accepts masterPan (-1..1); automation.point/clear target
+the session ID for master curves, while automation.delete still targets a point ID.
+Master curves run after master inserts, override masterDb/masterPan and interpolate
+in the same way as track curves. Seeking initializes the value at the requested
+position. Playback, cycle rendering and offline exports use the same scheduler.
+Master processing is also retained in per-track stems.
+
+The document stores masterAutomation and masterPan; older sessions default to no
+points and centered pan. Commands enforce global ID uniqueness, parameter bounds,
+atomic rollback and undo. Clearing one master curve preserves the other parameter
+and all track automation. This edits curves explicitly; live automation recording
+and master metering remain pending.
+
+140 unit tests and the build pass. Browser checks exercise master curve controls,
+clear/undo, static pan and persistence, and measure actual PCM fade levels, hard-pan
+channel isolation, seek equivalence and effects followed by master gain. The
+existing track-effects/automation/export regression also passes. Agent fade plans
+are tested with a mocked provider; real inference remains unverified.
