@@ -814,3 +814,18 @@ remain pending.
 and frame counts for a range 1,001 seconds into a session, source position and
 master automation, missing unrelated media, metronome exclusion, Cycle-off exports
 and an empty silent range. Unit checks cover bounds, snapshot isolation and routing.
+
+### Track duplication
+
+Track actions now supports full duplication and a new empty track with the same
+settings. Copies are inserted after the source, preserve outgoing routing, and
+regenerate all editable IDs while sharing media references. Audio, MIDI, movie and
+bus tracks are supported. A copied bus does not automatically receive routes from
+existing tracks. The validated `track.duplicate` command is shared with the agent,
+with optional id/name/includeRegions, full atomic validation and one-step undo.
+
+185 tests and build pass. Unit checks cover every child ID, source independence,
+settings-only/bus behavior, shared audio/video assets, invalid flags/IDs and limits.
+Browser checks cover both actions, edits, undo/redo, reload and actual synthesized
+PCM matching two copies of the original. Multi-track duplication, track templates
+and duplication of entire routed groups remain pending.

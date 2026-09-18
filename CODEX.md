@@ -608,3 +608,16 @@ full mix and trim it externally until DSP pre-roll is implemented. Settings/docu
 are snapshotted before decoding. Run
 `scripts/browser-experimental-range-bounce-check.cjs` for actual WAV sample/length,
 automation, unrelated-media exclusion and silence checks.
+
+Select a track (or one of its regions), then open Track actions → Duplicate track.
+The copy appears immediately after its source and has independent IDs for regions,
+notes, controller events, effects and automation. Original media assets are shared,
+so this does not upload or duplicate source files. Instrument, gain/pan, mute/solo,
+effects, automation, outgoing bus and sends are retained. New track with same
+settings omits regions while keeping these settings. Duplicating a bus copies only
+its settings/outgoing routes; existing tracks keep feeding the original bus.
+`track.duplicate` uses target=source ID and optional values id, name, includeRegions
+(boolean, default true). Limits and full routing/ID validation apply atomically;
+each copy is one undo step. Run `test/experimental-duplicate-track.test.js` and
+`scripts/browser-experimental-duplicate-track-check.cjs` for independent editing,
+media references, bus behavior, history, persistence and real rendered audio checks.
