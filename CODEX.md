@@ -268,7 +268,9 @@ in account-scoped localStorage and original imported files in IndexedDB, not Neo
 Audio/video/MIDI import, arrangement, basic note editing, mixer gain/pan/mute/solo,
 undo/redo, local playback and WAV/MIDI export are initial implementations. See
 [the full scope ledger](docs/experimental-daw.md) for missing features and evidence;
-this is not yet Logic Pro parity. JSON session export does not bundle source files.
+this is not yet Logic Pro parity. Export project creates a portable `.cuestamp.zip` with original media. JSON-only
+export keeps device-local references. Portable archives currently support up to
+512 MB of media and a 10 MB document.
 
 Manual actions and agent batches use `src/experimental/session.js`. The command
 executor validates the complete result before commit, rejects stale revisions and
@@ -293,3 +295,6 @@ Bounce stems exports aligned per-track WAVs in a ZIP; muted tracks are excluded,
 solo is ignored, and master gain is included. Edits stop playback. Run
 `scripts/browser-experimental-effects-check.cjs` for controls, stem packaging and
 actual browser PCM regression checks. Bus/send routing is not implemented yet.
+
+Run `scripts/browser-experimental-archive-check.cjs` to verify portable project
+export, import into cleared storage, restored playback and reload.
