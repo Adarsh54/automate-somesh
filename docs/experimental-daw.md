@@ -829,3 +829,17 @@ settings-only/bus behavior, shared audio/video assets, invalid flags/IDs and lim
 Browser checks cover both actions, edits, undo/redo, reload and actual synthesized
 PCM matching two copies of the original. Multi-track duplication, track templates
 and duplication of entire routed groups remain pending.
+
+### Moving regions between tracks
+
+Added cross-track region drag/drop and inspector destination selection. Transfers
+retain all source data/IDs and use the destination instrument/effects/routing.
+The shared `region.move` command accepts destination trackId and optional timeline
+start, rejecting incompatible types, buses and invalid placement atomically. UI
+shows compatible/incompatible target lanes and preserves horizontal snap behavior.
+
+187 tests and build pass. Browser checks exercise pure vertical drags, invalid
+lane rejection, inspector transfer, undo/redo, reload and actual audio reflecting
+destination gain. Unit checks cover all three region kinds, preserved source
+references and atomic failure. Multi-region transfers, drag autoscroll and copying
+regions between tracks without moving remain pending.

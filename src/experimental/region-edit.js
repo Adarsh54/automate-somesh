@@ -31,18 +31,23 @@ export function bindRegions(root,{session,zoom,select,seek,execute,guard,sourceD
  root.querySelectorAll('[data-region]').forEach(el=>{
   const owner=session.tracks.find(t=>t.regions.some(r=>r.id===el.dataset.region)),region=owner.regions.find(r=>r.id===el.dataset.region);
   el.onclick=()=>select(region.id);el.ondblclick=()=>seek(region.id,region.start);
-  el.onpointerdown=e=>{if(e.button!==0)return;const handle=e.target.closest('[data-region-handle]')?.dataset.regionHandle||'move',x=e.clientX,step=60/session.tempo/4,revision=session.revision;let moved=false,command=null;el.setPointerCapture(e.pointerId);
-   el.onpointermove=event=>{const dx=event.clientX-x;if(!moved&&Math.abs(dx)<4)return;moved=true;const delta=event.shiftKey?dx/zoom:Math.round(dx/zoom/step)*step,end=region.start+region.duration,minLength=.01;let values;
-    if(handle==='move'){values={start:Math.max(0,region.start+delta)};el.style.left=values.start*zoom+'px';}
+  el.onpointerdown=e=>{if(e.button!==0)return;const handle=e.target.closest('[data-region-handle]')?.dataset.regionHandle||'move',x=e.clientX,y=e.clientY,step=60/session.tempo/4,revision=session.revision;let moved=false,command=null;el.setPointerCapture(e.pointerId);
+   el.onpointermove=event=>{const dx=event.clientX-x;if(!moved&&Math.abs(dx)<4&&(handle!=='move'||Math.abs(event.clientY-y)<4))return;moved=true;const delta=event.shiftKey?dx/zoom:Math.round(dx/zoom/step)*step,end=region.start+region.duration,minLength=.01;let values;
+    if(handle==='move'){
+     const lanes=[...root.querySelectorAll('[data-lane]')],lane=lanes.find(l=>{const box=l.getBoundingClientRect();return event.clientY>=box.top&&event.clientY<box.bottom&&event.clientX>=box.left&&event.clientX<box.right;});
+     const trackId=lane?.dataset.lane||owner.id,destination=session.tracks.find(t=>t.id===trackId);
+     for(const l of lanes){l.classList.toggle('daw-region-drop',l===lane&&destination.kind===owner.kind);l.classList.toggle('daw-region-drop-invalid',l===lane&&destination.kind!==owner.kind);}
+     values={trackId,start:Math.max(0,region.start+delta)};el.style.left=values.start*zoom+'px';
+    }
     else if(handle==='fadeIn'||handle==='fadeOut'){const other=handle==='fadeIn'?region.fadeOut:region.fadeIn;values={[handle]:Math.max(0,Math.min(region.duration-other,region[handle]+delta*(handle==='fadeOut'?-1:1)))};const h=el.querySelector(`[data-region-handle="${handle}"]`);h.style[handle==='fadeIn'?'left':'right']=values[handle]/region.duration*100+'%';}
     else{const sourceEnd=sourceDuration(region.assetId)??region.offset+region.duration;let start=region.start,finish=end;
      if(handle==='trim-start'){const available=owner.kind==='midi'?0:region.reverse?sourceEnd-region.offset-region.duration:region.offset;start=Math.max(0,region.start-available,Math.min(end-minLength,region.start+delta));}
      else{const available=owner.kind==='midi'?0:region.reverse?region.offset:sourceEnd-region.offset-region.duration;finish=Math.max(region.start+minLength,Math.min(end+available,end+delta));}
      values={start,end:finish};el.style.left=start*zoom+'px';el.style.width=Math.max(18,(finish-start)*zoom)+'px';
     }
-    command={op:handle.startsWith('trim')?'region.trim':'region.set',target:region.id,values};
+    command={op:handle==='move'?'region.move':handle.startsWith('trim')?'region.trim':'region.set',target:region.id,values};
    };
-   const cleanup=()=>{el.onpointermove=null;el.onpointerup=null;el.onpointercancel=null;};
+   const cleanup=()=>{root.querySelectorAll('.daw-region-drop,.daw-region-drop-invalid').forEach(l=>l.classList.remove('daw-region-drop','daw-region-drop-invalid'));el.onpointermove=null;el.onpointerup=null;el.onpointercancel=null;};
    el.onpointercancel=()=>{cleanup();select(region.id);};el.onpointerup=guard(event=>{cleanup();el.releasePointerCapture(event.pointerId);if(moved&&command){select(region.id,false);execute([command],handle==='move'?'Moved region':handle.startsWith('trim')?'Trimmed region':'Changed region fade',revision);}else select(region.id);});
   };
  });

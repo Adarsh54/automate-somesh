@@ -621,3 +621,17 @@ its settings/outgoing routes; existing tracks keep feeding the original bus.
 each copy is one undo step. Run `test/experimental-duplicate-track.test.js` and
 `scripts/browser-experimental-duplicate-track-check.cjs` for independent editing,
 media references, bus behavior, history, persistence and real rendered audio checks.
+
+Move regions between tracks by dragging vertically in the arrangement or selecting
+Region inspector → Move to track. Destinations must have the same type (audio,
+MIDI or video); bus tracks cannot contain regions. Compatible drop lanes highlight
+with the accent color, incompatible lanes with a red outline. Vertical-only drags
+preserve timeline placement; horizontal movement retains the existing snap/Shift
+behavior. Region IDs, source offsets, notes, events and fades are preserved, while
+the destination instrument, mixer effects and routing determine playback.
+`region.move` targets a region ID with required `trackId` and optional absolute
+`start`; it is atomic and undoable. The inspector moves at the existing time.
+Run `scripts/browser-experimental-region-move-check.cjs` for drag feedback,
+incompatible rejection, inspector/history/persistence and destination gain PCM;
+`test/experimental-region-move.test.js` covers audio/MIDI/video transfers and invalid
+commands. Multiple-region moves and automatic scrolling during drags remain pending.
