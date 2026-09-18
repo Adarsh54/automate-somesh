@@ -5,3 +5,5 @@
 @media(max-width:800px){.daw-mix-detail{grid-template-columns:1fr}}
 
 .daw-effect-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-bottom:12px}.daw-effect-toolbar h4{grid-column:1/-1;margin:0}.daw-effect-toolbar select{min-width:0;width:100%}.daw-effect-toolbar button{white-space:nowrap}
+
+.daw-note-editor form{display:grid;grid-template-columns:repeat(4,minmax(80px,1fr));gap:10px;margin-bottom:16px}.daw-note-editor label{display:grid;gap:5px;font-size:12px}.daw-note-scroll{overflow-x:auto}.daw-note-grid button{touch-action:none;cursor:grab;overflow:visible}.daw-note-grid button[aria-pressed=true]{outline:2px solid var(--text);z-index:2}.daw-note-grid [data-note-resize]{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:ew-resize;background:rgba(255,255,255,.5)}.daw-note-grid>div>span{z-index:3;background:var(--surface);display:inline-block;width:28px;pointer-events:none}.daw-note-editor input{min-width:0;width:100%}@media(max-width:700px){.daw-note-editor form{grid-template-columns:1fr 1fr}}

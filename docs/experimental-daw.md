@@ -29,7 +29,7 @@ separate compatible implementations or licensed integrations.
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations implemented; graphical trim/fade handles and dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Initial Web Audio transport/video monitor; seek, offsets and markers; loop/timecode and real video regression pending |
-| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, command-level note editing, quantize and transpose implemented; CC/device/graphical note inspector/humanize pending |
+| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; CC/device/humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; buses/sends/master inserts pending |
@@ -71,8 +71,7 @@ decoding currently caps individual audio at 250 MB; offline bounce caps ten minu
 Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; cloud project storage is still pending. The full goal remains active.
 
-Next implementation priorities: cloud project storage; MIDI note
-inspector and event/device tools; recording; bus/send routing; graphical
+Next implementation priorities: cloud project storage; MIDI event/device tools; recording; bus/send routing; graphical
 region trim/fades; movie-audio treatment and timecode; connected model validation.
 
 ## Mixer and rendering checkpoint
@@ -105,3 +104,13 @@ Archive creation remains memory-based. JSON-only export remains available.
 effect/edit persistence, ID isolation, missing sources and malformed manifests.
 `scripts/browser-experimental-archive-check.cjs` tests export followed by clearing
 local storage and IndexedDB, import, playback and reload.
+
+## Piano-roll editing checkpoint
+
+Notes support selection, pitch/start/length/velocity fields, drag movement in
+sixteenth-note increments, right-edge resizing, duplicate and explicit deletion.
+The inspector displays beats while shared commands store seconds. The selected
+note ID is passed to the agent. Invalid edits leave the prior document unchanged.
+The browser piano regression covers drag pitch/time, resize, selection without
+deletion, duplicate/delete/undo, edit rejection, region inspector and reload.
+Multiple-note selection, variable snap grids and MIDI CC lanes remain pending.

@@ -298,3 +298,7 @@ actual browser PCM regression checks. Bus/send routing is not implemented yet.
 
 Run `scripts/browser-experimental-archive-check.cjs` to verify portable project
 export, import into cleared storage, restored playback and reload.
+
+The Experimental piano roll has a beat-based note inspector, pitch/time dragging,
+right-edge resizing, velocity, duplicate and explicit delete controls. Run
+`scripts/browser-experimental-piano-check.cjs` for editing and persistence checks.
