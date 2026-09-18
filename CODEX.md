@@ -419,3 +419,10 @@ and/or value while preserving ID/parameter and rejecting collisions. Run
 `scripts/browser-experimental-automation-edit-check.cjs` for interaction/focus,
 undo, collision and persistence checks, and
 `test/experimental-automation-edit.test.js` for command invariants.
+
+MIDI file imports now use one atomic `midi.import` command (original SMF base64 plus
+optional start seconds). Limits: 8 MB/file, 128 session tracks, 20,000 notes and
+20,000 channel events per imported track. Invalid files preserve undo/redo; valid
+imports undo as one action. Run `scripts/browser-experimental-midi-import-check.cjs`
+for a 10,001-note import, failure recovery, export and reload, and
+`test/experimental-midi-import.test.js` for history retention and size limits.

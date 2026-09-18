@@ -450,3 +450,31 @@ points, repeated keyboard edits/focus, deletion/undo, numeric updates, collision
 rollback, send isolation and persisted changes. Track/master/send PCM regression
 checks also pass. Multi-point selection, curved interpolation and live automation
 recording remain pending.
+
+## Atomic MIDI import checkpoint
+
+The previous importer issued batches of note/event edits and then combined history
+entries afterward. Large files could evict older undo entries, and failed imports
+replaced the history object, losing existing undo/redo. MIDI file import now uses a
+single `midi.import` command: decode/parse/validate the entire file, construct its
+tracks and regions, then commit once. Failures leave the session and history
+unchanged. A successful import increments the revision once, and undo removes the
+whole imported file. Existing imports use fresh IDs, so the same file can be
+imported more than once. Import stops transport before applying changes.
+
+The command accepts original SMF data as base64 and optional start in session
+seconds. Limits are 8 MB per MIDI file, 128 total session tracks, and 20,000 notes
+plus 20,000 channel events per imported track. Existing time/duration bounds still
+apply. Long track names are capped at the document's 200-character limit. Files
+with no supported notes/channel events reject rather than creating empty history.
+Times retain the parser's tempo-map conversion to seconds; tempo-map round-trip,
+SysEx and unsupported metadata remain pending. Agent instructions prohibit
+fabricating MIDI payloads; normal UI uploads invoke the same validated command.
+
+148 unit tests and the build pass. The browser check imports 10,001 notes and 250
+controller events, verifies single-step undo/redo, failed-import preservation,
+export counts and reload. This run completed the import in 247 ms on the local test
+machine; that is one measured fixture, not a general performance guarantee. Unit
+tests also verify retention of 99 earlier undo entries and rejection of oversized
+note lists. Large-session real-time playback and piano-roll rendering still need
+separate performance work.

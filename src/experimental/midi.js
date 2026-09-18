@@ -30,3 +30,15 @@ export function writeMidi(session){
  for(const track of session.tracks.filter(t=>t.kind==='midi')){const events=[];for(const r of track.regions)for(const e of r.events||[])events.push({tick:Math.round((r.start+e.start)*session.tempo/60*ppq),priority:0,data:eventBytes(e)});for(const r of track.regions)for(const n of r.notes){if(n.velocity===0)continue;const start=Math.round((r.start+n.start)*session.tempo/60*ppq),end=Math.max(start+1,Math.round((r.start+n.start+n.duration)*session.tempo/60*ppq));events.push({tick:start,priority:2,data:[144|(n.channel||0),n.pitch,Math.max(1,Math.round(n.velocity*127))]},{tick:end,priority:1,data:[128|(n.channel||0),n.pitch,0]});}events.sort((a,b)=>a.tick-b.tick||a.priority-b.priority);let previous=0;const name=str(track.name),data=[0,255,3,...vlq(name.length),...name];for(const e of events){data.push(...vlq(e.tick-previous),...e.data);previous=e.tick;}data.push(0,255,47,0);chunks.push(chunk(data));}
  return new Uint8Array([...str('MThd'),0,0,0,6,0,1,...int(chunks.length,2),...int(ppq,2),...chunks.flat()]);
 }
+
+export const MAX_MIDI_IMPORT_BYTES=8*1024*1024;
+export function encodeMidiImport(buffer){
+ const bytes=new Uint8Array(buffer);if(bytes.byteLength>MAX_MIDI_IMPORT_BYTES)throw Error('MIDI imports support files up to 8 MB.');
+ let text='';for(let offset=0;offset<bytes.length;offset+=32768)text+=String.fromCharCode(...bytes.subarray(offset,offset+32768));
+ return btoa(text);
+}
+export function decodeMidiImport(data){
+ if(typeof data!=='string'||data.length>Math.ceil(MAX_MIDI_IMPORT_BYTES/3)*4||data.length%4||!data.length||!/^[A-Za-z0-9+/]*={0,2}$/.test(data))throw Error('Invalid MIDI import data or file exceeds 8 MB.');
+ let binary;try{binary=atob(data);}catch{throw Error('Invalid MIDI import encoding.');}if(binary.length>MAX_MIDI_IMPORT_BYTES)throw Error('MIDI imports support files up to 8 MB.');
+ return Uint8Array.from(binary,c=>c.charCodeAt(0)).buffer;
+}
