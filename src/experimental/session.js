@@ -3,7 +3,7 @@ import {quantizeNotes,humanizeNotes} from './note-transforms.js';
 import {frameRates} from './timecode.js';
 import {midiEventSchema,chasedEvents} from './midi-events.js';
 import {validateRouting} from './routing.js';
-import {trimmedRegion} from './region-edit.js';
+import {trimmedRegion,trimmedMidiRegion} from './region-edit.js';
 import {effectSchema,automationSchema} from './effects.js';
 import {z} from 'zod';
 const ident=z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
@@ -49,7 +49,7 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'region.set':Object.assign(need(r,'Region'),pick(v,['name','start','offset','duration','gainDb','fadeIn','fadeOut','reverse']));break;
    case 'region.delete':need(r,'Region');owner.regions=owner.regions.filter(x=>x!==r);break;
    case 'region.extractAudio':need(r,'Region');if(owner.kind!=='video'||!r.assetId)throw Error('Select a movie region to extract its audio.');pick(v,['name','trackId','regionId']);session.tracks.push(track.parse({...owner,id:v.trackId||crypto.randomUUID(),name:v.name||owner.name+' audio',kind:'audio',regions:[{...structuredClone(r),id:v.regionId||crypto.randomUUID(),notes:[],events:[]}]}));break;
-   case 'region.trim':need(r,'Region');if(owner.kind==='midi')throw Error('Trim audio or video regions; use the note editor for MIDI.');pick(v,['start','end']);Object.assign(r,trimmedRegion(r,v.start,v.end));break;
+   case 'region.trim':need(r,'Region');pick(v,['start','end']);Object.assign(r,(owner.kind==='midi'?trimmedMidiRegion:trimmedRegion)(r,v.start,v.end));break;
    case 'region.duplicate':need(r,'Region');pick(v,['start']);owner.regions.push({...structuredClone(r),id:crypto.randomUUID(),start:v.start??r.start+r.duration,notes:r.notes.map(n=>({...n,id:crypto.randomUUID()})),events:r.events.map(e=>({...e,id:crypto.randomUUID()}))});break;
    case 'region.split':{
     need(r,'Region');pick(v,['time']);const at=Number(v.time)-r.start;if(!Number.isFinite(at)||at<=0||at>=r.duration)throw Error('Split must be inside the region.');

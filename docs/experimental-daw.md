@@ -554,3 +554,24 @@ instruments compressed together inside a bus. Unit tests cover nested outputs,
 send-only contributors, muted/video exclusion, solo clearing, routing validity and
 unchanged source documents. Physical-device and production deployment validation
 are outside this export checkpoint.
+
+## MIDI region crop checkpoint
+
+MIDI timeline regions now expose trim handles and a numeric Crop MIDI region form.
+The shared `region.trim` command accepts absolute start/end boundaries inside the
+current region. Notes are clipped and rebased without changing surviving IDs,
+pitches, channels or velocities. Latest pre-cut controller/program/bend/pressure
+state is chased to zero, unless an event for that state already exists at the cut.
+Notes released before the cut but held by sustain are retained through their pedal
+release. Fades are constrained to the remaining region. Undo restores the exact
+original notes/events; invalid commands leave the document unchanged.
+
+This is an event crop, not a non-destructive source-window model. Outward trim is
+clamped and cannot restore cropped material; use Undo. Synth envelopes restart at
+the new note onset, so a left crop does not preserve oscillator phase or the exact
+waveform from the original note. Non-destructive hidden MIDI material and continuous
+synthesis state across edits remain future work. No claim of full Logic parity.
+
+157 unit tests pass. Browser verification covers edge dragging, numeric boundaries,
+controller chase, undo/redo, reload, and actual offline audio before/inside/after
+the crop. Audio/video source-based trimming remains on its existing code path.

@@ -455,3 +455,13 @@ effect tails. The mode is a workspace preference and resets on reload.
 Run `scripts/browser-experimental-bounce-check.cjs` for grouped ZIP downloads and
 PCM reconstruction, plus `test/experimental-stem-groups.test.js` for membership,
 nested routing, send preservation and non-mutation.
+
+MIDI regions support inward edge dragging and Region inspector → Crop MIDI region.
+Boundaries use absolute timeline seconds. Cropping clips/rebases notes, carries
+controller state into the new start and retains pedal-held notes. This edits MIDI
+events; Undo restores removed content, while outward dragging does not. Region
+movement and Length in Apply edits remain separate operations. The shared
+`region.trim` command supports the same behavior for agent/manual actions.
+Run `scripts/browser-experimental-midi-trim-check.cjs` for UI, undo, persistence and
+rendered audio boundaries; `test/experimental-midi-trim.test.js` covers channel state,
+pedal-held notes and atomic rejection of invalid bounds.
