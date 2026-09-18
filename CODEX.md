@@ -337,3 +337,9 @@ installed FFmpeg binary and checks picture sync, offsets and audible extraction.
 to open its bar-based step sequencer; hits remain ordinary MIDI notes editable in
 the piano roll. Run `scripts/browser-experimental-drums-check.cjs` for pattern,
 velocity, undo, MIDI export and actual audio-render checks.
+
+Cycle playback stores a start/end range and repeats its rendered audio (up to ten
+minutes). Use selected region sets the range. Effects restart each cycle; edits
+stop playback. Full-session export ignores Cycle. Run
+`scripts/browser-experimental-cycle-check.cjs` for wrapping, pause, persistence,
+PCM boundaries and cancellation of a pending render.

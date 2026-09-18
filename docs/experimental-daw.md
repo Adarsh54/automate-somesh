@@ -28,7 +28,7 @@ separate compatible implementations or licensed integrations.
 | Experimental workspace | Separate route/sidebar tab, arrangement, inspectors, right-side agent | Initial implementation; browser check passes |
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
-| Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; loop/drop-frame timecode pending |
+| Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; cycle playback implemented; drop-frame timecode pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
@@ -60,7 +60,7 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 122 tests passing; Vite production build passing.
+- Entire repository: 124 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   heavy sessions, mobile editing.
 
@@ -232,3 +232,21 @@ probability, polymeters and pattern variations remain pending.
 Unit tests verify deterministic distinct voices and percussion-channel MIDI export.
 The browser drum check covers hit toggles, bar navigation, velocity, undo, exported
 notes and actual PCM output at the expected pattern positions.
+
+## Cycle transport checkpoint
+
+Cycle stores an enabled flag and start/end seconds in the session. Use selected
+region copies its boundaries; the agent can edit these session fields. Playback
+renders the range (up to ten minutes) once and repeats an AudioBufferSourceNode
+loop. Transport position and video synchronization follow the wrapped audio clock.
+Pause resumes within the range; Stop resets the playhead. Offline rendering begins
+at sample zero, avoiding the normal live scheduler's startup padding in every cycle.
+
+This implementation repeats the rendered slice. Effect tails and synth state reset
+at the boundary, and a discontinuity at the chosen cut can click. There is no
+cross-boundary DSP preroll or automatic loop crossfade yet. Editing stops playback;
+full-session exports ignore Cycle. Microphone takes remain standalone recordings.
+
+Unit tests check wrapping and atomic/undoable range updates. The cycle browser
+check verifies repeated wraps, pause, persistence, exact PCM range length without
+startup padding, and canceling a pending cycle render with Stop.
