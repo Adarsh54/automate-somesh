@@ -809,3 +809,17 @@ completed gesture. Existing event forms remain available for precise values and
 other event types. This is point editing, not freehand drawing or real-time CC
 record automation. Run `test/experimental-controller-lane.test.js` and
 `scripts/browser-experimental-controller-lane-check.cjs`.
+
+Create a ramp in the controller lane adds evenly spaced controller points with
+linear, ease-in or ease-out values. Start/end and maximum spacing are entered in
+beats; the shared `event.ramp` command uses region-relative seconds. Values are
+integers (0–127 for CC, 0–16383 for pitch bend); exact endpoints are retained.
+Only matching type/controller/channel events within the inclusive range are
+replaced. Other channels/controllers and outside events remain. One ramp is one
+undoable command, limited to 2,000 new points and 20,000 total region events.
+The ramp is sampled MIDI steps, not continuous interpolation. Agent values are
+`type`, `channel`, `parameter` (0 for bend), `start`, `end`, `from`, `to`, `step`,
+and optional `curve` (`linear`, `easeIn`, `easeOut`). Run
+`test/experimental-controller-ramp.test.js` and
+`scripts/browser-experimental-controller-ramp-check.cjs`; checks include rendered
+expression dynamics and MIDI export/re-import as well as selection and undo.

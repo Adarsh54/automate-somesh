@@ -1034,3 +1034,20 @@ same-time update, MIDI-channel isolation, full pitch-bend limits and exact cente
 keyboard/delete, pointer drag, persistence and undo. Unit checks cover filtering,
 sorting without mutation, snap/bounds and coordinate ranges. Freehand/ramp drawing,
 pressure lanes and live controller automation workflows remain pending.
+
+### MIDI controller ramps
+
+Controller lanes now include a ramp form with beat-based range/spacing, value
+endpoints and linear/ease-in/ease-out curves. Shared `event.ramp` uses seconds and
+is available to the agent. It replaces matching controller/channel points in the
+inclusive range, retains exact endpoints, preserves all unrelated events, and
+commits as one reversible edit. Generated points are evenly spaced no farther
+apart than requested, bounded at 2,000 per ramp and the region event cap.
+
+215 tests and build pass. Browser checks verify form conversion, visible points,
+channel/type preservation, full-resolution pitch bend, curves, single undo/redo,
+and MIDI export/re-import. Offline rendering confirms rising expression changes
+the audio amplitude. Unit tests check endpoint values, nonmutation, preservation,
+limits and atomic rollback. Ramps remain sampled MIDI steps; freehand drawing and
+continuous controller automation recording remain pending. Live agent inference
+has not been verified for this command.
