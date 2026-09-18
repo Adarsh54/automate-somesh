@@ -29,7 +29,7 @@ separate compatible implementations or licensed integrations.
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Initial Web Audio transport/video monitor; seek, offsets and markers; loop/timecode and real video regression pending |
-| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; CC/device/humanize pending |
+| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts and pre-fader sends pending |
@@ -60,13 +60,13 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 114 tests passing; Vite production build passing.
+- Entire repository: 117 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   real-video synchronization, heavy sessions, mobile editing.
 
 Current limitations are substantive: simple oscillator instruments, no automation recording,
 overdub/comping, professional time stretching/pitch editing,
-notation, full MIDI event preservation, Live Loops, or spatial audio. Browser source
+notation, SysEx and full MIDI metadata preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
 Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; cloud project storage is still pending. The full goal remains active.
@@ -112,7 +112,7 @@ The inspector displays beats while shared commands store seconds. The selected
 note ID is passed to the agent. Invalid edits leave the prior document unchanged.
 The browser piano regression covers drag pitch/time, resize, selection without
 deletion, duplicate/delete/undo, edit rejection, region inspector and reload.
-Multiple-note selection, variable snap grids and MIDI CC lanes remain pending.
+Multiple-note selection, variable snap grids and graphical MIDI CC lanes remain pending.
 
 ## Region editing checkpoint
 
@@ -170,3 +170,25 @@ Unit tests cover cycle rejection, references/deletion/undo, bus solo, tails and
 stem routing. The browser routing check exercises output/send controls and actual
 PCM bus gain, summed sends, mute and isolated-stem signal paths. The effects browser
 regression continues to verify EQ/dynamics/delay/reverb/automation and ZIP export.
+
+## MIDI channel-event checkpoint
+
+SMF import/export preserves note channels and track names, plus control change,
+pitch bend, program change, channel pressure and polyphonic pressure events.
+Controller-only tracks survive import. The MIDI event editor adds/updates/deletes
+events by beat, channel, type, controller/note number and value. These operations
+share undo and agent commands. Notes also expose their channel in the inspector.
+Tempo edits rescale events with MIDI notes; splits chase earlier controller state
+into the right segment, and duplication gives events fresh IDs.
+
+Synth playback supports CC7 volume, CC11 expression, CC10 pan, CC64 sustain and
+fixed ±2-semitone pitch bend independently by channel, including seek initialization.
+Program/pressure events and other controllers are stored/exported but do not change
+the built-in oscillator instrument. RPN bend-range changes, SysEx, full metadata,
+tempo-map interchange, MIDI hardware, and per-channel instrument assignment remain
+pending. MIDI export omits zero-velocity silent notes rather than making them audible.
+
+Unit tests verify typed event round trips, channel identity, controller-only tracks,
+validation, tempo scaling and split state. The browser MIDI-event check exercises
+the event form, export and undo, plus actual PCM volume, sustained notes and pitch
+bend. Note-edit and effects regressions cover the shared renderer and editor.

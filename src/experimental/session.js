@@ -1,14 +1,15 @@
+import {midiEventSchema,chasedEvents} from './midi-events.js';
 import {validateRouting} from './routing.js';
 import {trimmedRegion} from './region-edit.js';
 import {effectSchema,automationSchema} from './effects.js';
 import {z} from 'zod';
 const ident=z.string().min(1).max(100),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
-const note=z.object({id:ident,pitch:z.number().int().min(0).max(127),start:time,duration:z.number().positive().max(3600),velocity:z.number().min(0).max(1)});
-const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(),start:time,offset:time,duration:z.number().positive().max(86400),gainDb:db,fadeIn:time,fadeOut:time,reverse:z.boolean(),notes:z.array(note).max(20000)});
+const note=z.object({id:ident,channel:z.number().int().min(0).max(15).default(0),pitch:z.number().int().min(0).max(127),start:time,duration:z.number().positive().max(3600),velocity:z.number().min(0).max(1)});
+const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(),start:time,offset:time,duration:z.number().positive().max(86400),gainDb:db,fadeIn:time,fadeOut:time,reverse:z.boolean(),notes:z.array(note).max(20000),events:z.array(midiEventSchema).max(20000).default([])});
 const track=z.object({id:ident,name:z.string().max(200),kind:z.enum(['audio','midi','video','bus']),gainDb:db,pan:z.number().min(-1).max(1),mute:z.boolean(),solo:z.boolean(),instrument:z.enum(['sine','triangle','square','sawtooth']),regions:z.array(region).max(1000),output:ident.nullable().default(null),sends:z.array(z.object({busId:ident,gainDb:db})).max(16).default([]),effects:z.array(effectSchema).max(16).default([]),automation:z.array(automationSchema).max(2000).default([])});
 export const sessionSchema=z.object({version:z.literal(1),id:ident,title:z.string().max(200),revision:z.number().int().nonnegative(),tempo:z.number().min(20).max(300),meter:z.number().int().min(1).max(16),masterDb:db,tracks:z.array(track).max(128),markers:z.array(z.object({id:ident,name:z.string().max(200),time})).max(1000)});
 export const newSession=()=>({version:1,id:crypto.randomUUID(),title:'Untitled session',revision:0,tempo:120,meter:4,masterDb:0,tracks:[],markers:[]});
-export const operations=['session.set','track.add','track.set','track.delete','send.set','send.delete','region.add','region.trim','region.set','region.delete','region.split','region.duplicate','note.add','note.set','note.delete','notes.quantize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
+export const operations=['session.set','track.add','track.set','track.delete','send.set','send.delete','region.add','region.trim','region.set','region.delete','region.split','region.duplicate','event.add','event.set','event.delete','note.add','note.set','note.delete','notes.quantize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
 export const commandSchema=z.object({op:z.enum(operations),target:z.string().max(100).optional(),values:z.record(z.string(),z.union([z.string(),z.number(),z.boolean(),z.null()])).default({})}).strict();
 export const batchSchema=z.array(commandSchema).min(1).max(100);
 const pick=(values,allowed)=>{for(const key of Object.keys(values))if(!allowed.includes(key))throw Error(`Unsupported field: ${key}`);return values;};
@@ -19,7 +20,7 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
   const noteRegion=session.tracks.flatMap(t=>t.regions).find(r=>r.notes.some(n=>n.id===target)),n=noteRegion?.notes.find(n=>n.id===target);
   const need=(entity,label)=>{if(!entity)throw Error(`${label} not found: ${target}`);return entity;};
   switch(op){
-   case 'session.set':{const previousTempo=session.tempo;Object.assign(session,pick(v,['title','tempo','meter','masterDb']));if(v.tempo!==undefined){const ratio=previousTempo/v.tempo;for(const t of session.tracks.filter(t=>t.kind==='midi'))for(const r of t.regions){r.start*=ratio;r.duration*=ratio;r.fadeIn*=ratio;r.fadeOut*=ratio;for(const n of r.notes){n.start*=ratio;n.duration*=ratio;}}}break;}
+   case 'session.set':{const previousTempo=session.tempo;Object.assign(session,pick(v,['title','tempo','meter','masterDb']));if(v.tempo!==undefined){const ratio=previousTempo/v.tempo;for(const t of session.tracks.filter(t=>t.kind==='midi'))for(const r of t.regions){r.start*=ratio;r.duration*=ratio;r.fadeIn*=ratio;r.fadeOut*=ratio;for(const n of r.notes){n.start*=ratio;n.duration*=ratio;}for(const e of r.events)e.start*=ratio;}}break;}
    case 'track.add':session.tracks.push(track.parse({id:crypto.randomUUID(),name:'New track',kind:'audio',gainDb:0,pan:0,mute:false,solo:false,instrument:'triangle',regions:[],...pick(v,['id','name','kind','instrument'])}));break;
    case 'track.set':Object.assign(need(t,'Track'),pick(v,['name','gainDb','pan','mute','solo','instrument','output']));break;
    case 'track.delete':need(t,'Track');session.tracks=session.tracks.filter(x=>x!==t);for(const other of session.tracks){if(other.output===target)other.output=null;other.sends=other.sends.filter(s=>s.busId!==target);}break;
@@ -29,15 +30,18 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'region.set':Object.assign(need(r,'Region'),pick(v,['name','start','offset','duration','gainDb','fadeIn','fadeOut','reverse']));break;
    case 'region.delete':need(r,'Region');owner.regions=owner.regions.filter(x=>x!==r);break;
    case 'region.trim':need(r,'Region');if(owner.kind==='midi')throw Error('Trim audio or video regions; use the note editor for MIDI.');pick(v,['start','end']);Object.assign(r,trimmedRegion(r,v.start,v.end));break;
-   case 'region.duplicate':need(r,'Region');pick(v,['start']);owner.regions.push({...structuredClone(r),id:crypto.randomUUID(),start:v.start??r.start+r.duration,notes:r.notes.map(n=>({...n,id:crypto.randomUUID()}))});break;
+   case 'region.duplicate':need(r,'Region');pick(v,['start']);owner.regions.push({...structuredClone(r),id:crypto.randomUUID(),start:v.start??r.start+r.duration,notes:r.notes.map(n=>({...n,id:crypto.randomUUID()})),events:r.events.map(e=>({...e,id:crypto.randomUUID()}))});break;
    case 'region.split':{
     need(r,'Region');pick(v,['time']);const at=Number(v.time)-r.start;if(!Number.isFinite(at)||at<=0||at>=r.duration)throw Error('Split must be inside the region.');
     if(r.reverse)throw Error('Unreverse the region before splitting it.');
-    const right={...structuredClone(r),id:crypto.randomUUID(),start:r.start+at,offset:r.offset+at,duration:r.duration-at,fadeIn:0,fadeOut:Math.min(r.fadeOut,r.duration-at),notes:r.notes.filter(n=>n.start+n.duration>at).map(n=>({...n,id:crypto.randomUUID(),start:Math.max(0,n.start-at),duration:Math.min(n.duration,n.start+n.duration-at)}))};
-    r.duration=at;r.fadeOut=0;r.fadeIn=Math.min(r.fadeIn,at);r.notes=r.notes.filter(n=>n.start<at).map(n=>({...n,duration:Math.min(n.duration,at-n.start)}));owner.regions.push(right);break;
+    const right={...structuredClone(r),id:crypto.randomUUID(),start:r.start+at,offset:r.offset+at,duration:r.duration-at,fadeIn:0,fadeOut:Math.min(r.fadeOut,r.duration-at),events:[...chasedEvents(r.events,at),...r.events.filter(e=>e.start>=at).map(e=>({...e,id:crypto.randomUUID(),start:e.start-at}))],notes:r.notes.filter(n=>n.start+n.duration>at).map(n=>({...n,id:crypto.randomUUID(),start:Math.max(0,n.start-at),duration:Math.min(n.duration,n.start+n.duration-at)}))};
+    r.events=r.events.filter(e=>e.start<at);r.duration=at;r.fadeOut=0;r.fadeIn=Math.min(r.fadeIn,at);r.notes=r.notes.filter(n=>n.start<at).map(n=>({...n,duration:Math.min(n.duration,at-n.start)}));owner.regions.push(right);break;
    }
-   case 'note.add':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');r.notes.push(note.parse({id:crypto.randomUUID(),pitch:60,start:0,duration:.5,velocity:.8,...pick(v,['id','pitch','start','duration','velocity'])}));break;
-   case 'note.set':Object.assign(need(n,'Note'),pick(v,['pitch','start','duration','velocity']));break;
+   case 'event.add':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');r.events.push(midiEventSchema.parse({id:crypto.randomUUID(),...pick(v,['id','type','start','channel','parameter','value'])}));break;
+   case 'event.set':{const event=session.tracks.flatMap(t=>t.regions).flatMap(r=>r.events).find(e=>e.id===target);need(event,'MIDI event');Object.assign(event,midiEventSchema.parse({...event,...pick(v,['type','start','channel','parameter','value'])}));break;}
+   case 'event.delete':{const owner=session.tracks.flatMap(t=>t.regions).find(r=>r.events.some(e=>e.id===target));need(owner,'MIDI event');owner.events=owner.events.filter(e=>e.id!==target);break;}
+   case 'note.add':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');r.notes.push(note.parse({id:crypto.randomUUID(),pitch:60,start:0,duration:.5,velocity:.8,...pick(v,['id','pitch','start','duration','velocity','channel'])}));break;
+   case 'note.set':Object.assign(need(n,'Note'),pick(v,['pitch','start','duration','velocity','channel']));break;
    case 'note.delete':need(n,'Note');noteRegion.notes=noteRegion.notes.filter(x=>x!==n);break;
    case 'notes.quantize':need(r,'Region');pick(v,['grid']);if(!Number.isFinite(v.grid)||v.grid<=0)throw Error('Grid must be positive seconds.');for(const n of r.notes)n.start=Math.round(n.start/v.grid)*v.grid;break;
    case 'notes.transpose':need(r,'Region');pick(v,['semitones']);if(!Number.isInteger(v.semitones))throw Error('Enter whole semitones.');for(const n of r.notes)n.pitch+=v.semitones;break;
@@ -53,8 +57,8 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
   }
  }
  session.revision++;sessionSchema.parse(session);validateRouting(session);
- const ids=[session.id,...session.tracks.flatMap(t=>[t.id,...t.effects.map(e=>e.id),...t.automation.map(p=>p.id),...t.regions.flatMap(r=>[r.id,...r.notes.map(n=>n.id)])]),...session.markers.map(m=>m.id)];if(new Set(ids).size!==ids.length)throw Error('IDs must be unique.');
- for(const t of session.tracks)for(const r of t.regions){if(r.fadeIn+r.fadeOut>r.duration)throw Error('Fades must fit inside the region.');for(const n of r.notes)if(n.start+n.duration>r.duration+.001)throw Error('Notes must fit inside their region.');}
+ const ids=[session.id,...session.tracks.flatMap(t=>[t.id,...t.effects.map(e=>e.id),...t.automation.map(p=>p.id),...t.regions.flatMap(r=>[r.id,...r.notes.map(n=>n.id),...r.events.map(e=>e.id)])]),...session.markers.map(m=>m.id)];if(new Set(ids).size!==ids.length)throw Error('IDs must be unique.');
+ for(const t of session.tracks)for(const r of t.regions){if(r.fadeIn+r.fadeOut>r.duration)throw Error('Fades must fit inside the region.');for(const e of r.events)if(e.start>r.duration+.001)throw Error('MIDI events must fit inside their region.');for(const n of r.notes)if(n.start+n.duration>r.duration+.001)throw Error('Notes must fit inside their region.');}
  return session;
 }
 export class SessionHistory{

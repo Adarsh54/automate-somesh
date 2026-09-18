@@ -321,3 +321,8 @@ volume/pan automation. Routing validation rejects feedback cycles. Bus deletion
 clears references reversibly. Run `scripts/browser-experimental-routing-check.cjs`
 for routing controls and real PCM checks. Per-track stem exports retain bus effects;
 shared nonlinear effects can make summed stems differ from the full mix.
+
+The MIDI event editor supports controller, pitch-bend, program and pressure events.
+Import/export retains note channels and channel events. Synth audition supports
+CC7/11/10/64 and fixed ±2-semitone pitch bend; program/pressure events are export-only.
+Run `scripts/browser-experimental-midi-events-check.cjs` for editor and PCM checks.
