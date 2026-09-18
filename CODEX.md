@@ -384,3 +384,10 @@ and support region-wide or selected-note edits. Run
 and MIDI-download checks; `test/experimental-note-transforms.test.js` covers command
 bounds, determinism and agent validation. Tool defaults reset on reload; note edits
 persist. Humanization is destructive but undoable, so undo before comparing seeds.
+
+Experimental Mixer → Master effects edits the summed mix before master volume.
+These effects share track controls and command operations (`effect.add` targets
+the session ID). Older projects default to an empty master chain. Run
+`scripts/browser-experimental-master-check.cjs` for controls, persistence and PCM
+render checks. Stems include master processing individually; nonlinear effects may
+make their sum differ from the mix. Master meters/automation are not implemented.

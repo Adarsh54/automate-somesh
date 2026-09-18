@@ -32,7 +32,7 @@ separate compatible implementations or licensed integrations.
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; strength/swing quantization and seeded humanization implemented; device input/output pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
-| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts and pre-fader sends pending |
+| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts implemented; pre-fader sends pending |
 | Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
@@ -71,7 +71,7 @@ decoding currently caps individual audio at 250 MB; offline bounce caps ten minu
 Movie audio can be extracted to a separate track and mixed when the browser supports its codec. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; account save/reopen now uses the existing project and media services. The full goal remains active.
 
-Next implementation priorities: MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
+Next implementation priorities: MIDI event/device tools; recording; master metering/automation; crossfades; movie render/export; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -341,3 +341,25 @@ variation, input rejection, atomic rollback, undo/redo, browser controls, sessio
 restoration and downloaded MIDI timing/velocity. Multi-note selection, hardware
 MIDI recording, groove templates and non-destructive region quantize parameters
 remain pending.
+
+## Master effects checkpoint
+
+The mixer exposes Master effects using the same ordered EQ, compressor, delay and
+reverb controls as track/bus inserts. The signal path is summed tracks/buses →
+master inserts → master volume → output. Effects support add, edit, bypass, move,
+delete and undo. `effect.add` targets the session ID for a master insert; existing
+set/move/delete commands target its effect ID. Agent instructions document this
+path, and globally unique IDs and the 16-effect chain limit apply to master inserts.
+
+Sessions store `masterEffects`, defaulting to an empty chain for older projects.
+The shared renderer applies these inserts in transport, cycle and offline WAV
+rendering; arrangement duration includes their tails. Per-track stems include the
+master chain, processed separately for each exported track, so nonlinear processing
+can prevent their sum from reproducing the complete mix. Cycle effects still reset
+at each loop boundary. Master metering, master automation, limiting, and export
+options to omit master processing remain pending.
+
+137 unit tests and the build pass. The master browser check verifies controls,
+reorder/bypass/removal/undo, persistence, real PCM filtering/compression and bypass,
+cancellation of opposite signals before master processing, post-effect master
+gain, and rendered reverb tails. Existing track effects/automation/stem checks pass.

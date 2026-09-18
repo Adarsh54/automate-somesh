@@ -1,13 +1,13 @@
 import {scheduleDrum} from './drums.js';
 import {scheduleMidiChannel,schedulePitchBend,sustainedEnd} from './midi-events.js';
 import {audibleSources,routedTail,validateRouting} from './routing.js';
-import {connectEffects,scheduleAutomation} from './effects.js';
-export const sessionDuration=session=>Math.max(1,...session.tracks.flatMap(t=>t.regions.map(r=>r.start+r.duration+routedTail(session,t))));
+import {connectEffects,scheduleAutomation,effectTail} from './effects.js';
+export const sessionDuration=session=>Math.max(1,...session.tracks.flatMap(t=>t.regions.map(r=>r.start+r.duration+routedTail(session,t))))+effectTail(session.masterEffects);
 const linear=db=>10**(db/20);
 function envelope(r,time){return Math.max(0,Math.min(1,r.fadeIn?time/r.fadeIn:1,r.fadeOut?(r.duration-time)/r.fadeOut:1));}
 export function scheduleSession(context,session,buffers,position=0,options={}){
  validateRouting(session);const active=audibleSources(session);for(const t of active.filter(t=>t.kind==='audio'))for(const r of t.regions){const buffer=buffers.get(r.assetId);if(!buffer)throw Error(`Missing audio: ${r.name}. Re-import the file.`);if(r.offset+r.duration>buffer.duration+.01)throw Error(`Region exceeds its source: ${r.name}`);}
- const nodes=[],base=options.baseTime??context.currentTime+.025,master=context.createGain();master.gain.value=linear(session.masterDb);master.connect(context.destination);nodes.push(master);
+ const nodes=[],base=options.baseTime??context.currentTime+.025,master=context.createGain(),masterGain=context.createGain();masterGain.gain.value=linear(session.masterDb);connectEffects(context,master,session.masterEffects,nodes).connect(masterGain);masterGain.connect(context.destination);nodes.push(master,masterGain);
  const channels=new Map();
  for(const track of session.tracks.filter(t=>t.kind!=='video')){const input=context.createGain(),gain=context.createGain(),pan=context.createStereoPanner();connectEffects(context,input,track.effects,nodes).connect(gain);if(track.mute)gain.gain.value=0;else scheduleAutomation(gain.gain,track.automation||[],'gainDb',position,base,track.gainDb);scheduleAutomation(pan.pan,track.automation||[],'pan',position,base,track.pan);gain.connect(pan);nodes.push(input,gain,pan);channels.set(track.id,{input,pan});}
  for(const track of session.tracks.filter(t=>t.kind!=='video')){const {pan}=channels.get(track.id);pan.connect(track.output?channels.get(track.output).input:master);for(const send of track.sends||[]){const amount=context.createGain();amount.gain.value=linear(send.gainDb);pan.connect(amount).connect(channels.get(send.busId).input);nodes.push(amount);}}
