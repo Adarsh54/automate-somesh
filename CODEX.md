@@ -1574,3 +1574,43 @@ Web Audio: the held note continues after the cut, ends at the original release,
 and seeking inside the right region also restores sustain correctly. Reload
 persistence and undo/redo pass. No physical MIDI hardware or live model call was
 used for these checks.
+
+
+### Workspace keyboard controls
+
+Experimental now includes a collapsible Keyboard shortcuts reference and an
+Enable workspace shortcuts switch. The switch is account/device scoped in
+local storage (guest has a separate key), survives reload and does not change
+the project document or revision. If preference storage fails, its in-memory
+value still works for the current visit. Native buttons remain keyboard usable
+when workspace shortcuts are off.
+
+Space toggles play/pause; Home stops and returns to zero. Cmd/Ctrl Z undoes and
+Cmd/Ctrl Shift Z redoes; Ctrl Y is also accepted. With the arrangement or region
+inspector active, S splits at the playhead, D duplicates the selected region,
+and Delete/Backspace deletes it. Track selection alone does not enable deletion.
+In the piano roll, D and Delete apply to selected notes through the existing
+selection buttons. The last clicked/focused editor determines this scope even
+when a repaint moves browser focus to the body. Clicking another area clears
+editing scope. Existing controller/automation/note keyboard handlers retain
+priority through defaultPrevented; common browser shortcuts such as Cmd/Ctrl T,
+D, S, R and W are not reassigned.
+
+The document listener ignores text/select/range/contenteditable fields (including
+shadow event paths), composition, Alt/unsupported modifiers, open dialogs and
+unrelated focused controls. Space on buttons or summaries remains native. It
+suppresses held-key repeats, pauses during pointer gestures/recording/loading,
+and detaches when leaving the workspace. Reopening installs one listener set.
+Shortcuts call existing UI buttons so validation, undo, selection and error
+handling match mouse actions. This does not add transport tools to the model
+or a customizable key-map editor; those remain separate future work.
+
+301 tests and build pass. Browser checks cover actual region/note duplication
+and deletion, split, both undo/redo modifier families, live transport changes,
+Space button activation, text/IME/modal guards, repeat suppression, disabled
+preference persistence, busy and detached-root gating, navigation cleanup and
+remount. The shortcut reference was visually inspected. Browser transport used
+synthetic session audio, not physical recording devices.
+
+Reference transport workflow:
+https://support.apple.com/guide/logicpro/use-transport-key-commands-lgcp2814a670/10.7/mac/11.0
