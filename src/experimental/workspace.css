@@ -37,3 +37,5 @@
 [data-metronome-form] small{flex-basis:100%}
 form.daw-note-editor{margin-top:8px}
 .daw-piano [data-action="transpose"]{min-width:max-content}
+.daw-note-grid{position:relative;touch-action:none}
+.daw-note-grid .daw-note-marquee{position:absolute;display:block;background:color-mix(in srgb,var(--accent) 15%,transparent);border:1px solid var(--accent);z-index:5;pointer-events:none;font-size:0}

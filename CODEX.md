@@ -509,3 +509,14 @@ The agent receives validated selectedNoteIds, and `notes.move`, `notes.duplicate
 region (omission means all notes). Quantize/humanize accept noteIds as an alternative
 to noteId. Run `scripts/browser-experimental-note-selection-check.cjs` and
 `test/experimental-note-selection.test.js` for these behaviors.
+
+Piano roll Tool → Select notes enables box selection on empty grid space. Alt-drag
+provides the same action while Draw notes is active. Ctrl/Cmd/Shift adds the box's
+notes to the selection; Escape cancels the gesture. Drag a selected right edge to
+resize all selected notes by the same amount, or use Length change in beats.
+The shared `notes.resize` command takes region ID, comma-separated noteIds and
+relative seconds; omission of noteIds applies to all notes. Starts/pitches stay
+fixed and invalid resulting lengths reject the entire change. Selection/tool state
+is temporary. Box selection does not auto-scroll yet.
+Run `scripts/browser-experimental-marquee-check.cjs` for gestures, group resize,
+undo/redo and Draw mode regression, plus `test/experimental-marquee.test.js`.

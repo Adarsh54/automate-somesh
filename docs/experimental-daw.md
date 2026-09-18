@@ -664,3 +664,25 @@ group dragging, relative edits, copy/delete/undo, agent context, timing scope an
 saved edits. Existing single-note and timing/feel browser checks pass. Selection
 is transient and not persisted; marquee selection, multi-region selection and group
 resize remain pending. Real model inference remains unverified.
+
+## Box selection and group length editing checkpoint
+
+The piano-roll tool selector offers Draw notes (default) and Select notes. Dragging
+empty grid space in Select mode draws a box; Alt-drag temporarily selects in Draw
+mode. Intersecting note rectangles are selected, in either drag direction, using
+coordinates that account for grid scrolling. Ctrl/Cmd/Shift adds to the existing
+selection. Escape/pointer cancellation restores it. Selection does not change the
+document or create undo history, and empty-space selection does not add notes.
+
+Right-edge dragging now resizes the selected group by a shared duration delta,
+clamped so every note remains positive and within the region and duration limits.
+The relative Length change form offers exact beat entry. Both use one atomic
+notes.resize command through the agent/manual harness; starts, pitches and internal
+length differences are retained. Single-note resizing and Shift snap bypass remain.
+
+170 unit tests and build pass. Tests cover visual intersection geometry, reverse
+dragging, duration bounds and atomic undo. Browser checks exercise box selection,
+additive selection, Escape cancellation, Alt override, group drag/numeric resizing,
+undo/redo and ordinary Draw insertion. Existing piano inspector and snap regression
+checks pass. Box auto-scroll, multi-region selection and proportional scaling remain
+pending; this does not complete the broader DAW goal.
