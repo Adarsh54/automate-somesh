@@ -23,7 +23,8 @@ const JSZip=require('jszip');
   if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.locator('[data-bounce-rate]').selectOption('48000');
   await page.locator('[data-bounce-depth]').selectOption('24');
-  const download=async name=>{const pending=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();return fs.readFile(await (await pending).path());};
+  // Space automated downloads to avoid Chromium's rapid-download throttle.
+  const download=async name=>{await new Promise(resolve=>setTimeout(resolve,1100));const pending=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();return fs.readFile(await (await pending).path());};
   const wav=await download('Bounce WAV');
   assert.equal(wav.readUInt32LE(24),48000);assert.equal(wav.readUInt16LE(34),24);
   assert.equal(wav.readUInt32LE(40),48000*2*3);
@@ -31,12 +32,25 @@ const JSZip=require('jszip');
   let peak=0;for(let frame=480;frame<600;frame++){peak=Math.max(peak,Math.abs(wav.readIntLE(44+frame*6,3)));}
   assert.ok(peak>1000,`Unexpected silent leading padding: ${peak}`);
   if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
+  await page.locator('[data-bounce-dither]').selectOption('tpdf');
+  for(const depth of [16,24]){
+   await page.locator('[data-bounce-depth]').selectOption(String(depth));
+   const dithered=await download('Bounce WAV'),bytes=depth/8;
+   let nonzero=0;for(let frame=47000;frame<48000;frame++)for(let c=0;c<2;c++){
+    const sample=dithered.readIntLE(44+(frame*2+c)*bytes,bytes);
+    assert.ok(Math.abs(sample)<=1,`Dithered silence exceeded one LSB: ${sample}`);nonzero+=sample!==0;
+   }
+   assert.ok(nonzero>300&&nonzero<700,`Expected dither in ${depth}-bit export: ${nonzero}`);
+  }
   await page.locator('[data-bounce-depth]').selectOption('32');
+  assert.equal(await page.locator('[data-bounce-dither]').isDisabled(),true);
+
   const zip=await JSZip.loadAsync(await download('Bounce stems'));
   const entries=Object.values(zip.files).filter(f=>!f.dir);assert.equal(entries.length,1);
   const float=await entries[0].async('nodebuffer');assert.equal(float.readUInt16LE(20),3);
   assert.equal(float.readUInt16LE(34),32);assert.equal(float.readUInt32LE(24),48000);
   assert.equal(float.readUInt32LE(44),48000);assert.equal(float.readUInt32LE(52),48000*2*4);
+  for(let frame=47000;frame<48000;frame++)assert.equal(float.readFloatLE(56+frame*8),0,'Float must ignore the selected dither');
   // Verify the browser can decode the actual exported float WAV, not only its header.
   const decoded=await page.evaluate(async bytes=>{const ctx=new AudioContext();try{const b=await ctx.decodeAudioData(new Uint8Array(bytes).buffer);return {duration:b.duration,channels:b.numberOfChannels};}finally{await ctx.close();}},[...float]);
   assert.equal(decoded.duration,1);assert.equal(decoded.channels,2);
@@ -93,6 +107,6 @@ const JSZip=require('jszip');
   if(!await page.locator('[data-bounce-rate]').isVisible())await page.locator('.daw-bounce-settings summary').click();
   await page.screenshot({path:'/tmp/cuestamp-bounce-settings.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS master insert/channel bypass PCM verification, untouched session, selectable mix/stem WAV formats, sample rate, exact timeline start float WAV decoding, grouped ZIP names/alignment and PCM mix reconstruction.');
+  console.log('PASS 16/24-bit TPDF samples, float dither bypass, master insert/channel bypass PCM verification, untouched session, selectable mix/stem WAV formats, sample rate, exact timeline start float WAV decoding, grouped ZIP names/alignment and PCM mix reconstruction.');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});

@@ -1,6 +1,8 @@
 // Integer WAV clips at full scale; float WAV preserves over-range samples for mixing.
-export function encodeWav(buffer,{bitDepth=16}={}) {
+export function encodeWav(buffer,{bitDepth=16,dither='none',random=Math.random}={}) {
  if(![16,24,32].includes(bitDepth))throw Error('Choose 16-bit, 24-bit or 32-bit float WAV.');
+ if(!['none','tpdf'].includes(dither))throw Error('Choose no dither or triangular dither.');
+ const useDither=dither==='tpdf'&&bitDepth!==32;
  const channels=buffer.numberOfChannels,frames=buffer.length,bytes=bitDepth/8;
  const dataSize=frames*channels*bytes,padding=dataSize%2,headerSize=bitDepth===32?56:44;
  if(!Number.isSafeInteger(dataSize)||dataSize+headerSize-8+padding>0xffffffff)throw Error('Audio exceeds the WAV file size limit.');
@@ -17,7 +19,9 @@ export function encodeWav(buffer,{bitDepth=16}={}) {
  for(let i=0;i<frames;i++)for(let c=0;c<channels;c++) {
   const offset=headerSize+(i*channels+c)*bytes,raw=data[c][i],sample=Number.isFinite(raw)?raw:0;
   if(bitDepth===32){view.setFloat32(offset,sample,true);continue;}
-  const n=Math.max(-1,Math.min(1,sample)),scale=2**(bitDepth-1),value=Math.round(n*(n<0?scale:scale-1));
+  const n=Math.max(-1,Math.min(1,sample)),scale=2**(bitDepth-1),noise=useDither?random()-random():0;
+  // Uniform signed PCM steps; clamp after dither so full scale cannot wrap.
+  const value=Math.max(-scale,Math.min(scale-1,Math.round(n*scale+noise)));
   if(bitDepth===16)view.setInt16(offset,value,true);
   else {view.setUint8(offset,value&255);view.setUint8(offset+1,(value>>8)&255);view.setUint8(offset+2,(value>>16)&255);}
  }

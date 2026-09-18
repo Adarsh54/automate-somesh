@@ -130,7 +130,7 @@ export function createExperimentalWorkspace({account,esc}){
     if(zip){status=`Bouncing stem ${i+1} of ${plan.entries.length}…`;paint();}
     const offline=new OfflineAudioContext(2,Math.max(1,Math.ceil(plan.duration*settings.sampleRate)),settings.sampleRate);
     scheduleSession(offline,entry.document,buffers,plan.position,{baseTime:0});
-    const file=encodeWav(await offline.startRendering(),{bitDepth:settings.bitDepth});
+    const file=encodeWav(await offline.startRendering(),{bitDepth:settings.bitDepth,dither:settings.dither});
     if(zip)zip.file(entry.name,await file.arrayBuffer());else download(file,entry.name);
    }
    if(zip)download(await zip.generateAsync({type:'blob'}),plan.title+'-stems.zip');

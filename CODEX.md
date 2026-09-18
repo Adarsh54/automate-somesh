@@ -1436,3 +1436,33 @@ parity remain ongoing; live model access is still unconfigured locally.
 
 Reference: Apple's MIDI region time-stretch workflow:
 https://support.apple.com/en-gb/guide/logicpro/lgcpf7c0ebee/10.7/mac/11.0
+
+
+### Optional integer WAV dither
+
+Export settings now offer None (default) or Triangular (TPDF) dither for 16- and
+24-bit PCM. Mix, stem, cycle-range and selected-region bounces share this setting.
+The setting remains local to the current workspace instance; it does not change
+the project, playback, mix analysis or recording dither defaults. Selecting
+32-bit float disables the control and skips dither, while retaining the integer
+preference for switching back. No noise shaping or automatic normalization is
+performed. Prefer float for intermediate mixes when preserving headroom matters.
+
+The encoder adds the difference of two independent uniform random values in
+integer LSB units before rounding, then clamps to signed PCM limits. Integer
+encoding now uses uniform 2^(bits-1) scaling on both sides of zero (previously
+positive samples used one less), avoiding a polarity-dependent quantizer step.
+This correction also applies to non-dithered recordings; existing recordings
+are unchanged. Independent samples/channels receive independent noise, including
+silent sections. Repeated dithered exports are intentionally not bit-identical.
+
+Validation: all 287 tests and the production build pass. The export settings
+were visually inspected. Unit checks cover sub-LSB signal mean, noise variance, channel
+independence, clipping, headers and float bypass. Browser checks inspect actual
+16/24-bit downloads and confirm float exports ignore dither; the existing stem
+routing, master bypass and mix reconstruction checks remain in the same script.
+The browser script spaces its many downloads to avoid rapid-download throttling.
+
+Reference: Apple's PCM bounce controls include dither for integer bit-depth
+reduction. This implementation uses plain TPDF, not Apple's proprietary options:
+https://support.apple.com/en-ie/guide/logicpro/lgcpb7e35135/10.7/mac/11.0
