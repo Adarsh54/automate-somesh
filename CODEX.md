@@ -371,3 +371,8 @@ If project loading reports `column "folder_id" does not exist`, the existing fol
 migration has not been applied. Confirm the development branch and run
 `npm run db:migrate` before retrying. This occurred during DAW live verification;
 the local-development branch is now migrated through `010_folders.sql`.
+
+Experimental export settings support 44.1/48/96 kHz and 16/24-bit PCM or 32-bit float
+WAV for both mixes and per-track stem ZIPs. Run
+`scripts/browser-experimental-bounce-check.cjs` to verify downloaded formats and
+start timing. The ten-minute limit still applies; stem ZIP generation uses memory.

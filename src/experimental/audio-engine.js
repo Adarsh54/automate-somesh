@@ -19,4 +19,4 @@ export function scheduleSession(context,session,buffers,position=0,options={}){
  }
  return {base,stop(){for(const node of nodes){try{node.stop?.();}catch{}node.disconnect();}}};
 }
-export function encodeWav(buffer){const channels=buffer.numberOfChannels,frames=buffer.length,array=new ArrayBuffer(44+frames*channels*2),view=new DataView(array);const text=(offset,s)=>{for(let i=0;i<s.length;i++)view.setUint8(offset+i,s.charCodeAt(i));};text(0,'RIFF');view.setUint32(4,array.byteLength-8,true);text(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,buffer.sampleRate,true);view.setUint32(28,buffer.sampleRate*channels*2,true);view.setUint16(32,channels*2,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,array.byteLength-44,true);const data=Array.from({length:channels},(_,c)=>buffer.getChannelData(c));for(let i=0;i<frames;i++)for(let c=0;c<channels;c++){const n=Math.max(-1,Math.min(1,data[c][i]));view.setInt16(44+(i*channels+c)*2,Math.round(n*(n<0?32768:32767)),true);}return new Blob([array],{type:'audio/wav'});}
+export {encodeWav} from './wav.js';

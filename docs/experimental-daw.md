@@ -87,7 +87,7 @@ interpolates linearly. Edits currently stop transport. Seeking initializes curve
 but does not preroll previous reverb/delay history. Stem exports exclude muted and
 video tracks, ignore solo, and include each track's inserts, automation and master
 gain. All files share the full arrangement length plus effect tails. They are
-16-bit PCM WAVs; grouped-bus export and higher-resolution export remain pending. ZIP
+WAVs with selectable 16/24-bit PCM or 32-bit float and 44.1/48/96 kHz sample rates; grouped-bus export remains pending. ZIP
 creation holds rendered stems in memory, so large sessions need further work.
 
 ## Portable project checkpoint
@@ -297,3 +297,17 @@ checks that exact development branch and folder schema before creating fixtures.
 Both test runs cleaned up their synthetic Blob objects and database records.
 This verifies development storage integration, not production deployment or a real
 WorkOS sign-in.
+
+## WAV export quality checkpoint
+
+Export settings apply to stereo mixes and each per-track stem: 44.1, 48 or 96 kHz,
+16/24-bit PCM or 32-bit float. Defaults stay 44.1 kHz / 16-bit for compatibility.
+Integer exports clip at full scale; float retains over-range samples for later
+mixing. No normalization or dither is applied. Settings are workspace controls,
+not edits to the arrangement and are not persisted with the document yet.
+Offline bounce starts at time zero without the live transport's 25 ms scheduling
+padding. All stems still share the arrangement length including effect tails.
+
+WAV unit tests verify signed 24-bit packing, interleaving, RIFF padding, headers,
+float headroom and the default recording format. The browser bounce check verifies
+actual mix/stem downloads, sample rates, start timing and browser float decoding.
