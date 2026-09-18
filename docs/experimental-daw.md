@@ -1178,3 +1178,44 @@ boundary and post-region seeking. The browser also verifies controls/undo/redo
 and live monitor voice lifetime. Physical MIDI hardware and live model inference
 remain unverified. Multi-sample zones/layers, loop crossfades and filter/modulation
 envelopes remain pending.
+
+### Effect parameter automation
+
+The mixer now has an Automate section below each effect, using the same editable
+curve interface as volume/pan. Track, bus and master chains support EQ frequency,
+Q and gain; compressor threshold/ratio/attack/release/knee; delay time/feedback/mix;
+and reverb wet mix. Reverb decay, filter type and bypass remain static. EQ gain and
+Q retain the selected filter type's Web Audio semantics (for example, lowpass does
+not use gain). Curves use absolute project seconds, interpolate linearly in their
+displayed units, hold the first/last value outside their points, and override static
+controls. Clear the parameter curve to return to its static value.
+
+Shared commands: effect.automation.point targets an effect ID with parameter,
+time, value and optional id; a matching parameter/time updates the existing point.
+effect.automation.set targets a point ID with time/value; delete targets a point;
+clear targets an effect with parameter. Supported ranges match static controls.
+Each effect allows 2,000 points; unsupported parameters, out-of-range values,
+duplicate times/IDs and invalid batches are rejected. Undo/redo and local/cloud/
+archive documents retain the curves; track duplication gives their points fresh
+IDs. The agent prompt documents the new validated operations.
+
+Playback and offline exports schedule native effect AudioParams and chase curve
+values when seeking. EQ gain remains in decibels (unlike a channel GainNode).
+Wet/dry gains use complementary mix curves. Delay export tails reserve automated
+maximum time/feedback/mix within the existing 30-second per-chain cap. Seeking
+still does not reconstruct earlier delay/reverb/compressor state. Automation write/
+touch/latch recording and alternative interpolation curves remain pending.
+
+244 tests and build pass. New unit checks cover all supported parameter ranges,
+transaction rollback, point operations, master/bus handling, duplication, JSON
+persistence, seek scheduling and tail estimates. Browser checks cover controls,
+millisecond parameter precision, undo/reload, an audible offline filter sweep,
+seek continuity and every native effect parameter's final value. Existing track/
+send automation drag, keyboard, numeric-edit and persistence checks pass; the
+browser test now waits for fonts before measuring drag coordinates. The mixer
+screenshot was visually inspected. Live model inference remains unverified.
+
+Implementation reference: native EQ gain uses decibels, and native AudioParam
+linear ramps interpolate parameter values:
+https://developer.mozilla.org/en-US/docs/Web/API/BiquadFilterNode/gain
+https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/linearRampToValueAtTime

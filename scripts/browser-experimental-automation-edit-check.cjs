@@ -9,7 +9,9 @@ const assert=require('node:assert/strict');
   await page.route('**/api/projects*',r=>r.fulfill({json:{projects:[]}}));
   await page.route('**/api/daw',r=>r.fulfill({json:{configured:false}}));
   await page.goto((process.env.CUESTAMP_URL||'http://127.0.0.1:5190/')+'#/experimental');
-  const session=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-experimental:auto-edit')));
+  await page.getByText('Session restored on this device.',{exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('[data-audio-input-refresh]')?.disabled);
+ await page.evaluate(()=>document.fonts.ready);
+ const session=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-experimental:auto-edit')));
   await page.getByText('Command harness',{exact:true}).click();
   await page.locator('#daw-json').fill(JSON.stringify([
    {op:'track.add',values:{id:'t'}},{op:'region.add',target:'t',values:{duration:8}},
@@ -24,7 +26,7 @@ const assert=require('node:assert/strict');
   const box=await graph.boundingBox(),point=await handle.boundingBox();
   await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();
   await page.mouse.move(box.x+(8+584*2/8)/600*box.width,box.y+(8+(12+12)/108*144)/160*box.height,{steps:8});await page.mouse.up();
-  let state=await session(),points=state.tracks[0].automation;assert.equal(points.length,2);assert.ok(Math.abs(points[0].time-2)<.03);assert.ok(Math.abs(points[0].value+12)<.3);
+  let state=await session(),points=state.tracks[0].automation;assert.equal(points.length,2);assert.ok(Math.abs(points[0].time-2)<.03);assert.ok(Math.abs(points[0].value+12)<.3,JSON.stringify(points[0]));
   const dragged=structuredClone(points[0]);
   await handle.focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowUp');
   points=(await session()).tracks[0].automation;assert.ok(Math.abs(points[0].time-dragged.time-.2)<1e-9);assert.ok(Math.abs(points[0].value-dragged.value-.5)<1e-9);
