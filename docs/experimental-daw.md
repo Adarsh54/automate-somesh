@@ -32,10 +32,10 @@ separate compatible implementations or licensed integrations.
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, command-level note editing, quantize and transpose implemented; CC/device/graphical note inspector/humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Pending |
-| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Pending |
-| Automation | Editable parameter curves with playback/export parity | Pending |
+| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; buses/sends/master inserts pending |
+| Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
-| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Pending |
+| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; grouped stems, region/movie export and portable archives pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
 | Account/storage | Durable project/media save, restore, ownership, version conflicts | Pending |
 | Reliability | Unit, audio-render, MIDI-fixture, browser, accessibility and load checks | Pending |
@@ -60,17 +60,34 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 101 tests passing; Vite production build passing.
+- Entire repository: 104 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   real-video synchronization, heavy sessions, mobile editing.
 
-Current limitations are substantive: simple oscillator instruments, no effects
-rack/buses/automation, recording/comping, professional time stretching/pitch editing,
+Current limitations are substantive: simple oscillator instruments, no buses/sends, automation recording,
+recording/comping, professional time stretching/pitch editing,
 notation, full MIDI event preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
 Imported movie sound is not mixed yet. Session JSON references device-local assets;
 it is not a portable archive. The full goal remains active.
 
 Next implementation priorities: durable project/archive interchange; MIDI note
-inspector and event/device tools; recording; mixer/effects/automation; graphical
+inspector and event/device tools; recording; bus/send routing; graphical
 region trim/fades; movie-audio treatment and timecode; connected model validation.
+
+## Mixer and rendering checkpoint
+
+`test/experimental-effects.test.js` covers insert validation/reordering/bypass,
+automation upserts, interpolation, bounds, undo, and tail duration.
+`scripts/browser-experimental-effects-check.cjs` exercises effect controls,
+automation parameter persistence and aligned stem ZIP downloads. Actual browser
+OfflineAudioContext samples verify low-pass attenuation, compression, echo decay,
+reverb tails, volume/pan automation and seeking into a curve.
+
+Track inserts precede gain and pan. Volume automation interpolates in dB; pan
+interpolates linearly. Edits currently stop transport. Seeking initializes curves
+but does not preroll previous reverb/delay history. Stem exports exclude muted and
+video tracks, ignore solo, and include each track's inserts, automation and master
+gain. All files share the full arrangement length plus effect tails. They are
+16-bit PCM WAVs; grouped buses and higher-resolution export remain pending. ZIP
+creation holds rendered stems in memory, so large sessions need further work.

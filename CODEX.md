@@ -286,3 +286,10 @@ source media. Production usage quotas and provider alternatives remain pending.
 Checks: `npm test`, `npm run build`, and `scripts/browser-experimental-check.cjs`
 with the standard Playwright variables. The browser agent check mocks inference;
 a real provider test is still required after credentials are configured.
+
+The Experimental mixer includes ordered EQ/compressor/delay/reverb inserts and
+volume/pan automation. Playback and offline rendering share the same signal chain.
+Bounce stems exports aligned per-track WAVs in a ZIP; muted tracks are excluded,
+solo is ignored, and master gain is included. Edits stop playback. Run
+`scripts/browser-experimental-effects-check.cjs` for controls, stem packaging and
+actual browser PCM regression checks. Bus/send routing is not implemented yet.
