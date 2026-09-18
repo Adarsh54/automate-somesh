@@ -8,8 +8,11 @@ test('account credit profiles isolate owners, survive reloads and reject stale e
   for(const f of ['001_users_projects.sql','005_credit_profiles.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES('alice','a@test'),('bob','b@test')");
   const sql=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
-  const repo=createCreditProfilesRepository(sql),data={id:'preset',name:'My credits',category:'original',credits:[{role:'Composer',last:'Writer',share:100}]};
+  const repo=createCreditProfilesRepository(sql),data={id:'preset',name:'My credits',category:'original',address:'123 Music Lane',preparedBy:'Alice Writer',email:'alice@example.com',credits:[{role:'Composer',last:'Writer',share:100}]};
   const saved=await repo.save('alice',data);assert.equal(saved.revision,1);
+  const restored=(await repo.list('alice'))[0];
+  assert.equal(restored.address,data.address);assert.equal(restored.preparedBy,data.preparedBy);assert.equal(restored.email,data.email);
+  await assert.rejects(repo.save('alice',{...data,id:'invalid-email',email:'not-an-email'}),{status:400});
   assert.equal((await repo.list('bob')).length,0);
   await assert.rejects(repo.remove('bob',{id:'preset',revision:1}),{status:409});
   await assert.rejects(repo.save('bob',{...data,revision:1}),{status:409});

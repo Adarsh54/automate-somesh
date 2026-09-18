@@ -1,3 +1,4 @@
+import {libraryPreviewMarkup,bindLibraryPreview} from './library-preview-player.js';
 import {editAudio} from './audio-editor.js';
 import {prepareLosslessUpload} from './lossless-upload.js';
 import {audioUploadStatus,updateAudioUploadStatus} from './audio-upload-status.js';
@@ -21,6 +22,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  let notice='',local=[],remote=[],loaded=false,loading=false,error='',progress='',uploading=false,loadPromise=null,uploadController=null,uploadDetail=null;
  const preferencesKey=`cuestamp-audio-library:${scope}:preferences`;
  let preferences={};try{preferences=JSON.parse(localStorage.getItem(preferencesKey)) || {};}catch{}
+ let previewFile=null;
  let selected=null,previewUrl='',previewLoading=false,previewVersion=0,previewError='';
  const labelFor=a=>preferences[a.id]?.title || a.filename.replace(/\.[^.]+$/,'');
  function remember(id,patch){
@@ -83,17 +85,17 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
   const version=++previewVersion;
   document.querySelector('#track-preview')?.pause();
   if(previewUrl)URL.revokeObjectURL(previewUrl);
-  selected=id;previewUrl='';previewLoading=true;previewError='';onChange();
+  selected=id;previewFile=null;previewUrl='';previewLoading=true;previewError='';onChange();
   try {
    const file=await fileFor(id);
-   if(version===previewVersion)previewUrl=URL.createObjectURL(file);
+   if(version===previewVersion){previewFile=file;previewUrl=URL.createObjectURL(file);}
   }catch(e){if(version===previewVersion)previewError=e.message;}
   finally{if(version===previewVersion){previewLoading=false;onChange();}}
  }
  function disposePreview(){
   previewVersion++;document.querySelector('#track-preview')?.pause();
   if(previewUrl)URL.revokeObjectURL(previewUrl);
-  previewUrl='';selected=null;previewLoading=false;
+  previewFile=null;previewUrl='';selected=null;previewLoading=false;
  }
  async function remove(id){
   const item=entries().find(a=>a.id===id);if(!item)return;
@@ -114,8 +116,8 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  }
  function view(){
   const items=visibleEntries(),active=items.find(a=>a.id===selected);
-  const rows=items.map(a=>`<div class="track-row collection-row"><button class="track ${a.id===selected?'selected':''}" data-library-preview="${esc(a.id)}" draggable="true" aria-pressed="${a.id===selected}" title="Select to preview, or drag onto Add Cue Sheet"><span class="track-icon" aria-hidden="true">♪</span><span><strong>${esc(labelFor(a))}</strong><small>${esc(a.filename)} · ${a.size<1024*1024?`${Math.ceil(a.size/1024)} KB`:`${(a.size/1024/1024).toFixed(1)} MB`} · ${a.sourceId?'Reel · Linked to original':a.saved?'Saved to your account':'On this device'}</small></span></button><div class="track-actions">${a.saved?`<button data-library-edit="${esc(a.id)}">Edit audio</button>`:''}<button type="button" class="danger library-remove" data-library-remove="${esc(a.id)}" aria-label="Remove ${esc(labelFor(a))} from library" title="Remove from library"><span aria-hidden="true">−</span></button>${account.user&&!a.saved?`<button data-library-sync="${esc(a.id)}">Retry upload</button>`:''}</div></div>`).join('');
-  const preview=active?`<section class="panel editor"><div class="section-title"><h2>Audio preview</h2><button type="button" class="danger library-remove" data-library-remove="${esc(active.id)}" aria-label="Remove ${esc(labelFor(active))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div><label for="library-source-label">Source label</label><input id="library-source-label" maxlength="300" value="${esc(labelFor(active))}"><p class="file-name">${esc(active.filename)}</p>${previewLoading?'<p role="status">Loading audio…</p>':previewUrl?`<audio id="track-preview" controls preload="metadata" aria-label="Preview ${esc(labelFor(active))}" src="${previewUrl}"></audio>`:''}<p id="preview-status" class="muted" role="status">${esc(previewError)}</p>${previewError?'<button data-library-preview-retry>Retry preview</button>':''}<button data-library-use="${esc(active.id)}">Add to cue sheet</button></section>`:'<div class="panel empty"><p>Select audio to preview it. Press Play on the timeline to listen.</p></div>';
+  const rows=items.map(a=>`<div class="track-row collection-row ${account.user&&!a.saved?'library-track-unsaved':''}"><div class="library-track-main"><button class="track ${a.id===selected?'selected':''}" data-library-preview="${esc(a.id)}" draggable="true" aria-pressed="${a.id===selected}" title="Select to preview, or drag onto Add Cue Sheet"><span class="track-icon" aria-hidden="true">♪</span><span><strong>${esc(labelFor(a))}</strong><small>${esc(a.filename)} · ${a.size<1024*1024?`${Math.ceil(a.size/1024)} KB`:`${(a.size/1024/1024).toFixed(1)} MB`} · ${a.sourceId?'Reel · Linked to original':a.saved?'Saved to your account':'On this device'}</small></span></button>${account.user&&!a.saved?`<button type="button" class="library-upload-status" data-library-sync="${esc(a.id)}" aria-label="Retry upload for ${esc(labelFor(a))}" ${uploading?'disabled':''}><span aria-hidden="true">⚠</span><span class="upload-status-label">Not uploaded</span><span class="upload-retry-label">Retry upload</span></button>`:''}</div><div class="track-actions">${a.saved?`<button data-library-edit="${esc(a.id)}">Edit</button>`:''}<button type="button" class="danger library-remove" data-library-remove="${esc(a.id)}" aria-label="Remove ${esc(labelFor(a))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div></div>`).join('');
+  const preview=active?`<section class="panel editor"><div class="section-title"><h2>Audio preview</h2><button type="button" class="danger library-remove" data-library-remove="${esc(active.id)}" aria-label="Remove ${esc(labelFor(active))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div><input id="library-source-label" aria-label="Audio title" maxlength="300" value="${esc(labelFor(active))}">${previewLoading?'<p role="status">Loading audio…</p>':previewUrl?`${libraryPreviewMarkup()}<audio id="track-preview" hidden preload="metadata" aria-label="Preview ${esc(labelFor(active))}" src="${previewUrl}"></audio>`:''}<p id="preview-status" class="muted" role="status">${esc(previewError)}</p>${previewError?'<button data-library-preview-retry>Retry preview</button>':''}<button data-library-use="${esc(active.id)}">Add to cue sheet</button></section>`:'<div class="panel empty"><p>Select audio to preview it. Press Play on the timeline to listen.</p></div>';
   return collectionPage({title:'Audio Library',description:'Keep your audio here for later. Select a file to preview it, or drag it onto Add Cue Sheet.',action:audioUploadButton({id:'library-upload',disabled:uploading,attributes:'data-library-upload'}),summary:`${items.length} audio file${items.length===1?'':'s'}`,body:`${!account.user?'<p class="muted">Audio is saved in this browser for your next visit. Clearing site data removes it.</p>':''}${error?`<div class="project-error" role="alert"><span>${esc(error)}</span><button data-library-retry>Try again</button></div>`:''}${notice?`<p class="notice" role="status">${esc(notice)}</p>`:''}${progressView('data-cancel-audio-upload')}${loading?'<p class="muted" role="status">Loading audio…</p>':''}${rows?`<div class="library-grid"><div class="track-list">${rows}</div>${preview}</div>`:'<div class="empty"><span>♫</span><h3>No audio files yet</h3><p>Upload multiple audio files to build your library.</p></div>'}<details class="disclosure"><summary>File support & storage</summary><p class="muted">WAV, MP3, M4A, AAC, AIFF, FLAC, OGG, and Opus. Files must be under 2 GB. Cue detection supports up to 60 minutes per file. Signed-in uploads are saved privately to your account; guest audio stays in this browser. Removing a library entry keeps audio already used in cue sheets and reels.</p></details>`});
  }
  async function edit(id,{reel=false}={}){
@@ -126,6 +128,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
   return asset;
  }
  function bind(){
+  bindLibraryPreview(document.querySelector('#track-preview'),previewFile);
   document.querySelectorAll('[data-library-edit]').forEach(button=>button.onclick=async()=>{try{await edit(button.dataset.libraryEdit);}catch(e){error=e.message;onChange();}});
 
   document.querySelector('[data-cancel-audio-upload]')?.addEventListener('click',cancelUpload);
@@ -145,7 +148,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
   document.querySelectorAll('[data-library-use]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await onUseInCue?.(button.dataset.libraryUse);}catch(e){error=e.message;onChange();}finally{button.disabled=false;}});
   const player=document.querySelector('#track-preview');if(player)player.onerror=()=>{document.querySelector('#preview-status').textContent='This browser could not play the file. Try a supported audio format.';};
  }
- async function pick(){
+ async function pick({single=false}={}){
   await load();
   return new Promise(resolve=>{
    const items=visibleEntries(),selection=new Set();let result=[];
@@ -153,7 +156,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
    dialog.className='resume-workspace audio-picker';
    dialog.setAttribute('aria-labelledby','audio-picker-heading');
    dialog.setAttribute('aria-describedby','audio-picker-description');
-   dialog.innerHTML=`<div class="audio-picker-header"><h2 id="audio-picker-heading">Add audio from your library</h2><p id="audio-picker-description" class="muted">Select the tracks you want to use in this project.</p>${items.length?'<input type="search" data-audio-search placeholder="Search audio files…" aria-label="Search audio files">':''}</div>${error?`<p role="alert">${esc(error)}</p>`:''}<div class="audio-picker-list" role="group" aria-label="Audio files"></div><div class="audio-picker-footer"><span class="muted" data-selection-count role="status">No tracks selected</span><div class="button-row"><button data-cancel>Cancel</button><button class="primary" data-choose disabled>Add audio</button></div></div>`;
+   dialog.innerHTML=`<div class="audio-picker-header"><h2 id="audio-picker-heading">Add audio from your library</h2><p id="audio-picker-description" class="muted">${single?'Select one full score for this cue sheet.':'Select the tracks you want to use in this project.'}</p>${items.length?'<input type="search" data-audio-search placeholder="Search audio files…" aria-label="Search audio files">':''}</div>${error?`<p role="alert">${esc(error)}</p>`:''}<div class="audio-picker-list" role="group" aria-label="Audio files"></div><div class="audio-picker-footer"><span class="muted" data-selection-count role="status">No tracks selected</span><div class="button-row"><button data-cancel>Cancel</button><button class="primary" data-choose disabled>Add audio</button></div></div>`;
    const list=dialog.querySelector('.audio-picker-list'),add=dialog.querySelector('[data-choose]');
    const updateSelection=()=>{const count=selection.size;add.disabled=!count;add.textContent=count?`Add audio (${count})`:'Add audio';dialog.querySelector('[data-selection-count]').textContent=count?`${count} track${count===1?'':'s'} selected`:'No tracks selected';};
    const renderRows=()=>{
@@ -161,7 +164,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
     const visible=items.filter(a=>a.filename.toLowerCase().includes(query));
     list.innerHTML=visible.length?visible.map(a=>`<button type="button" class="audio-choice" data-audio-id="${esc(a.id)}" aria-pressed="${selection.has(a.id)}"><span class="audio-choice-icon" aria-hidden="true">♫</span><span class="audio-choice-info"><strong>${esc(a.filename)}</strong><small>${a.size<1024*1024?`${Math.ceil(a.size/1024)} KB`:`${(a.size/1024/1024).toFixed(1)} MB`} · ${a.saved?'Saved to your account':'On this device'}</small></span><span class="audio-choice-check" aria-hidden="true">${selection.has(a.id)?'✓':'+'}</span></button>`).join(''):`<div class="empty"><h3>${items.length?'No matching audio':'Your audio library is empty'}</h3><p>${items.length?'Try a different filename.':'Upload audio in your project or on the Audio Library page, then select it here.'}</p></div>`;
    };
-   list.onclick=event=>{const button=event.target.closest('[data-audio-id]');if(!button)return;const id=button.dataset.audioId;selection.has(id)?selection.delete(id):selection.add(id);button.setAttribute('aria-pressed',String(selection.has(id)));button.querySelector('.audio-choice-check').textContent=selection.has(id)?'✓':'+';updateSelection();};
+   list.onclick=event=>{const button=event.target.closest('[data-audio-id]');if(!button)return;const id=button.dataset.audioId;if(selection.has(id))selection.delete(id);else{if(single)selection.clear();selection.add(id);}button.setAttribute('aria-pressed',String(selection.has(id)));button.querySelector('.audio-choice-check').textContent=selection.has(id)?'✓':'+';if(single)renderRows();updateSelection();};
    dialog.querySelector('[data-audio-search]')?.addEventListener('input',renderRows);
    add.onclick=()=>{result=[...selection];dialog.close();};
    dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();

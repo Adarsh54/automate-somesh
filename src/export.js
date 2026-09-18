@@ -155,7 +155,6 @@ export async function exportWorkbook(production, tracks, cues, shared) {
       "Detected file out (s)",
       "Similarity (not probability)",
       "Reviewed",
-      "Cue provenance",
     ],
     ...cues.map((c, i) => [
       i + 1,
@@ -169,10 +168,9 @@ export async function exportWorkbook(production, tracks, cues, shared) {
       c.relativeEnd ?? "",
       c.score ?? "",
       c.reviewed ? "Yes" : "No",
-      ({original: "Original work", sourced: "Sourced music"})[c.category] || "Unspecified",
     ]),
   ];
-  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="8" customWidth="1"/><col min="2" max="2" width="38" customWidth="1"/><col min="3" max="12" width="27" customWidth="1"/></cols><sheetData>${rows.map((values, i) => `<row r="${i + 1}">${values.map((v, j) => (typeof v === "number" ? `<c r="${String.fromCharCode(65 + j)}${i + 1}"><v>${v}</v></c>` : `<c r="${String.fromCharCode(65 + j)}${i + 1}" t="inlineStr"><is><t>${escape(v)}</t></is></c>`)).join("")}</row>`).join("")}</sheetData></worksheet>`;
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="8" customWidth="1"/><col min="2" max="2" width="38" customWidth="1"/><col min="3" max="11" width="27" customWidth="1"/></cols><sheetData>${rows.map((values, i) => `<row r="${i + 1}">${values.map((v, j) => (typeof v === "number" ? `<c r="${String.fromCharCode(65 + j)}${i + 1}"><v>${v}</v></c>` : `<c r="${String.fromCharCode(65 + j)}${i + 1}" t="inlineStr"><is><t>${escape(v)}</t></is></c>`)).join("")}</row>`).join("")}</sheetData></worksheet>`;
   zip.file("xl/worksheets/sheet3.xml", sheet);
   const workbookXml = await zip.file("xl/workbook.xml").async("string");
   zip.file(
