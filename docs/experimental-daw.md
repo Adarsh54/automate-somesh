@@ -35,7 +35,7 @@ separate compatible implementations or licensed integrations.
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, selectable pre/post-fader sends, shared inserts and master inserts implemented |
 | Automation | Editable parameter curves with playback/export parity | Track/master volume/pan and send-level points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
-| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
+| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; output-group stems implemented; isolated bus taps and region/movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
 | Account/storage | Durable project/media save, restore, ownership, version conflicts | Existing Projects/Neon and private Blob integration added; ownership/revision and browser checks pass; live development Neon/Blob round trip verified with synthetic authentication |
 | Reliability | Unit, audio-render, MIDI-fixture, browser, accessibility and load checks | Pending |
@@ -575,3 +575,25 @@ synthesis state across edits remain future work. No claim of full Logic parity.
 157 unit tests pass. Browser verification covers edge dragging, numeric boundaries,
 controller chase, undo/redo, reload, and actual offline audio before/inside/after
 the crop. Audio/video source-based trimming remains on its existing code path.
+
+## Playback metronome checkpoint
+
+The playback metronome follows BPM and quarter-note beats per bar, accents beat one,
+and offers an independent -60..0 dB level (default -18 dB, disabled by default).
+It is modeled after the playback-click workflow described in Apple's
+[metronome guide](https://support.apple.com/guide/logicpro/use-the-metronome-lgcp0534986f/10.7/mac/11.0).
+Our synthesized click is original. It bypasses the session mixer/effects and is
+opted into playback only; default cycle rendering, mix/stem bounces and MIDI exports
+exclude it. Changing settings uses the shared command harness and stops transport.
+
+One generated bar is looped with a playback-rate correction for rounded buffer
+length, keeping node/memory usage bounded without accumulating bar-length rounding
+drift. Seek resumes at the bar-relative offset. Cycle playback renders click with
+the selected range and repeats that range, including mid-bar boundaries. Stop,
+pause and navigation release the click source through the transport lifecycle.
+
+159 unit tests and the build pass. Browser checks verify accented beats, spacing,
+level ratio, seek and cycle PCM, idempotent stop, UI undo/persistence, playback and
+silence in an actual exported WAV with click enabled. Existing cycle regression
+checks also pass. Count-in, recording click, denominator/meter changes over time,
+subdivisions and configurable metronome output routing remain pending.

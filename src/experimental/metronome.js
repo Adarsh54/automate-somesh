@@ -1,0 +1,26 @@
+// One reusable bar keeps playback bounded even in long sessions. Correct the
+// playback rate for frame rounding so the repeated bar never accumulates drift.
+export function clickBar(tempo,meter,sampleRate){
+ if(!Number.isFinite(tempo)||tempo<20||tempo>300||!Number.isInteger(meter)||meter<1||meter>16||!Number.isFinite(sampleRate)||sampleRate<8000||sampleRate>192000)throw Error('Invalid metronome timing.');
+ const duration=60/tempo*meter,frames=Math.round(duration*sampleRate),samples=new Float32Array(frames);
+ for(let beat=0;beat<meter;beat++){
+  const start=Math.round(beat*frames/meter),length=Math.min(Math.round(.04*sampleRate),frames-start),accent=beat===0;
+  for(let i=0;i<length;i++){const t=i/sampleRate,envelope=Math.min(1,t/.001)*Math.max(0,1-i/length)**3;samples[start+i]=Math.sin(2*Math.PI*(accent?1320:880)*t)*envelope*(accent?1:.6);}
+ }
+ return {samples,duration};
+}
+export function scheduleMetronome(context,session,{position=0,baseTime=context.currentTime+.025,duration=Infinity}={}){
+ if(!session.metronomeEnabled||duration<=0)return {stop(){}};
+ const bar=clickBar(session.tempo,session.meter,context.sampleRate),buffer=context.createBuffer(1,bar.samples.length,context.sampleRate);
+ buffer.copyToChannel(bar.samples,0);
+ const source=context.createBufferSource(),gain=context.createGain(),rate=buffer.duration/bar.duration;
+ source.buffer=buffer;source.loop=true;source.playbackRate.value=rate;
+ gain.gain.value=10**((session.metronomeDb??-18)/20);
+ source.connect(gain).connect(context.destination);
+ source.start(baseTime,((position%bar.duration+bar.duration)%bar.duration)*rate);
+ if(Number.isFinite(duration))source.stop(baseTime+duration);
+ let stopped=false;
+ return {stop(){if(stopped)return;stopped=true;try{source.stop();}catch{}source.disconnect();gain.disconnect();}};
+}
+export function metronomeView(session){return `<form class="daw-cycle" data-metronome-form><label><input name="enabled" type="checkbox" ${session.metronomeEnabled?'checked':''}> Metronome during playback</label><label>Beats per bar · quarter notes<input name="meter" type="number" min="1" max="16" step="1" value="${session.meter}"></label><label>Click level · dB<input name="level" type="number" min="-60" max="0" step="1" value="${session.metronomeDb??-18}"></label><button type="submit">Apply metronome</button><small>Playback only. Excluded from exports; independent of mixer volume.</small></form>`;}
+export function bindMetronome(root,{execute,guard}){const form=root.querySelector('[data-metronome-form]');form.onsubmit=guard(e=>{e.preventDefault();execute([{op:'session.set',values:{metronomeEnabled:form.elements.enabled.checked,metronomeDb:Number(form.elements.level.value),meter:Number(form.elements.meter.value)}}],'Updated metronome');});}

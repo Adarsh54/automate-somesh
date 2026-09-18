@@ -465,3 +465,13 @@ movement and Length in Apply edits remain separate operations. The shared
 Run `scripts/browser-experimental-midi-trim-check.cjs` for UI, undo, persistence and
 rendered audio boundaries; `test/experimental-midi-trim.test.js` covers channel state,
 pedal-held notes and atomic rejection of invalid bounds.
+
+Experimental has a playback metronome with quarter-note beats per bar and its own
+click level. It follows BPM, accents the bar start and works with Cycle. Settings
+persist in the project and use undoable `session.set` fields `metronomeEnabled`,
+`metronomeDb` (-60..0) and existing `meter` (1..16). Applying settings stops playback,
+like other edits. Click output bypasses mixer gain/effects and is never included in
+WAV or stem exports. Recording click and count-in are not implemented yet.
+Run `scripts/browser-experimental-metronome-check.cjs` for controls, persisted state,
+actual click timing/seek/cycle audio and export exclusion; unit coverage is in
+`test/experimental-metronome.test.js`.
