@@ -23,3 +23,11 @@ test('cancellation prevents a late transport setup result from resuming its call
  assert.equal(await transportWait(Promise.resolve('ready'),new AbortController().signal),'ready');await assert.rejects(transportWait(Promise.reject(Error('decode failed')),new AbortController().signal),/decode failed/);
  const aborted=new AbortController();aborted.abort(Error('already canceled'));await assert.rejects(transportWait(Promise.reject(Error('late decode error')),aborted.signal),/already canceled/);
 });
+test('edit plans optionally carry one validated follow-up transport with explicit client capability',async()=>{
+ const args={summary:'Rename and play',commands:[{op:'session.set',values:{title:'Edited title'}}],afterEditTransport:{operation:'play',position:0},verifyMix:true};let sent;
+ const result=await planDawEdit({session,instruction:'Rename and play',transport,allowTransport:true},adapter([output(args,'edit_session')],body=>sent=body));
+ assert.equal(result.transportEpoch,transport.epoch);assert.deepEqual(result.afterEditTransport,args.afterEditTransport);assert.equal(result.verifyMix,true);assert.equal(session.title,'Untitled session');assert.ok(sent.tools.find(t=>t.name==='edit_session').parameters.properties.afterEditTransport);
+ await assert.rejects(planDawEdit({session,instruction:'Rename and play'},adapter([output(args,'edit_session')],body=>sent=body)),/Transport is unavailable/);assert.equal(sent.tools.find(t=>t.name==='edit_session').parameters.properties.afterEditTransport,undefined);
+ for(const afterEditTransport of [{operation:'record',position:null},{operation:'seek',position:null},{operation:'play',position:-1}])await assert.rejects(planDawEdit({session,instruction:'edit and play',transport,allowTransport:true},adapter([output({...args,afterEditTransport},'edit_session')])));
+ await assert.rejects(planDawEdit({session,instruction:'edit and play',transport,allowTransport:true},adapter([output({...args,commands:[{op:'track.delete',target:'missing'}]},'edit_session')])),/not found/);
+});

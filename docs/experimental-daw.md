@@ -1898,3 +1898,40 @@ not been verified and no provider request was made by that preflight.
 
 Reference: OpenAI function-calling schema/tool execution guidance:
 https://developers.openai.com/api/docs/guides/function-calling
+
+
+### Ordered agent edits followed by transport
+
+edit_session now accepts optional afterEditTransport when the client enables
+transport. It uses the same validated operation/position shape as
+control_transport. This supports requests such as lowering a track and then
+playing from a requested time, without another user turn. The model is instructed
+to add follow-up playback only when explicitly requested. Clients without the
+capability do not receive that parameter in their tool schema, and a returned
+unsupported follow-up is rejected. Multiple separate tool calls in one response
+remain invalid; an ordered edit batch plus one transport action is one plan.
+
+The browser validates the follow-up before applying any commands, checks both
+document and transport freshness, then applies the edit batch once. Requested
+mix verification (and mandatory master gain verification) finishes before the
+follow-up. Manual playhead changes during verification suppress follow-up
+transport, even though analysis itself is valid for the unchanged document.
+Manual document changes similarly prevent starting playback of a stale edit.
+Transport executes through the same helper as standalone transport requests.
+
+Applied edits remain undoable if verification or playback fails or is canceled.
+The result clearly distinguishes an applied edit from an incomplete follow-up;
+conversation records retain the actual post-edit snapshot rather than attributing
+later manual changes to the agent. Playback adds no undo entry. Successful
+reports append the actual browser transport result. This supersedes the previous
+requirement for separate edit and playback turns; arbitrary multi-step tool
+loops, recording/export actions and live provider verification remain ongoing.
+
+305 tests and build pass. Unit checks cover capability-gated schema exposure,
+follow-up validation and command validation. Browser checks use mocked model
+replies with real Web Audio to verify edit/analysis/play ordering, one-step undo,
+invalid follow-ups rejected before editing, stale transport plans, verification
+failure, manual seek during verification, canceled playback startup preserving
+the edit, actual conversation attribution, and edit-then-seek. Existing
+standalone transport and analysis regressions also run. Local model credentials
+remain unconfigured; these are harness/execution checks, not live inference.
