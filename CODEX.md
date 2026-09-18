@@ -707,3 +707,24 @@ Cuestamp project to retain all editable material. The internal writer supports
 Run `test/experimental-region-mute.test.js` and
 `scripts/browser-experimental-region-mute-check.cjs` for default/history handling,
 asset exclusion, same-track independence, playback and actual WAV/MIDI downloads.
+
+MIDI input → Record to chooses New instrument track (default) or an existing MIDI
+track. Each take appends a new independent region at the captured playhead; existing
+regions are preserved and overlapping takes play together. Destination selection is
+locked during capture/retry and resets to New instrument track on reload. It is
+checked before recording, including the 1,000-region limit. Recording into an
+existing track works even when the session already has 128 tracks.
+The atomic `midi.import` command accepts optional `trackId` for this behavior. MIDI
+tracks in an imported file become separate regions on that destination. Name,
+instrument, mixer effects, routing and earlier regions are unchanged; Undo removes
+the whole take. Saving failures retain the same destination for retry.
+Live audition uses the destination instrument (triangle on new tracks). Sine,
+triangle, square, sawtooth and the built-in drum kit are supported. Drum hits are
+one-shots and finish naturally after note release; stop/discard releases all voices.
+Monitoring still bypasses destination mixer volume/effects/routing, so it is not an
+exact preview of the processed track. Run
+`test/experimental-midi-destination.test.js` and
+`scripts/browser-experimental-midi-destination-check.cjs` for existing-track saves,
+limits, preservation/history, instrument choice and real drum/voice output cleanup.
+The device is simulated; physical latency, take lanes and MIDI merge/replace/punch
+recording modes remain pending.

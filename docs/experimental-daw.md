@@ -921,3 +921,21 @@ regions on one track, undo/redo/reload, playback with unavailable muted media, W
 samples proving silence/audible separation and downloaded MIDI note omission.
 Unit checks cover defaults, asset planning, history and MIDI filtering. Bulk region
 mute controls and a dedicated MIDI export options panel remain pending.
+
+### MIDI takes into existing instrument tracks
+
+MIDI capture now offers an explicit destination selector. New-track capture stays
+the default, while an existing instrument track receives a new region at the take
+start with all prior material/settings intact. Destination is fixed through capture
+and save retry. Existing-track takes are allowed at the session track cap and
+respect per-track region limits. Shared `midi.import` supports optional trackId,
+appending imported regions atomically without changing track settings.
+
+Live audition follows destination oscillator/drum-kit choice. Drum synthesis reuses
+existing deterministic buffers with bounded voices, natural one-shot completion
+and stop cleanup. Monitoring remains separate from the destination mixer chain.
+198 tests and build pass. Synthetic-device browser checks verify destination saves,
+prior region preservation, undo/redo, count-in behavior, square-wave selection,
+drum one-shot output and cleanup. Unit checks cover limits and atomic invalid
+imports. Hardware latency, audio takes into existing tracks, MIDI merge/replace,
+take lanes, punch and track-routed monitoring remain pending.

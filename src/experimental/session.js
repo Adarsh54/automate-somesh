@@ -28,10 +28,11 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
   const need=(entity,label)=>{if(!entity)throw Error(`${label} not found: ${target}`);return entity;};
   switch(op){
    case 'midi.import':{
-    pick(v,['data','start']);const start=time.parse(v.start??0),midi=readMidi(decodeMidiImport(v.data));
+    pick(v,['data','start','trackId']);const destination=v.trackId===undefined?null:need(session.tracks.find(t=>t.id===v.trackId),'Destination track');if(destination&&destination.kind!=='midi')throw Error('MIDI takes require an instrument track.');const start=time.parse(v.start??0),midi=readMidi(decodeMidiImport(v.data));
     if(!midi.tracks.length&&!midi.markers.length)throw Error('This MIDI file has no notes, channel events or markers to import.');
     if(session.markers.length+midi.markers.length>1000)throw Error('Import would exceed the 1,000-marker session limit.');
-    if(session.tracks.length+midi.tracks.length>128)throw Error('Import would exceed the 128-track session limit.');
+    if(!destination&&session.tracks.length+midi.tracks.length>128)throw Error('Import would exceed the 128-track session limit.');
+    if(destination&&destination.regions.length+midi.tracks.length>1000)throw Error('Import would exceed the 1,000-region track limit.');
     const imported=midi.tracks.map(source=>{
      if(source.notes.length>20000||source.events.length>20000)throw Error('Each imported MIDI track supports up to 20,000 notes and 20,000 channel events.');
      const duration=Math.max(.1,...source.notes.map(n=>n.start+n.duration),...source.events.map(e=>e.start+.001));
@@ -39,7 +40,7 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
       regions:[{id:crypto.randomUUID(),name:source.name.slice(0,200),assetId:null,start,offset:0,duration,gainDb:0,fadeIn:0,fadeOut:0,reverse:false,notes:source.notes,events:source.events}],
      });
     });
-    session.tracks.push(...imported);session.markers.push(...midi.markers.map(m=>({id:crypto.randomUUID(),name:m.name,time:start+m.time})));break;
+    if(destination)destination.regions.push(...imported.flatMap(t=>t.regions));else session.tracks.push(...imported);session.markers.push(...midi.markers.map(m=>({id:crypto.randomUUID(),name:m.name,time:start+m.time})));break;
    }
    case 'session.set':{const previousTempo=session.tempo;Object.assign(session,pick(v,['title','tempo','meter','metronomeEnabled','metronomeRecordEnabled','countInBars','recordWithPlayback','midiMonitorEnabled','audioMonitorEnabled','audioMonitorDb','metronomeDb','masterDb','masterPan','frameRate','loopEnabled','loopStart','loopEnd']));if(v.tempo!==undefined){const ratio=previousTempo/v.tempo;for(const t of session.tracks.filter(t=>t.kind==='midi'))for(const r of t.regions){r.start*=ratio;r.duration*=ratio;r.fadeIn*=ratio;r.fadeOut*=ratio;for(const n of r.notes){n.start*=ratio;n.duration*=ratio;}for(const e of r.events)e.start*=ratio;}}break;}
    case 'track.add':session.tracks.push(track.parse({id:crypto.randomUUID(),name:'New track',kind:'audio',gainDb:0,pan:0,mute:false,solo:false,instrument:'triangle',regions:[],...pick(v,['id','name','kind','instrument'])}));break;
