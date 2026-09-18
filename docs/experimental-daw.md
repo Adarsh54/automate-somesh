@@ -530,3 +530,27 @@ permission denial and navigation during a pending input open. Capture unit tests
 cover note pairing, channels, controllers, invalid messages and limits. Existing
 synthetic microphone recording tests also pass. No physical MIDI keyboard, device
 driver latency or browser/OS compatibility matrix was tested.
+
+## Grouped stem export checkpoint
+
+Export settings now selects individual-track stems or output groups. Sources sharing
+the same final primary output bus render together through that bus's processing.
+Nested groups roll into the outermost output bus; Master-routed sources remain
+individual files. This partitions unmuted audio/MIDI sources exactly once. Send-only
+relationships never change membership. All buses remain in each render so that
+source contributions retain downstream routes, sends, inserts and automation.
+Solo is ignored; bus mute is preserved. Session data and undo history are unchanged.
+
+The ZIP uses numbered, sanitized group names and identical full-arrangement lengths
+including tails. Existing sample rate/bit depth selections apply. This is grouping
+by output routing, not an isolated bus-output tap: shared return/master processing
+still runs separately per group. Nonlinear processing shared across groups may
+therefore prevent summed stems from matching the complete mix. Arbitrary export
+selection, isolated bus taps and master-processing bypass remain pending.
+
+155 unit tests and the build pass. Browser checks download real grouped WAVs and
+verify file names, alignment and summed PCM against the full mix, including two
+instruments compressed together inside a bus. Unit tests cover nested outputs,
+send-only contributors, muted/video exclusion, solo clearing, routing validity and
+unchanged source documents. Physical-device and production deployment validation
+are outside this export checkpoint.

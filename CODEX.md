@@ -444,3 +444,14 @@ Run `scripts/browser-experimental-midi-input-check.cjs` for simulated-device acc
 recording, undo, disconnect, save retry and lifecycle tests, and
 `test/experimental-midi-capture.test.js` for event decoding/limits. Physical keyboard
 input, latency and cross-browser support still require hardware verification.
+
+Experimental Export settings → Stem grouping offers Individual tracks (default)
+and Output groups. Output groups combine sources sharing their final primary
+output bus; nested buses roll into that outer group. Tracks sent directly to Master
+stay separate. Sends do not assign group membership; each group's contributions
+still pass through their sends, bus effects and master processing. Solo is ignored,
+muted sources are excluded, and file lengths match the full arrangement including
+effect tails. The mode is a workspace preference and resets on reload.
+Run `scripts/browser-experimental-bounce-check.cjs` for grouped ZIP downloads and
+PCM reconstruction, plus `test/experimental-stem-groups.test.js` for membership,
+nested routing, send preservation and non-mutation.
