@@ -29,9 +29,9 @@ separate compatible implementations or licensed integrations.
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document, portable archives and account save/reopen with revision checks implemented |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; cycle playback implemented; drop-frame timecode pending |
-| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; strength/swing quantization and seeded humanization implemented; device input/output pending |
+| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; strength/swing quantization and seeded humanization implemented; standalone Web MIDI input capture implemented with simulated-device tests; hardware verification and device output pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
-| Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
+| Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes, input meter and Web MIDI takes implemented; overdub, monitoring, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, selectable pre/post-fader sends, shared inserts and master inserts implemented |
 | Automation | Editable parameter curves with playback/export parity | Track/master volume/pan and send-level points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
@@ -498,3 +498,35 @@ remain precise seconds and are not constrained by a mouse-editing preference.
 relative-grid dragging, free movement/resize, Shift bypass, undo/redo, tempo-aware
 grid width and saved notes. Existing inspector, duplicate/delete, drag/resize and
 selected-note agent-context regression checks also pass.
+
+## MIDI input recording checkpoint
+
+Experimental has Connect MIDI, device selection, Record MIDI, Stop & save MIDI and
+Discard take controls. Permission is requested only from Connect, with sysex:false.
+The Web MIDI integration follows the [W3C Web MIDI API](https://www.w3.org/TR/webmidi/)
+for input enumeration, event timestamps and device state changes. Unsupported or
+denied access produces an in-app message; importing MIDI files remains available.
+
+This records a standalone take from one input at the current playhead. Notes retain
+channels and velocities; controller, bend, program and pressure messages are kept.
+Repeated same-pitch notes are paired per channel; held notes close at Stop. MIDI
+clock/SysEx messages are ignored. Capture is limited to ten minutes, 20,000 notes
+and 20,000 channel events. Reaching a limit or disconnecting the device stops and
+saves captured material. No live instrument monitoring, overdub, metronome/count-in,
+MIDI output or latency calibration is implemented yet.
+
+The take goes through the shared atomic MIDI import command into a new editable
+track and can be undone as one action. It is converted through the existing
+480-PPQ MIDI writer/parser, so timing has that tick resolution. Storage failures
+restore the prior session/history and keep the take for retry; edits stay locked
+until saved or discarded. Explicit cancellation or leaving Experimental discards
+an unsaved take and closes input listeners. Pending device opens are invalidated
+on navigation. Device permission/recording is an explicit UI action; the agent can
+edit the resulting document through the existing harness.
+
+153 unit tests and the build pass. A simulated Web MIDI browser test checks access
+options, capture/import/undo, cancellation, disconnect recovery, save retry,
+permission denial and navigation during a pending input open. Capture unit tests
+cover note pairing, channels, controllers, invalid messages and limits. Existing
+synthetic microphone recording tests also pass. No physical MIDI keyboard, device
+driver latency or browser/OS compatibility matrix was tested.

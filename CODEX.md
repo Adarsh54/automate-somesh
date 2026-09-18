@@ -432,3 +432,15 @@ free movement; drag increments preserve existing timing offsets. Quantize remain
 a separate operation for aligning starts exactly. Run
 `scripts/browser-experimental-piano-grid-check.cjs` for interaction/tempo/persistence
 checks and `test/experimental-piano-grid.test.js` for timing and boundary rules.
+
+Experimental MIDI input: click Connect MIDI, choose a device, then Record MIDI.
+Stop & save MIDI creates one editable track at the captured playhead. This is
+standalone capture without instrument monitoring or overdub. Browser Web MIDI
+support and permission are required; the app requests no SysEx access. Disconnect
+or the ten-minute limit saves recorded data; cancellation/navigation discards an
+unsaved take. Failed storage saves can be retried without duplicate tracks.
+
+Run `scripts/browser-experimental-midi-input-check.cjs` for simulated-device access,
+recording, undo, disconnect, save retry and lifecycle tests, and
+`test/experimental-midi-capture.test.js` for event decoding/limits. Physical keyboard
+input, latency and cross-browser support still require hardware verification.
