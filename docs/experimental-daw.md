@@ -426,5 +426,27 @@ Agent tool instructions expose these commands and units.
 143 unit tests and the build pass. Browser checks verify send-editor isolation,
 point/clear/undo, persistence and actual rendered send fades, seek restoration,
 stem equivalence and mute. Existing track/master curve and effect tests pass after
-extracting the common editor. Live automation recording, draggable curve handles
-and effect-parameter automation remain pending.
+extracting the common editor. Live automation recording and effect-parameter automation remain pending;
+draggable curve handles are now implemented.
+
+## Direct automation editing checkpoint
+
+Track, master and send curve points can be dragged, edited numerically, or adjusted
+from a focused graph handle with arrow keys. Left/right moves by 0.1 seconds;
+up/down changes gain by 0.5 dB or pan by 0.05. Shift multiplies those steps by ten.
+Delete/Backspace removes the focused point. Focus survives repeated keyboard edits.
+Dragging previews the curve and time/value, then commits one undoable edit on
+release; pointer cancellation restores the original display. Handles stay inside
+the graph edges, and gain graphs show the full supported -96..12 dB range.
+
+`automation.set` targets an existing point ID with optional time/value and works
+across tracks, master and sends. It preserves ID and parameter, rejects out-of-range
+values and same-parameter time collisions, and shares atomic execution and undo
+with agent edits. Different parameters can occupy the same time. Numeric editing
+allows precise values beyond the current graph's horizontal range.
+
+145 unit tests and the build pass. Browser tests verify dragging without duplicate
+points, repeated keyboard edits/focus, deletion/undo, numeric updates, collision
+rollback, send isolation and persisted changes. Track/master/send PCM regression
+checks also pass. Multi-point selection, curved interpolation and live automation
+recording remain pending.

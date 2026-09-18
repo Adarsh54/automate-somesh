@@ -411,3 +411,11 @@ editor. Points override static send gain and initialize correctly on seek.
 track ID and busId. Existing `automation.delete` accepts send point IDs. The send
 position browser check also covers send curves, persistence, mute, seek and stems.
 Run `test/experimental-send-automation.test.js` for command validation and undo.
+
+Automation points support drag, numeric updates and keyboard editing across track,
+master and send curves. Arrow keys adjust time/value (Shift makes larger changes);
+Delete removes a focused point. The shared `automation.set` command updates time
+and/or value while preserving ID/parameter and rejecting collisions. Run
+`scripts/browser-experimental-automation-edit-check.cjs` for interaction/focus,
+undo, collision and persistence checks, and
+`test/experimental-automation-edit.test.js` for command invariants.

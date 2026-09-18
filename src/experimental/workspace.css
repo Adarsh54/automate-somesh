@@ -27,3 +27,5 @@
 .daw-master-description{font-size:12px;line-height:1.5}.daw-mixer [data-mix-select][aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 
 .daw-send-automation{border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px;max-width:680px}.daw-send-automation summary{cursor:pointer;font-size:12px}.daw-send-automation .daw-automation{padding-top:14px}.daw-send-automation .daw-automation form{display:grid;grid-template-columns:1fr 1fr;align-items:stretch}.daw-send-automation input{width:100%;min-width:0}
+
+.daw-automation [data-auto-point]{cursor:grab;touch-action:none;stroke:var(--surface);stroke-width:2}.daw-automation [data-auto-point]:focus{stroke:var(--text);stroke-width:3;outline:none}.daw-automation [data-auto-points]>div{display:block;border-top:1px solid var(--line);padding-top:10px}.daw-automation [data-auto-edit]{width:100%}.daw-automation [data-auto-edit] input{width:100%;min-width:0}
