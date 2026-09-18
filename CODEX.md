@@ -520,3 +520,15 @@ fixed and invalid resulting lengths reject the entire change. Selection/tool sta
 is temporary. Box selection does not auto-scroll yet.
 Run `scripts/browser-experimental-marquee-check.cjs` for gestures, group resize,
 undo/redo and Draw mode regression, plus `test/experimental-marquee.test.js`.
+
+Select an audio or MIDI region and use Bounce region to export just that region as
+stereo WAV. It starts at the region boundary and includes routed bus/master effect
+tails. Source offset, fades, reversal and automation use the existing renderer;
+automation initializes at the region's original timeline position. Solo is ignored;
+track and bus mute still apply. Movie regions require Extract movie audio first.
+The existing sample rate/bit depth settings and ten-minute render limit apply.
+Mix, stem and region exports now capture the document/settings before asynchronous
+work and decode only media used by the render. Editing during a bounce does not
+change that export. Run `scripts/browser-experimental-region-bounce-check.cjs` for
+actual WAV isolation, source offset, delay tail, automation, MIDI and snapshot checks,
+and `test/experimental-bounce-plan.test.js` for plan/asset/limit coverage.

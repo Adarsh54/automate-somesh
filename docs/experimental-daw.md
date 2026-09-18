@@ -35,7 +35,7 @@ separate compatible implementations or licensed integrations.
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, selectable pre/post-fader sends, shared inserts and master inserts implemented |
 | Automation | Editable parameter curves with playback/export parity | Track/master volume/pan and send-level points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
-| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; output-group stems implemented; isolated bus taps and region/movie export pending |
+| Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; output-group stems implemented; selected-region WAV implemented; isolated bus taps and movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
 | Account/storage | Durable project/media save, restore, ownership, version conflicts | Existing Projects/Neon and private Blob integration added; ownership/revision and browser checks pass; live development Neon/Blob round trip verified with synthetic authentication |
 | Reliability | Unit, audio-render, MIDI-fixture, browser, accessibility and load checks | Pending |
@@ -686,3 +686,26 @@ additive selection, Escape cancellation, Alt override, group drag/numeric resizi
 undo/redo and ordinary Draw insertion. Existing piano inspector and snap regression
 checks pass. Box auto-scroll, multi-region selection and proportional scaling remain
 pending; this does not complete the broader DAW goal.
+
+## Selected-region bounce checkpoint
+
+Bounce region exports a selected audio or MIDI region through the existing track,
+bus and master processing. The file begins at the region boundary; original source
+offset/fades/reversal are kept, and automation initializes at the original session
+time. Other regions are removed from the render document. Bus/master tails extend
+the output; solo is ignored, while track and bus mute remain active. Video reference
+regions must first have audio extracted. Sample rate/bit depth settings apply.
+
+A shared bounce planner now clones the complete session before asynchronous work
+for mix, stem and region exports. Settings, title, routing and render duration stay
+fixed while the user edits. Only audible audio assets in that plan are decoded.
+Region export can therefore succeed with an unrelated missing source and can export
+a short region late in a long arrangement, subject to the ten-minute output limit.
+
+172 unit tests and build pass. Real browser downloads verify selected-only audio,
+source offset, delay onset/tail, master gain automation at region time, MIDI synthesis
+and the captured filename while editing during rendering. Existing mix/grouped-stem
+format and summed PCM checks pass. DSP state begins at the region boundary; preceding
+regions and their effect history are intentionally absent, so this is not a slice
+of the fully mixed arrangement. In-place rendering, arbitrary time-range export,
+movie muxing and master-processing bypass remain pending.
