@@ -766,3 +766,17 @@ Audio: capture/placement/save, live mute/unmute, persistence, cancel/navigation
 cleanup, and separate raw/monitored PCM channels showing monitor gain does not
 alter the capture branch. Physical interfaces, output selection, track-routed input
 FX, multiple simultaneous inputs and latency calibration remain pending.
+
+### Marker editing and navigation
+
+Markers now have a chronological editing panel, named add form, rename/time edits,
+delete, previous/next navigation and clickable ruler diamonds. Navigation stops
+playback, follows its current position and scrolls to the destination. Markers can
+extend the visible timeline beyond media without changing bounce duration; ruler
+labels are bounded to 1,000. Absolute marker positions survive tempo changes.
+The agent shares `marker.add` (optional stable ID), `marker.set` and `marker.delete`
+with manual actions through validated atomic batches and undo/redo.
+
+177 tests and build pass. Browser verification covers creation/order, rename/move,
+delete, jumps, undo/redo, escaping, reload and distant-marker rendering. Range
+markers, arrangement sections and SMF marker import/export are still pending.

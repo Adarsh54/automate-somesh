@@ -567,3 +567,16 @@ direct monitoring should be disabled if using browser monitoring to avoid hearin
 two copies. Browser/device latency is not calibrated or compensated.
 Run `scripts/browser-experimental-input-monitor-check.cjs` for fake-microphone
 capture, live mute controls, gain/isolation PCM, saved preferences and cleanup.
+
+Experimental Markers lists named timeline locations in chronological order. Add a
+name/time, edit either field with Save marker, or Delete marker; all edits support
+undo/redo and persist with the session. Clicking a marker's time or ruler diamond
+jumps to it; Previous/Next marker searches relative to the current transport time.
+Navigation stops playback and centers the destination. Marker times are absolute
+seconds (0..86400) and do not rescale with tempo. Markers beyond audio extend the
+visible arrangement, with at most 1,000 ruler labels. They do not extend audio exports.
+`marker.add` accepts optional id plus name/time; `marker.set` targets an existing ID
+with name and/or time; `marker.delete` removes it. IDs remain unique across the
+whole session. Run `scripts/browser-experimental-markers-check.cjs` for UI,
+navigation, persistence and undo, plus `test/experimental-markers.test.js` for
+atomic validation and ordering. MIDI-file marker import/export remains pending.
