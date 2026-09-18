@@ -797,3 +797,20 @@ fixture, label/timing round-trip, combined note/marker placement, fresh IDs, rol
 and undo. The browser marker check exports and re-imports an actual downloaded
 marker-only MIDI file and verifies all markers are restored without creating empty
 instrument tracks. Import into a third-party desktop DAW remains unverified.
+
+### Time-range WAV export
+
+Cycle controls now offer Bounce range WAV using the saved start/end independently
+of the Cycle checkbox. It shares mix rendering, mute/solo, routing and WAV format
+settings, snapshots state before asynchronous work and loads only intersecting
+media. It exports the exact selected duration, including silence, with no appended
+tail. Short ranges late in long sessions are allowed; each output is limited to ten
+minutes. The existing seek renderer initializes automation/controllers but does not
+reconstruct DSP history from earlier material. This is disclosed in the UI; full
+context pre-roll, arbitrary-range stem ZIPs and seamless tail/crossfade handling
+remain pending.
+
+181 tests and build pass. Browser verification inspects actual float WAV samples
+and frame counts for a range 1,001 seconds into a session, source position and
+master automation, missing unrelated media, metronome exclusion, Cycle-off exports
+and an empty silent range. Unit checks cover bounds, snapshot isolation and routing.

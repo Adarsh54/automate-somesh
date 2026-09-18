@@ -6,7 +6,14 @@ const filename=name=>name.replace(/[^a-z0-9 _-]/gi,'').slice(0,80)||'region';
 export function createBouncePlan(input,{mode='mix',stemMode='tracks',regionId}={}){
  const session=structuredClone(input);let position=0,duration=sessionDuration(session),entries,zip=false;
  if(mode==='mix')entries=[{name:session.title+'.wav',document:session}];
- else if(mode==='stems'){
+ else if(mode==='range'){
+  position=session.loopStart;duration=session.loopEnd-position;
+  if(!Number.isFinite(position)||position<0||!Number.isFinite(duration)||duration<=0)throw Error('Set a valid cycle start and end before exporting a range.');
+  // Only media intersecting the requested window is needed. The existing seek
+  // renderer restores automation/controllers, but not earlier effect history.
+  for(const track of session.tracks)track.regions=track.regions.filter(r=>r.start<session.loopEnd&&r.start+r.duration>position);
+  entries=[{name:session.title+'-'+position.toFixed(2)+'s-'+session.loopEnd.toFixed(2)+'s.wav',document:session}];
+ }else if(mode==='stems'){
   zip=true;entries=stemGroups(session,stemMode).map((group,i)=>({name:`${String(i+1).padStart(2,'0')}-${filename(group.name)}.wav`,document:group.document}));
   if(!entries.length)throw Error('Add unmuted tracks before bouncing stems.');
  }else if(mode==='region'){

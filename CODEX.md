@@ -593,3 +593,18 @@ Tempo maps themselves are still flattened on export to the session tempo. Cue-po
 meta-events (FF 07) are not treated as markers. The marker browser check downloads
 and re-imports the actual MIDI file; `test/experimental-midi-markers.test.js` covers
 tempo changes, offset, IDs, bounds and atomic undo.
+
+Bounce range WAV exports the saved Cycle start/end positions without requiring
+Cycle playback to be enabled. Apply cycle first to commit typed boundaries, or Use
+selected region to set them. Output is stereo WAV using Export settings and is
+exactly the selected duration (rounded up to a sample), with no trailing effects
+outside the range. Maximum export length is ten minutes; a short range late in a
+long session is allowed. Only audio regions intersecting the window are decoded.
+Silence is exported for an empty window. Mute/solo, routing, effects, source offsets,
+fades and automation use the existing mix renderer, and metronome is excluded.
+The seek renderer starts effects at the range boundary: prior delay/reverb history
+is not reconstructed. For an exact excerpt of a previously running mix, export the
+full mix and trim it externally until DSP pre-roll is implemented. Settings/document
+are snapshotted before decoding. Run
+`scripts/browser-experimental-range-bounce-check.cjs` for actual WAV sample/length,
+automation, unrelated-media exclusion and silence checks.

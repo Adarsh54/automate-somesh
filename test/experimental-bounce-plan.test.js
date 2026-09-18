@@ -20,3 +20,8 @@ test('bounce asset loading follows rendered audibility and validates selection/l
  s.tracks[0].mute=true;assert.deepEqual(createBouncePlan(s,{mode:'region',regionId:'r'}).assets,[]);
  assert.throws(()=>createBouncePlan(s,{mode:'unknown'}));s.tracks[0].kind='video';assert.throws(()=>createBouncePlan(s,{mode:'region',regionId:'r'}),/Extract movie/);
 });
+test('range bounce uses a snapshot of cycle bounds, audible overlapping media and exact duration',()=>{
+ const s=fixture();s.tracks.forEach(t=>t.solo=false);s.loopStart=1000.5;s.loopEnd=1001.5;s.loopEnabled=false;s.tracks[0].regions[1].start=1200;
+ const plan=createBouncePlan(s,{mode:'range'});assert.equal(plan.position,1000.5);assert.equal(plan.duration,1);assert.deepEqual(plan.assets,['source']);assert.equal(plan.entries[0].document.tracks[0].regions.length,1);assert.equal(plan.entries[0].document.tracks[0].output,'bus');assert.equal(plan.zip,false);s.loopEnd=2000;s.tracks[0].regions[0].offset=8;assert.equal(plan.entries[0].document.loopEnd,1001.5);assert.equal(plan.entries[0].document.tracks[0].regions[0].offset,2);
+ assert.throws(()=>createBouncePlan(s,{mode:'range'}),/10 minutes/);s.loopEnd=s.loopStart;assert.throws(()=>createBouncePlan(s,{mode:'range'}),/valid cycle/);
+});
