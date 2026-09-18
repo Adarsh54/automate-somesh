@@ -1088,3 +1088,39 @@ unverified or pending; this does not complete the full DAW objective.
 
 Official OpenAI documentation reference for conversation state:
 https://developers.openai.com/api/docs/guides/conversation-state
+
+### Full-mix sample analysis
+
+Analyze mix below the mixer renders the complete stereo arrangement at the sample
+rate selected in Export settings (44.1, 48 or 96 kHz). It uses the same offline
+engine as bounce, including instrument envelopes, fades, effects, automation,
+routing and effect tails. Mute/solo apply; the metronome is excluded. The existing
+10-minute offline-render limit applies. Source decoding and the render use browser
+memory; a dedicated worker scans copied channel buffers so sample scanning does
+not block the main UI. Worker buffers are transferred and the worker terminates
+on completion, error, abort or a 60-second scan timeout.
+
+The panel reports per-channel and combined sample peak, RMS mean-square level,
+and the number of samples whose absolute value exceeds one. RMS includes silence
+and tails over the entire render. Zero-energy channels display Silence. Go to
+loudest sample moves the playhead to the first occurrence of the greatest sample
+magnitude. These are sample-domain measurements, not true-peak or LUFS; over-range
+output is not evidence that an earlier source was clipped.
+
+Analysis is kept only in page memory and becomes stale after any session revision.
+The panel marks stale results and disables peak navigation; agent requests omit
+stale results. A session replacement clears them. Valid current results are sent
+as optional mixAnalysis alongside the existing short-window meter readings. Server
+validation checks session/revision, expected rendered frame count, timestamp,
+channel consistency and render bounds. Data remains client-reported; the prompt
+uses it as measurement context rather than instructions, differentiates final-mix
+from individual-track levels, and requires reanalysis after edits. No automatic
+normalization or agent-driven render loop is implemented by this change.
+
+261 tests and build pass. Unit checks cover peak/RMS arithmetic, silence, polarity,
+over-range counts, invalid samples, scope/revision checks and agent forwarding.
+Real browser renders and workers verify normal and over-range audio, silence,
+peak navigation, stale-context omission, an edit during rendering, worker error/
+cancellation and preservation of the rendered buffer. Model responses are mocked;
+live inference remains unverified. Existing agent conversation/race checks also
+pass. The analysis panel was visually inspected. Full DAW parity remains ongoing.
