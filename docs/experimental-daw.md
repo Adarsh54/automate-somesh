@@ -1855,3 +1855,46 @@ synthetic session audio, not physical recording devices.
 
 Reference transport workflow:
 https://support.apple.com/guide/logicpro/use-transport-key-commands-lgcp2814a670/10.7/mac/11.0
+
+
+### Agent transport tool
+
+The agent harness now offers control_transport when the browser explicitly sends
+allowTransport plus a validated current transport snapshot. Actions are play,
+pause, stop and seek. position is required as either absolute seconds 0..86400
+or null: seek requires a number, pause/stop require null, and play accepts either.
+Play(null) resumes the current position and is idempotent during playback.
+Play(number) starts at that position. Pause keeps the playhead; stop returns to
+zero; seek pauses at the requested position. Cycle settings remain active, and
+the browser reports the actual start if the cycle redirects playback. Linear
+playback rejects starting at or beyond the arrangement end.
+
+This strict tool is separate from edit_session and analyze_mix: at most one tool
+call is accepted per model response, and the browser rejects mixed edits/actions.
+Transport does not change the document, revision or undo stack. The resulting
+conversation entry is a reply with the browser-generated transport report and no
+edit deltas. Recording, exports, undo and combined edit-plus-play sequences are
+not implemented by this tool. Existing analysis/edit verification still works.
+
+The server checks transport session/revision and echoes its epoch; the browser
+compares it before execution. Manual play/pause/stop/seek or project replacement
+invalidates a delayed transport plan. Natural playback progress alone does not.
+Region double-click seeking now also stops/repositions through the transport
+invalidation path. Existing recording/busy guards apply. Cancellation races
+against decode, AudioContext.resume and cycle rendering, observing late failures
+while preventing late results from scheduling playback. A canceled startup may
+leave the requested playhead position selected; the report states the actual
+current transport. It does not silently undo a later manual transport action.
+
+304 tests and build pass. Unit checks cover opt-in/strict schemas, mismatched
+context, invalid/mixed tool calls and cancellation of delayed promises. Browser
+checks use real Web Audio and mocked model responses to verify seek/play/pause/
+stop, idempotency, actual-result reports, conversation, unchanged document/undo,
+stale-response rejection after a manual seek, canceled delayed context startup,
+arrangement bounds and cycle redirection. The existing analysis/normalization/
+post-edit verification browser regression passes. Config-only preflight confirms
+OPENAI_API_KEY and DAW_AGENT_MODEL remain absent locally, so live inference has
+not been verified and no provider request was made by that preflight.
+
+Reference: OpenAI function-calling schema/tool execution guidance:
+https://developers.openai.com/api/docs/guides/function-calling
