@@ -954,3 +954,20 @@ track/start, prior-region preservation, mixer settings, undo/redo and cancel/lea
 cleanup. Unit checks exercise planning without mutation, limits and incompatible
 or missing targets. Take lanes, replace/punch modes, comping and hardware latency
 calibration remain pending; overlapping takes currently play together.
+
+### Audio input selection
+
+Recording now offers a local Audio input selector with system default, visible
+microphones/interfaces, refresh and device-change updates. The selected device is
+captured before preparation and requested with an exact constraint. Missing inputs
+remain visibly selected/unavailable; recording errors do not retry another device.
+Selection and refresh controls lock during takes. Device IDs never enter project
+JSON or agent commands. Enumeration does not request microphone access; device
+names may remain hidden until permission, after which recording refreshes them.
+
+203 unit tests and production build pass. The browser check records from a chosen
+synthetic microphone, checks the exact request, rejects a missing input without a
+fallback, saves actual PCM, and verifies undo/redo and cancellation cleanup. Its
+headless Chromium disables hardware audio output so the audio clock runs without
+an output device. Physical interfaces, multichannel input assignment, output-device
+selection and latency calibration remain unverified/pending.

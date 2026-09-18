@@ -3,14 +3,14 @@ import {scheduleRecordingPlayback} from './recording-playback.js';
 import {recordingTiming} from './recording-timing.js';
 import {scheduleRecordingClick} from './metronome.js';
 import {encodeWav} from './audio-engine.js';
-export async function startRecording({signal,session=null,buffers=new Map(),position=0,onProgress=()=>{},onLimit=()=>{}}={}){
+export async function startRecording({signal,deviceId,session=null,buffers=new Map(),position=0,onProgress=()=>{},onLimit=()=>{}}={}){
  if(signal?.aborted)throw Error('Recording canceled.');
  if(!navigator.mediaDevices?.getUserMedia||!globalThis.AudioWorkletNode)throw Error('Microphone recording requires a browser with AudioWorklet support and HTTPS.');
  let stream,context,node,source,timer,click,backing,monitor,closed=false,resolveStop;const chunks=[];let frames=0,channels=0,peak=0,limitReached=false;
  const cleanup=()=>{monitor?.stop();backing?.stop();click?.stop();clearInterval(timer);stream?.getTracks().forEach(t=>t.stop());source?.disconnect();node?.disconnect();if(context&&context.state!=='closed')context.close().catch(()=>{});};
  const cancel=()=>{closed=true;resolveStop?.();cleanup();};signal?.addEventListener('abort',cancel,{once:true});
  try{
-  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}},video:false});if(signal?.aborted)throw Error('Recording canceled.');
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2},...(deviceId?{deviceId:{exact:deviceId}}:{})},video:false});if(signal?.aborted)throw Error('Recording canceled.');
   context=new AudioContext();await context.audioWorklet.addModule(new URL('./recording-worklet.js',import.meta.url));await context.resume();if(signal?.aborted)throw Error('Recording canceled.');
   const timing=recordingTiming(session,context.currentTime,context.sampleRate),{startFrame,captureTime}=timing;
   node=new AudioWorkletNode(context,'cuestamp-capture',{processorOptions:{startFrame}});source=context.createMediaStreamSource(stream);

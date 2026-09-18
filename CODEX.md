@@ -743,3 +743,15 @@ existing WAV-download fallback. Run `test/experimental-audio-destination.test.js
 and `scripts/browser-experimental-audio-destination-check.cjs` for limits, track
 preservation, placement, history, synthetic PCM and cancellation/navigation cleanup.
 These are separate regions, not take lanes or automatic comping/replace recording.
+
+Experimental recording has an Audio input selector and Refresh inputs control.
+Selection is transient, separate from the destination track, and locked during a
+take. Device names/list availability depend on browser microphone permission;
+recording requests that permission and refreshes the list afterward. Explicit
+inputs use an exact device constraint: failure is surfaced without retrying the
+system default. A disconnected selection remains visibly unavailable until the
+user reconnects it or chooses another input. Enumeration never opens a microphone.
+Device-change listeners and pending refreshes are cleaned up on navigation.
+Multichannel input assignment, output routing and physical latency calibration
+remain pending. See `test/experimental-audio-inputs.test.js` and
+`scripts/browser-experimental-audio-input-check.cjs`.
