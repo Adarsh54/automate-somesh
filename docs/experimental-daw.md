@@ -32,7 +32,7 @@ separate compatible implementations or licensed integrations.
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; strength/swing quantization and seeded humanization implemented; device input/output pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
-| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts implemented; pre-fader sends pending |
+| Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, selectable pre/post-fader sends, shared inserts and master inserts implemented |
 | Automation | Editable parameter curves with playback/export parity | Track and master volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
@@ -153,14 +153,14 @@ Implementation reference: https://developer.mozilla.org/en-US/docs/Web/API/Audio
 
 ## Bus routing checkpoint
 
-+ Bus creates a mixer channel that receives track outputs and post-fader/post-pan
-sends. Bus channels support the existing insert effects and volume/pan automation.
++ Bus creates a mixer channel that receives track outputs and selectable pre-fader,
+post-fader or post-pan sends. Bus channels support the existing insert effects and volume/pan automation.
 Outputs can route through nested buses; the command executor rejects nonexistent
 destinations and feedback cycles. Deleting a bus returns its upstream outputs to
 Master and removes sends to it, with undo restoring the routing.
 
 Bus solo includes its upstream sources, including their other output paths. This
-is source auditioning, not isolated bus-return solo. Pre-fader sends, send-level
+is source auditioning, not isolated bus-return solo. Send-level
 automation and explicit grouped-bus export remain pending. Per-track stem rendering
 keeps the bus graph, effects and tails. Shared nonlinear bus effects (such as
 compression) process each isolated stem differently from the combined full mix,
@@ -385,3 +385,23 @@ clear/undo, static pan and persistence, and measure actual PCM fade levels, hard
 channel isolation, seek equivalence and effects followed by master gain. The
 existing track-effects/automation/export regression also passes. Agent fade plans
 are tested with a mocked provider; real inference remains unverified.
+
+## Send position checkpoint
+
+Each send now has a Position selector: Before volume (`preFader`), After volume
+(`postFader`), or After pan (`postPan`). All three taps are after the channel inserts.
+Before volume ignores the source volume and pan curves; After volume follows volume
+but ignores pan; After pan follows both. Send gain then scales that tapped signal
+before it enters the destination bus. Source and bus mute silence every outgoing
+send, including pre-fader sends. Routing cycle validation is unchanged.
+
+`send.set` accepts optional tap and can update an existing send's level or position
+independently. New sends require a level. Older projects default to postPan,
+preserving their previous mix. Commands are atomic and undoable; positions persist
+in projects and share the playback/offline/stem renderer. Agent instructions describe
+these positions and mute semantics. Send-level automation remains pending.
+
+141 unit tests and the build pass. The send-position browser check verifies controls,
+undo and persistence plus actual PCM fader/pan independence, volume automation,
+post-insert filtering and mute for sources and nested buses. The existing bus routing
+and stem check also passes.

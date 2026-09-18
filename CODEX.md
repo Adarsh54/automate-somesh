@@ -295,7 +295,7 @@ volume/pan automation. Playback and offline rendering share the same signal chai
 Bounce stems exports aligned per-track WAVs in a ZIP; muted tracks are excluded,
 solo is ignored, and master gain is included. Edits stop playback. Run
 `scripts/browser-experimental-effects-check.cjs` for controls, stem packaging and
-actual browser PCM regression checks. Bus outputs and post-fader sends are available through + Bus and the mixer routing section.
+actual browser PCM regression checks. Bus outputs and selectable send positions are available through + Bus and the mixer routing section.
 
 Run `scripts/browser-experimental-archive-check.cjs` to verify portable project
 export, import into cleared storage, restored playback and reload.
@@ -317,7 +317,7 @@ the active take and releases the microphone. Overdub/monitoring are not implemen
 it does not access physical recording hardware. Microphone access requires HTTPS
 or a trusted loopback origin.
 
-Experimental buses support nested outputs, post-fader sends, shared effects and
+Experimental buses support nested outputs, pre/post-fader sends, shared effects and
 volume/pan automation. Routing validation rejects feedback cycles. Bus deletion
 clears references reversibly. Run `scripts/browser-experimental-routing-check.cjs`
 for routing controls and real PCM checks. Per-track stem exports retain bus effects;
@@ -397,3 +397,10 @@ Master curves override static master volume/pan; clear the corresponding curve t
 return to static controls. `automation.point` and `automation.clear` use the session
 ID for master edits. The master browser check includes rendered fades, panning and
 seek restoration; unit coverage is in `test/experimental-master-automation.test.js`.
+
+Send Position can be Before volume, After volume, or After pan (the existing default).
+All positions are after inserts; mute silences all outgoing sends. These positions
+also control whether source volume/pan automation affects the send. Run
+`scripts/browser-experimental-send-taps-check.cjs` for controls, persistence and
+rendered signal-flow checks. The shared `send.set` command accepts tap values
+`preFader`, `postFader`, or `postPan`; existing sends allow independent tap/level updates.
