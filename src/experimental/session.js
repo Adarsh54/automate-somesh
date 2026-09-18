@@ -1,3 +1,4 @@
+import {quantizeNotes,humanizeNotes} from './note-transforms.js';
 import {frameRates} from './timecode.js';
 import {midiEventSchema,chasedEvents} from './midi-events.js';
 import {validateRouting} from './routing.js';
@@ -10,7 +11,7 @@ const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(
 const track=z.object({id:ident,name:z.string().max(200),kind:z.enum(['audio','midi','video','bus']),gainDb:db,pan:z.number().min(-1).max(1),mute:z.boolean(),solo:z.boolean(),instrument:z.enum(['sine','triangle','square','sawtooth','drumKit']),regions:z.array(region).max(1000),output:ident.nullable().default(null),sends:z.array(z.object({busId:ident,gainDb:db})).max(16).default([]),effects:z.array(effectSchema).max(16).default([]),automation:z.array(automationSchema).max(2000).default([])});
 export const sessionSchema=z.object({version:z.literal(1),id:ident,title:z.string().max(200),revision:z.number().int().nonnegative(),tempo:z.number().min(20).max(300),meter:z.number().int().min(1).max(16),masterDb:db,loopEnabled:z.boolean().default(false),loopStart:time.default(0),loopEnd:time.default(4),frameRate:z.number().refine(value=>frameRates.includes(value),'Unsupported frame rate.').default(24),tracks:z.array(track).max(128),markers:z.array(z.object({id:ident,name:z.string().max(200),time})).max(1000)});
 export const newSession=()=>({version:1,id:crypto.randomUUID(),title:'Untitled session',revision:0,tempo:120,meter:4,masterDb:0,tracks:[],markers:[]});
-export const operations=['session.set','track.add','track.set','track.delete','send.set','send.delete','region.add','region.extractAudio','region.trim','region.set','region.delete','region.split','region.duplicate','event.add','event.set','event.delete','note.add','note.set','note.delete','notes.quantize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
+export const operations=['session.set','track.add','track.set','track.delete','send.set','send.delete','region.add','region.extractAudio','region.trim','region.set','region.delete','region.split','region.duplicate','event.add','event.set','event.delete','note.add','note.set','note.delete','notes.quantize','notes.humanize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
 export const commandSchema=z.object({op:z.enum(operations),target:z.string().max(100).optional(),values:z.record(z.string(),z.union([z.string(),z.number(),z.boolean(),z.null()])).default({})}).strict();
 export const batchSchema=z.array(commandSchema).min(1).max(100);
 const pick=(values,allowed)=>{for(const key of Object.keys(values))if(!allowed.includes(key))throw Error(`Unsupported field: ${key}`);return values;};
@@ -45,7 +46,8 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'note.add':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');r.notes.push(note.parse({id:crypto.randomUUID(),pitch:60,start:0,duration:.5,velocity:.8,...pick(v,['id','pitch','start','duration','velocity','channel'])}));break;
    case 'note.set':Object.assign(need(n,'Note'),pick(v,['pitch','start','duration','velocity','channel']));break;
    case 'note.delete':need(n,'Note');noteRegion.notes=noteRegion.notes.filter(x=>x!==n);break;
-   case 'notes.quantize':need(r,'Region');pick(v,['grid']);if(!Number.isFinite(v.grid)||v.grid<=0)throw Error('Grid must be positive seconds.');for(const n of r.notes)n.start=Math.round(n.start/v.grid)*v.grid;break;
+   case 'notes.quantize':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');quantizeNotes(r,v);break;
+   case 'notes.humanize':need(r,'Region');if(owner.kind!=='midi')throw Error('Choose a MIDI region.');humanizeNotes(r,v);break;
    case 'notes.transpose':need(r,'Region');pick(v,['semitones']);if(!Number.isInteger(v.semitones))throw Error('Enter whole semitones.');for(const n of r.notes)n.pitch+=v.semitones;break;
    case 'effect.add':need(t,'Track');t.effects.push(effectSchema.parse({id:crypto.randomUUID(),...v}));break;
    case 'effect.set':{const e=session.tracks.flatMap(t=>t.effects).find(e=>e.id===target);need(e,'Effect');Object.assign(e,effectSchema.parse({...e,...pick(v,Object.keys(e).filter(k=>!['id','kind'].includes(k)))}));break;}

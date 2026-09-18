@@ -376,3 +376,11 @@ Experimental export settings support 44.1/48/96 kHz and 16/24-bit PCM or 32-bit 
 WAV for both mixes and per-track stem ZIPs. Run
 `scripts/browser-experimental-bounce-check.cjs` to verify downloaded formats and
 start timing. The ten-minute limit still applies; stem ZIP generation uses memory.
+
+Experimental piano-roll Timing & feel controls provide strength/swing quantization
+and seeded timing/length/velocity humanization. Both use the shared command harness
+and support region-wide or selected-note edits. Run
+`scripts/browser-experimental-note-tools-check.cjs` for UI, undo/redo, persistence
+and MIDI-download checks; `test/experimental-note-transforms.test.js` covers command
+bounds, determinism and agent validation. Tool defaults reset on reload; note edits
+persist. Humanization is destructive but undoable, so undo before comparing seeds.

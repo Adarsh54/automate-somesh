@@ -29,7 +29,7 @@ separate compatible implementations or licensed integrations.
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document, portable archives and account save/reopen with revision checks implemented |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; cycle playback implemented; drop-frame timecode pending |
-| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
+| MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; strength/swing quantization and seeded humanization implemented; device input/output pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, post-fader sends and shared inserts implemented; master inserts and pre-fader sends pending |
@@ -311,3 +311,33 @@ padding. All stems still share the arrangement length including effect tails.
 WAV unit tests verify signed 24-bit packing, interleaving, RIFF padding, headers,
 float headroom and the default recording format. The browser bounce check verifies
 actual mix/stem downloads, sample rates, start timing and browser float decoding.
+
+## MIDI timing and feel checkpoint
+
+The piano roll includes a Timing & feel panel. Quantize offers straight and triplet
+grids, 0–100% strength and 0–75% swing delay. Swing delays alternate grid points by
+that fraction of the chosen grid interval; it is not a conventional swing-ratio
+percentage. Starts move toward the nearest swung point and are clamped to keep
+whole notes inside the region. Existing grid-only commands retain full straight
+quantization behavior, with safer region boundaries.
+
+Humanize varies note starts and lengths by a configurable number of milliseconds
+and velocity by MIDI steps. The variation seed makes the edit deterministic across
+server validation and browser application, independent of note order. Zero-valued
+parameters leave that property unchanged; silent notes stay silent. Pitch and
+channel are preserved. Both tools apply to all notes in the region or one selected
+note, through the same atomic, undoable commands used by the agent. Reapplying
+humanization compounds changes; undo first to compare different seeds from the
+same starting notes. Tool preferences last for the current workspace instance;
+resulting note edits persist in projects and MIDI exports.
+
+`notes.quantize` adds optional strength, swing and noteId. `notes.humanize` accepts
+seed, timing/duration in seconds, velocity in 0–1 units and optional noteId. Agent
+instructions document these units and semantics. Mocked agent tests validate the
+same deterministic output; a real connected model remains unverified.
+
+Tests cover region edges, selected-note scope, deterministic/order-independent
+variation, input rejection, atomic rollback, undo/redo, browser controls, session
+restoration and downloaded MIDI timing/velocity. Multi-note selection, hardware
+MIDI recording, groove templates and non-destructive region quantize parameters
+remain pending.
