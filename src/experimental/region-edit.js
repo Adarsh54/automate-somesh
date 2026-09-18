@@ -19,13 +19,27 @@ export function trimmedMidiRegion(region,start,end){
   const soundingEnd=sustainedEnd(note,(region.events||[]).filter(e=>e.channel===note.channel),region.duration);
   if(note.start>=to||soundingEnd<=from)return [];
   // A note already released but held by the pedal must remain audible at the cut.
-  const noteEnd=note.start+note.duration<=from?soundingEnd:note.start+note.duration;
+  // A carried gate need not span the entire pedal hold. Cap it at the MIDI
+  // note-length limit; the chased pedal still sustains it to the original release.
+  const noteEnd=note.start+note.duration<=from?Math.min(soundingEnd,from+3600):note.start+note.duration;
   const localStart=Math.max(from,note.start);
   return [{...note,start:localStart-from,duration:Math.min(to,noteEnd)-localStart}];
  });
  const events=[...chasedEvents(region.events||[],from),...(region.events||[]).filter(e=>e.start>=from&&e.start<=to).map(e=>({...e,start:e.start-from}))].sort((a,b)=>a.start-b.start);
  const fadeIn=Math.min(region.fadeIn,duration),fadeOut=Math.min(region.fadeOut,duration-fadeIn);
  return {start,duration,offset:0,notes,events,fadeIn,fadeOut};
+}
+// Split MIDI through the same crop/chase logic as trimming, including notes
+// whose key has been released but whose channel sustain pedal remains down.
+export function splitMidiRegion(region,time){
+ const at=time-region.start;
+ if(!Number.isFinite(at)||at<=0||at>=region.duration)throw Error('Split must be inside the region.');
+ const left={...region,...trimmedMidiRegion(region,region.start,time),fadeOut:0,fadeIn:Math.min(region.fadeIn,at)};
+ left.events=left.events.filter(event=>event.start<at);
+ const right={...region,...trimmedMidiRegion(region,time,region.start+region.duration),id:crypto.randomUUID(),fadeIn:0,fadeOut:Math.min(region.fadeOut,region.duration-at)};
+ right.notes=right.notes.map(note=>({...note,id:crypto.randomUUID()}));
+ right.events=right.events.map(event=>({...event,id:crypto.randomUUID()}));
+ return {left,right};
 }
 export function regionHandles(region,kind){return `<span class="daw-trim start" data-region-handle="trim-start" title="Trim start"></span><span class="daw-trim end" data-region-handle="trim-end" title="Trim end"></span>${kind!=='video'?`<svg class="daw-fade-envelope" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${regionEnvelopePoints(region).map((p,i)=>`${i?'L':'M'} ${p.time/region.duration*100} ${(1-p.value)*100}`).join(' ')}"/></svg><span class="daw-fade-handle" data-region-handle="fadeIn" style="left:${region.fadeIn/region.duration*100}%" title="Fade in"></span><span class="daw-fade-handle end" data-region-handle="fadeOut" style="right:${region.fadeOut/region.duration*100}%" title="Fade out"></span>`:''}`;}
 export function bindRegions(root,{session,zoom,select,seek,execute,guard,sourceDuration}){

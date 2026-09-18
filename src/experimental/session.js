@@ -18,7 +18,7 @@ import {quantizeNotes,humanizeNotes} from './note-transforms.js';
 import {frameRates} from './timecode.js';
 import {midiEventSchema,chasedEvents} from './midi-events.js';
 import {validateRouting} from './routing.js';
-import {trimmedRegion,trimmedMidiRegion} from './region-edit.js';
+import {trimmedRegion,trimmedMidiRegion,splitMidiRegion} from './region-edit.js';
 import {effectSchema,automationSchema} from './effects.js';
 import {z} from 'zod';
 const ident=z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
@@ -77,6 +77,7 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'region.split':{
     need(r,'Region');pick(v,['time']);const at=Number(v.time)-r.start;if(!Number.isFinite(at)||at<=0||at>=r.duration)throw Error('Split must be inside the region.');
     if(r.reverse)throw Error('Unreverse the region before splitting it.');
+    if(owner.kind==='midi'){const {left,right}=splitMidiRegion(r,Number(v.time));Object.assign(r,left);owner.regions.push(right);break;}
     const right={...structuredClone(r),id:crypto.randomUUID(),start:r.start+at,offset:r.offset+at,duration:r.duration-at,fadeIn:0,fadeOut:Math.min(r.fadeOut,r.duration-at),events:[...chasedEvents(r.events,at),...r.events.filter(e=>e.start>=at).map(e=>({...e,id:crypto.randomUUID(),start:e.start-at}))],notes:r.notes.filter(n=>n.start+n.duration>at).map(n=>({...n,id:crypto.randomUUID(),start:Math.max(0,n.start-at),duration:Math.min(n.duration,n.start+n.duration-at)}))};
     r.events=r.events.filter(e=>e.start<at);r.duration=at;r.fadeOut=0;r.fadeIn=Math.min(r.fadeIn,at);r.notes=r.notes.filter(n=>n.start<at).map(n=>({...n,duration:Math.min(n.duration,at-n.start)}));owner.regions.push(right);break;
    }

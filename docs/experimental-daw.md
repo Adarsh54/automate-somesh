@@ -1786,3 +1786,32 @@ unconfigured locally; the validated shared command is available to that harness.
 
 Reference: Apple's region-join workflow:
 https://support.apple.com/en-om/guide/logicpro/lgcpaa45acde/mac
+
+
+### Sustain-aware MIDI splits
+
+Fixed Split at playhead / region.split dropping notes whose MIDI key release was
+before the cut while CC64 still held them. MIDI splits now share the trim/crop
+helper: the right region contains a new note at its start for each still-held
+voice, plus chased controller and pitch-bend state for its own channel. Notes
+that already stopped, including a pedal release exactly at the cut, do not carry.
+Ordinary crossing notes retain their remaining gate length. Events exactly at
+the cut belong on the right; left-side IDs remain and right-side IDs are fresh.
+Outer fades are retained within the respective region lengths, internal fades
+are zero and MIDI source offsets become zero. Audio/video splitting is unchanged.
+
+Very long carried holds cap their new MIDI gate at 3,600 seconds to respect the
+individual-note limit; the retained pedal stream sustains them to the original
+release. The same improvement applies to MIDI cropping. Splitting is still
+rearticulation at the cut (new oscillator/sample/envelope), not seamless audio
+continuity. Undo restores the unsplit performance; this limitation is also
+explicit in the agent instructions.
+
+299 tests and build pass. Unit checks cover channel-isolated sustain, release at
+the cut, crossing and exact-start notes, chased pitch bend, fresh IDs, fade
+boundaries, long holds, invalid batch rollback, undo/redo and MIDI export.
+Browser checks exercise the actual Split at playhead button and render real
+Web Audio: the held note continues after the cut, ends at the original release,
+and seeking inside the right region also restores sustain correctly. Reload
+persistence and undo/redo pass. No physical MIDI hardware or live model call was
+used for these checks.
