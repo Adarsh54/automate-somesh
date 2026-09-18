@@ -1012,3 +1012,39 @@ full DAW scope; hardware recording and live model execution remain unverified.
 
 Reference workflow: Apple's overlapping-region crossfades:
 https://support.apple.com/en-gb/guide/logicpro/lgcp9260fa9c/10.7/mac/11.0
+
+### MIDI legato and overlap correction
+
+The piano roll now includes Legato & note lengths. Connect note lengths adjusts
+selected or all notes to the next strictly later onset in the same MIDI channel.
+Simultaneous notes are treated as a chord. Shorten overlaps only never extends a
+note. A gap in milliseconds leaves space before the next onset; a negative gap
+creates overlap. Choose all notes or only the changed selection as the source of
+following boundaries, and optionally require the same pitch. Notes with no next
+onset keep their length by default, or use the region end. A live preview reports
+how many notes will change and disables invalid/no-op submissions.
+
+Shared command notes.legato targets a MIDI region with mode legato/shorten, gap
+in seconds (-10..10), following all/selected, match channel/pitch, last keep/
+regionEnd, and optional noteId or comma-separated noteIds. Defaults are legato,
+0, all, channel and keep. Omit selection fields to edit the region's notes.
+Region-end fallback ignores gap; overlaps are capped at the region boundary.
+A zero/negative note length or result over the 3,600-second note limit rejects
+the entire command. Onsets, pitches, channels, velocities and controller events
+stay unchanged. Plans use sorted onset groups and binary search for large regions.
+One batch is one undo step, and note lengths persist and export through MIDI.
+The editing-agent prompt documents the operation. It edits MIDI gate duration;
+sustain pedals, instrument release tails, glide and sample articulations remain
+separate behaviors.
+
+253 tests and the production build pass. Unit checks cover chords/channels,
+selection versus following-note scope, matching pitches, gaps/overlaps, final-note
+policy, shortening, atomic rollback/undo, MIDI roundtrip and 20,000 unsorted notes.
+The browser checks preview/validation, selected/all edits, undo/reload, visible
+controls and an offline audio render showing the former gap now sounding. The
+existing piano inspector, drag/resize, duplicate/delete and persistence checks
+also pass. The controls were visually inspected. The full DAW objective and live
+model validation remain ongoing.
+
+Reference workflow: Apple's Force Legato and overlap-correction commands:
+https://help.apple.com/logicpro/mac/9.1.6/en/logicpro/usermanual/chapter_23_section_3.html
