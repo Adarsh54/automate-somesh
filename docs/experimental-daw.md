@@ -843,3 +843,19 @@ lane rejection, inspector transfer, undo/redo, reload and actual audio reflectin
 destination gain. Unit checks cover all three region kinds, preserved source
 references and atomic failure. Multi-region transfers, drag autoscroll and copying
 regions between tracks without moving remain pending.
+
+### Region repetition
+
+The inspector offers Additional copies and Spacing in beats. The shared
+`region.repeat` command creates 1–100 independent copies on the same track, using
+source duration as default interval and preserving source/MIDI content while
+regenerating editable IDs. All copies commit as one undoable operation with full
+validation. Audio, MIDI and movie regions are supported; repetitions share media.
+This is an arrangement editing operation, not linked aliases or a live looping
+region. Gaps/overlaps are intentional when spacing differs from region duration.
+
+189 tests and build pass. Unit checks cover all region kinds, IDs/references,
+placement, rollback and limits. The browser check verifies beat spacing, one-step
+undo/redo, independent note edits, reload and four rendered phrases separated by
+silence. Linked region aliases, repeat-to-locator and multiple-region patterns
+remain pending.

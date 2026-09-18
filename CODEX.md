@@ -635,3 +635,16 @@ Run `scripts/browser-experimental-region-move-check.cjs` for drag feedback,
 incompatible rejection, inspector/history/persistence and destination gain PCM;
 `test/experimental-region-move.test.js` covers audio/MIDI/video transfers and invalid
 commands. Multiple-region moves and automatic scrolling during drags remain pending.
+
+Region inspector → Repeat region creates 1–100 additional copies with spacing in
+beats. Default spacing equals the region length; shorter spacing deliberately
+creates overlaps, longer spacing creates gaps. Copies stay on the same track,
+share source media and preserve source offset, fades and MIDI content, but receive
+new region/note/event IDs. They are independent edits, not linked loop aliases.
+One Undo removes the entire repetition; the 1,000-region track limit still applies.
+The agent command `region.repeat` targets a region ID with required `count` and
+optional `interval` in seconds (default region duration). Repeat starts must remain
+within the 86,400-second timeline bound. Run
+`test/experimental-repeat-region.test.js` and
+`scripts/browser-experimental-repeat-region-check.cjs` for content/bounds, beat
+spacing, independent edits, history/persistence and rendered phrase timing.
