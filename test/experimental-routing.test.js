@@ -6,9 +6,9 @@ test('send tap and level update independently, default to post-pan, and undo tog
  const h=new SessionHistory(applyCommands(setup(),[{op:'send.set',target:'a',values:{busId:'b',gainDb:-12}}]));
  assert.equal(h.session.tracks[0].sends[0].tap,'postPan');
  h.execute([{op:'send.set',target:'a',values:{busId:'b',tap:'preFader'}}]);
- assert.deepEqual(h.session.tracks[0].sends[0],{busId:'b',gainDb:-12,tap:'preFader'});
+ assert.deepEqual(h.session.tracks[0].sends[0],{busId:'b',gainDb:-12,tap:'preFader',automation:[]});
  h.execute([{op:'send.set',target:'a',values:{busId:'b',gainDb:-6}}]);
- assert.deepEqual(h.session.tracks[0].sends[0],{busId:'b',gainDb:-6,tap:'preFader'});
+ assert.deepEqual(h.session.tracks[0].sends[0],{busId:'b',gainDb:-6,tap:'preFader',automation:[]});
  h.undo();assert.equal(h.session.tracks[0].sends[0].gainDb,-12);
  h.undo();assert.equal(h.session.tracks[0].sends[0].tap,'postPan');
  const before=structuredClone(h.session);

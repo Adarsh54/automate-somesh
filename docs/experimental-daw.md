@@ -33,7 +33,7 @@ separate compatible implementations or licensed integrations.
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Oscillator instruments, synthesized drum kit, bar-based step sequencer and MIDI event editor implemented; sampler, chord/key tools and notation pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; bus outputs, selectable pre/post-fader sends, shared inserts and master inserts implemented |
-| Automation | Editable parameter curves with playback/export parity | Track and master volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
+| Automation | Editable parameter curves with playback/export parity | Track/master volume/pan and send-level points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
@@ -160,8 +160,8 @@ destinations and feedback cycles. Deleting a bus returns its upstream outputs to
 Master and removes sends to it, with undo restoring the routing.
 
 Bus solo includes its upstream sources, including their other output paths. This
-is source auditioning, not isolated bus-return solo. Send-level
-automation and explicit grouped-bus export remain pending. Per-track stem rendering
+is source auditioning, not isolated bus-return solo. Explicit grouped-bus export
+remains pending. Send-level automation is now implemented. Per-track stem rendering
 keeps the bus graph, effects and tails. Shared nonlinear bus effects (such as
 compression) process each isolated stem differently from the combined full mix,
 so summing those stems need not reproduce the mix exactly.
@@ -399,9 +399,32 @@ send, including pre-fader sends. Routing cycle validation is unchanged.
 independently. New sends require a level. Older projects default to postPan,
 preserving their previous mix. Commands are atomic and undoable; positions persist
 in projects and share the playback/offline/stem renderer. Agent instructions describe
-these positions and mute semantics. Send-level automation remains pending.
+these positions and mute semantics. Send-level automation is implemented in the
+following checkpoint.
 
 141 unit tests and the build pass. The send-position browser check verifies controls,
 undo and persistence plus actual PCM fader/pan independence, volume automation,
 post-insert filtering and mute for sources and nested buses. The existing bus routing
 and stem check also passes.
+
+## Send automation checkpoint
+
+Each send has an expandable automation panel using the same curve editor as tracks
+and the master. Its gain points interpolate in dB, override the static send level,
+and use absolute session seconds. Curves work with every send position and remain
+independent of source volume/pan automation. Clearing the curve restores the static
+send gain; deleting the send or destination bus removes its curve, with undo
+restoring it. Open send panels remain open while editing during the current view.
+
+`send.automation.point` targets the source track with busId, optional point id, time
+and value (-96..12 dB). It upserts points at the same time. `send.automation.clear`
+targets the source with busId, and `automation.delete` removes any automation point
+by its globally unique ID. Send schemas default old projects to empty curves and
+permit up to 2,000 gain points per send. Pan curves are not accepted on sends.
+Agent tool instructions expose these commands and units.
+
+143 unit tests and the build pass. Browser checks verify send-editor isolation,
+point/clear/undo, persistence and actual rendered send fades, seek restoration,
+stem equivalence and mute. Existing track/master curve and effect tests pass after
+extracting the common editor. Live automation recording, draggable curve handles
+and effect-parameter automation remain pending.

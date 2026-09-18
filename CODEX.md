@@ -404,3 +404,10 @@ also control whether source volume/pan automation affects the send. Run
 `scripts/browser-experimental-send-taps-check.cjs` for controls, persistence and
 rendered signal-flow checks. The shared `send.set` command accepts tap values
 `preFader`, `postFader`, or `postPan`; existing sends allow independent tap/level updates.
+
+Each send now has an expandable gain automation curve, sharing the track/master
+editor. Points override static send gain and initialize correctly on seek.
+`send.automation.point` uses source track ID plus busId/time/value; clear uses source
+track ID and busId. Existing `automation.delete` accepts send point IDs. The send
+position browser check also covers send curves, persistence, mute, seek and stems.
+Run `test/experimental-send-automation.test.js` for command validation and undo.
