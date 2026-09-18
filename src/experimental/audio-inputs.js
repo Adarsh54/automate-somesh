@@ -1,5 +1,7 @@
+import {recordingChannelModes,validateRecordingChannels} from './recording-channels.js';
 // Hardware selection stays local to this workspace, never in a project document.
 export function createAudioInputs({mediaDevices=globalThis.navigator?.mediaDevices,onChange=()=>{}}={}){
+ let inputChannels='stereo';
  let devices=[],selected='',active=false,generation=0,loading=false,error='';
  async function refresh(){
   if(!active)return;
@@ -13,12 +15,14 @@ export function createAudioInputs({mediaDevices=globalThis.navigator?.mediaDevic
   finally{if(active&&request===generation){loading=false;onChange();}}
  }
  return {
+  get inputChannels(){return inputChannels;},
+  selectChannels(mode){validateRecordingChannels(mode);inputChannels=mode;onChange();},
   get deviceId(){return selected||undefined;},
   select(id){selected=id;onChange();},
   refresh,
   activate(){if(active)return;active=true;mediaDevices?.addEventListener?.('devicechange',refresh);void refresh();},
   dispose(){active=false;++generation;loading=false;mediaDevices?.removeEventListener?.('devicechange',refresh);},
-  view(esc,disabled=false){const missing=selected&&!devices.some(d=>d.id===selected);return `<div class="daw-toolbar"><label>Audio input<select data-audio-input ${disabled?'disabled':''}><option value="">System default</option>${missing?`<option value="${esc(selected)}" selected>Selected input unavailable</option>`:''}${devices.map(d=>`<option value="${esc(d.id)}" ${d.id===selected?'selected':''}>${esc(d.label)}</option>`).join('')}</select></label><button data-audio-input-refresh ${disabled||loading?'disabled':''}>${loading?'Refreshing inputs…':'Refresh inputs'}</button><small>${esc(error||(missing?'Reconnect your selected input or choose another.': 'Device names may appear after microphone permission is granted.'))}</small></div>`;},
-  bind(root){root.querySelector('[data-audio-input]').onchange=e=>this.select(e.target.value);root.querySelector('[data-audio-input-refresh]').onclick=()=>void refresh();}
+  view(esc,disabled=false){const missing=selected&&!devices.some(d=>d.id===selected);return `<div class="daw-toolbar"><label>Audio input<select data-audio-input ${disabled?'disabled':''}><option value="">System default</option>${missing?`<option value="${esc(selected)}" selected>Selected input unavailable</option>`:''}${devices.map(d=>`<option value="${esc(d.id)}" ${d.id===selected?'selected':''}>${esc(d.label)}</option>`).join('')}</select></label><label>Record channels<select data-audio-channels ${disabled?'disabled':''}>${recordingChannelModes.map(([id,label])=>`<option value="${id}" ${inputChannels===id?'selected':''}>${label}</option>`).join('')}</select></label><button data-audio-input-refresh ${disabled||loading?'disabled':''}>${loading?'Refreshing inputs…':'Refresh inputs'}</button><small>${esc(error||(missing?'Reconnect your selected input or choose another.': 'Device names may appear after microphone permission is granted.'))}</small></div>`;},
+  bind(root){root.querySelector('[data-audio-channels]').onchange=e=>this.selectChannels(e.target.value);root.querySelector('[data-audio-input]').onchange=e=>this.select(e.target.value);root.querySelector('[data-audio-input-refresh]').onclick=()=>void refresh();}
  };
 }

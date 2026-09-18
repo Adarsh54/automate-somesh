@@ -971,3 +971,19 @@ fallback, saves actual PCM, and verifies undo/redo and cancellation cleanup. Its
 headless Chromium disables hardware audio output so the audio clock runs without
 an output device. Physical interfaces, multichannel input assignment, output-device
 selection and latency calibration remain unverified/pending.
+
+### Mono/stereo recording channel selection
+
+Audio input controls now select stereo/native capture or extract input 1/2 into a
+mono take. The selection precedes capture and monitoring, so saved WAVs have one
+channel for mono and monitoring is centered. Input 2 requests a minimum of two
+channels and rejects a reported mono stream with cleanup. Settings remain local
+and fixed during takes; no project schema or agent command is needed for hardware
+setup. This covers the first two browser-exposed channels, not arbitrary multichannel
+interface routing or simultaneous independent track capture.
+
+205 tests and build pass. Browser checks save a UI-created mono take and inspect
+actual PCM from separate +0.2/-0.4 synthetic channels for all three modes. Offline
+monitor renders confirm stereo separation and centered mono. Tests also verify
+unavailable-channel rejection, device cleanup and control locking. Real hardware
+channel maps/latency remain unverified, and broader recording/comping remains open.

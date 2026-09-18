@@ -755,3 +755,16 @@ Device-change listeners and pending refreshes are cleaned up on navigation.
 Multichannel input assignment, output routing and physical latency calibration
 remain pending. See `test/experimental-audio-inputs.test.js` and
 `scripts/browser-experimental-audio-input-check.cjs`.
+
+Record channels beside Audio input offers Stereo / native, Mono Input 1 (left),
+and Mono Input 2 (right). Mono selection extracts one source channel without
+summing; both the saved WAV and live monitor use it. Mono monitoring plays centered.
+Choices are local, locked during capture, and fixed before preparation. Input 2
+requests at least two device channels and rejects reported single-channel streams,
+releasing the device on failure. Browser/device channel-count reporting varies;
+these are the first two browser-exposed channels, not arbitrary hardware port maps.
+Stereo / native retains the prior capture behavior (up to two channels). Multiport
+assignment, simultaneous independent armed tracks and latency calibration remain
+pending. Run `test/experimental-recording-channels.test.js` and
+`scripts/browser-experimental-recording-channels-check.cjs`; the latter measures
+separate left/right synthetic signals in saved PCM and monitor output.
