@@ -1290,3 +1290,43 @@ model validation remain ongoing.
 
 Reference workflow: Apple's Force Legato and overlap-correction commands:
 https://help.apple.com/logicpro/mac/9.1.6/en/logicpro/usermanual/chapter_23_section_3.html
+
+### Agent follow-up context and request isolation
+
+The editing agent now receives recent conversation turns alongside the current
+session. Each turn records the instruction, response, outcome, before/after
+revisions and up to 20 actual entity deltas (for example, track gain 0 to -6 dB).
+This supplies context for follow-ups such as making a previous reduction smaller.
+Failed, canceled and discarded requests have no applied deltas. Track/effect order,
+region ownership and send settings are included; metadata fields are explanatory,
+not new editable command fields. The latest session remains authoritative after
+manual edits or undo. Historical text is sent as untrusted data, never as a new
+privileged instruction. Server checks reject mismatched session IDs, future
+revisions, unsupported fields and oversized history before model invocation.
+
+History is kept in memory while the page is open: at most eight turns and 24,000
+serialized characters. Each turn is capped at 12,000 serialized characters;
+truncated deltas/text are marked. It is cleared on session replacement/import,
+page reload or Clear conversation and is not saved with audio projects. The model
+request keeps store:false and includes bounded summaries as current request data,
+not provider conversation IDs or replayed reasoning/tool calls.
+
+Cancel request aborts the browser fetch and prevents late application; it does not
+guarantee an already-running upstream model request stops billing. Leaving the
+workspace or replacing its history aborts pending work. Responses must match the
+original SessionHistory object, session ID, revision and active workspace before
+any edit or conversational reply is accepted. Failed revision checks are recorded
+as discarded. If an edit changes in-memory state but device persistence fails,
+the UI and follow-up history say that it applied but could not be saved, rather
+than incorrectly claiming no edit occurred.
+
+257 tests and build pass. Server/unit checks cover actual edit deltas, size caps,
+identity/revision rejection, send/order/deletion metadata and context forwarding.
+A browser test with mocked model replies verifies follow-up context, manual-edit
+races, cancellation, clearing, switching sessions and a simulated storage failure.
+The agent panel was visually inspected. Live model inference, multi-step tool
+loops, persisted conversation history and model-side request cancellation remain
+unverified or pending; this does not complete the full DAW objective.
+
+Official OpenAI documentation reference for conversation state:
+https://developers.openai.com/api/docs/guides/conversation-state

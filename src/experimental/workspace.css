@@ -57,3 +57,5 @@ form.daw-note-editor{margin-top:8px}
 .daw-crossfade form>label:first-child{grid-column:1/-1}.daw-crossfade form>button{align-self:end}.daw-crossfade small{display:block;margin-top:10px}
 
 .daw-legato-tools{margin:14px 0}.daw-legato-tools form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end;margin:12px 0}.daw-legato-tools label{display:grid;gap:6px;font-size:12px;min-width:0}.daw-legato-tools :is(input,select){width:100%;min-width:0}.daw-legato-tools output{display:block;margin-top:8px}
+
+.daw-agent-memory{display:block;margin-top:10px;color:var(--muted)}#daw-agent-form>small{display:block;margin:14px 0 10px}#daw-agent-form>label{display:block;margin-bottom:6px}
