@@ -31,7 +31,7 @@ separate compatible implementations or licensed integrations.
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Initial Web Audio transport/video monitor; seek, offsets and markers; loop/timecode and real video regression pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; CC/device/humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
-| Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Pending |
+| Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
 | Mix and effects | Gain/pan/mute/solo, master, buses/sends, EQ/dynamics/reverb/delay, plug-in chains | Channel strips, ordered EQ/compressor/delay/reverb inserts and bypass implemented; buses/sends/master inserts pending |
 | Automation | Editable parameter curves with playback/export parity | Track volume/pan points, interpolation and seek initialization implemented in shared playback/export renderer; effect automation and recording pending |
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
@@ -60,12 +60,12 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 110 tests passing; Vite production build passing.
+- Entire repository: 111 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   real-video synchronization, heavy sessions, mobile editing.
 
 Current limitations are substantive: simple oscillator instruments, no buses/sends, automation recording,
-recording/comping, professional time stretching/pitch editing,
+overdub/comping, professional time stretching/pitch editing,
 notation, full MIDI event preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
 Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
@@ -129,3 +129,24 @@ Unit tests cover forward/reverse source alignment, undo, fade limits and invalid
 boundaries. The browser region check exercises both trim edges and fade handles,
 undo/redo, playback and persisted restoration. Dedicated crossfades, MIDI-region
 trimming and keyboard-accessible handles remain pending.
+
+## Microphone recording checkpoint
+
+Record audio requests microphone permission only after a click and captures PCM
+through AudioWorklet. Stop recording saves a new original WAV and audio track at
+the starting playhead position. The format is 16-bit PCM at the browser context
+sample rate, up to two channels and ten minutes per take. This is not a float/24-bit
+recording path. Input gain processing, noise suppression and echo cancellation
+are requested off; device drivers may still apply their own processing.
+
+Recording is standalone: transport stops and editor controls lock during capture.
+The input meter and elapsed time update without repainting the editor. Cancel or
+leaving Experimental discards the active take and releases the microphone; the UI
+states this. Existing saved takes remain intact. Failure to persist a finalized
+take downloads its WAV as a recovery copy. Sources remain device-local until exported.
+
+Unit tests verify variable block sizes, stereo order and final-frame flushing.
+The browser recording check uses Chromium's synthetic microphone, verifies nonzero
+PCM, timeline placement, persistence, cancellation and navigation cleanup. Physical
+hardware, device selection, monitoring and latency calibration are not verified.
+Implementation reference: https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process

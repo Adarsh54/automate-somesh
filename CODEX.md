@@ -307,3 +307,11 @@ Timeline audio/video regions have edge trim handles; audio/MIDI regions have fad
 handles and envelope overlays. Hold Shift while dragging for unsnapped movement.
 The inspector remains available for exact numeric editing. Run
 `scripts/browser-experimental-region-check.cjs` to check trim/fades and restoration.
+
+Record audio in Experimental captures standalone microphone takes as 16-bit PCM
+WAV at the browser sample rate (up to stereo, ten minutes). Stop recording places
+the take at the starting playhead position. Cancel or leaving the page discards
+the active take and releases the microphone. Overdub/monitoring are not implemented.
+`scripts/browser-experimental-recording-check.cjs` uses Chromium's fake microphone;
+it does not access physical recording hardware. Microphone access requires HTTPS
+or a trusted loopback origin.
