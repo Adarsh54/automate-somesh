@@ -597,3 +597,22 @@ level ratio, seek and cycle PCM, idempotent stop, UI undo/persistence, playback 
 silence in an actual exported WAV with click enabled. Existing cycle regression
 checks also pass. Count-in, recording click, denominator/meter changes over time,
 subdivisions and configurable metronome output routing remain pending.
+
+## Recording metronome checkpoint
+
+A separate During recording checkbox enables click for audio/MIDI takes via the
+shared `session.set` field `metronomeRecordEnabled`, default false. Playback click
+remains independently configurable. Both share tempo, quarter-note beats per bar,
+level and playhead-relative phase. Audio capture gates incoming samples at the same
+scheduled frame used to start click. Output click does not enter the microphone
+capture graph. MIDI capture prepares the audio context before opening the take;
+late preparation is invalidated after cancellation/navigation. Finish, discard,
+disconnect, duration limits and save-failure transitions stop the click.
+
+160 unit tests and build pass. Worklet tests cover exact frame gating inside a
+processing block and stereo flushing. Synthetic microphone tests cover audible
+input, timeline placement, click cleanup, and a silent input saved with output
+click active (saved PCM stays silent). Simulated MIDI tests cover click cleanup
+on stop/cancel/disconnect, save retry, late device open and late audio resume.
+Physical device latency, acoustic bleed, OS scheduling and browser support still
+need hardware verification. Count-in, monitoring and overdub remain pending.

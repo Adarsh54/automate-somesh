@@ -2,10 +2,10 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {clickBar} from '../src/experimental/metronome.js';
 import {newSession,SessionHistory} from '../src/experimental/session.js';
 test('metronome defaults, validation and undo preserve existing projects',()=>{
- const h=new SessionHistory(newSession());assert.equal(h.session.metronomeEnabled,false);assert.equal(h.session.metronomeDb,-18);
- h.execute([{op:'session.set',values:{metronomeEnabled:true,metronomeDb:-12,meter:3}}]);
+ const h=new SessionHistory(newSession());assert.equal(h.session.metronomeEnabled,false);assert.equal(h.session.metronomeRecordEnabled,false);assert.equal(h.session.metronomeDb,-18);
+ h.execute([{op:'session.set',values:{metronomeEnabled:true,metronomeRecordEnabled:true,metronomeDb:-12,meter:3}}]);
  assert.equal(h.session.meter,3);h.undo();assert.equal(h.session.metronomeEnabled,false);h.redo();assert.equal(h.session.metronomeDb,-12);
- const before=structuredClone(h.session);for(const values of [{metronomeDb:1},{metronomeDb:-61},{metronomeEnabled:'yes'},{meter:0}])assert.throws(()=>h.execute([{op:'session.set',values}]));assert.deepEqual(h.session,before);
+ const before=structuredClone(h.session);for(const values of [{metronomeDb:1},{metronomeDb:-61},{metronomeEnabled:'yes'},{metronomeRecordEnabled:'yes'},{meter:0}])assert.throws(()=>h.execute([{op:'session.set',values}]));assert.deepEqual(h.session,before);
 });
 test('click bar has beat spacing, downbeat accent and silence between beats',()=>{
  const {samples,duration}=clickBar(120,3,48000);assert.equal(duration,1.5);assert.equal(samples.length,72000);

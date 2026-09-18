@@ -1,9 +1,9 @@
 import {createMidiCapture} from './midi-capture.js';
 export function createMidiInput({beforeRecord,onTake,onChange,clock=()=>performance.now(),requestAccess=()=>navigator.requestMIDIAccess({sysex:false})}){
- let access=null,inputId='',port=null,capture=null,pending=null,timer=null,opening=false,connecting=false,notice='',epoch=0,disposed=false,started=0,placement=null;
+ let access=null,inputId='',port=null,capture=null,pending=null,timer=null,opening=false,connecting=false,notice='',epoch=0,disposed=false,started=0,placement=null,stopClick=null;
  const inputs=()=>access?[...access.inputs.values()].filter(p=>p.state==='connected'):[];
  const refresh=()=>{if(!disposed)onChange();};
- const detach=()=>{clearInterval(timer);timer=null;if(port){port.removeEventListener('midimessage',message);Promise.resolve(port.close()).catch(()=>{});port=null;}};
+ const detach=()=>{stopClick?.();stopClick=null;clearInterval(timer);timer=null;if(port){port.removeEventListener('midimessage',message);Promise.resolve(port.close()).catch(()=>{});port=null;}};
  function save(){
   if(!pending)return;
   try{if(pending.notes.length||pending.events.length){onTake(pending,placement);notice='MIDI take added to the timeline.';}else notice='No MIDI notes or controller events recorded.';pending=null;}
@@ -24,8 +24,8 @@ export function createMidiInput({beforeRecord,onTake,onChange,clock=()=>performa
  async function record(){
   if(capture||opening||pending)return;const input=inputs().find(p=>p.id===inputId);if(!input){notice='Choose a connected MIDI input.';refresh();return;}
   opening=true;const token=++epoch;notice='Opening MIDI input…';refresh();
-  try{await input.open();if(disposed||token!==epoch){if(port!==input)await input.close();return;}if(input.state!=='connected')throw Error('MIDI input disconnected before recording started.');placement=beforeRecord();port=input;started=clock();capture=createMidiCapture(started);port.addEventListener('midimessage',message);notice='Recording MIDI. Stop to keep the take; leaving this page discards it.';timer=setInterval(()=>{if(clock()-started>=600000)finish('Ten-minute recording limit reached.');else onChange('tick');},250);}
-  catch(error){if(!disposed&&token===epoch)notice=error.message;if(port!==input)await input.close().catch(()=>{});}
+  try{await input.open();if(disposed||token!==epoch){if(port!==input)await input.close();return;}if(input.state!=='connected')throw Error('MIDI input disconnected before recording started.');const prepared=await beforeRecord();if(disposed||token!==epoch){if(port!==input)await input.close();return;}if(input.state!=='connected')throw Error('MIDI input disconnected before recording started.');placement=prepared;port=input;started=clock();capture=createMidiCapture(started);port.addEventListener('midimessage',message);stopClick=placement.startClick?.();notice='Recording MIDI. Stop to keep the take; leaving this page discards it.';timer=setInterval(()=>{if(clock()-started>=600000)finish('Ten-minute recording limit reached.');else onChange('tick');},250);}
+  catch(error){if(!disposed&&token===epoch){capture=null;detach();notice=error.message;}if(port!==input)await input.close().catch(()=>{});}
   finally{if(token===epoch){opening=false;refresh();}}
  }
  function cancel(){epoch++;capture=null;pending=null;opening=false;connecting=false;detach();notice='MIDI take canceled.';refresh();}

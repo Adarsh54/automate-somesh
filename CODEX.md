@@ -475,3 +475,15 @@ WAV or stem exports. Recording click and count-in are not implemented yet.
 Run `scripts/browser-experimental-metronome-check.cjs` for controls, persisted state,
 actual click timing/seek/cycle audio and export exclusion; unit coverage is in
 `test/experimental-metronome.test.js`.
+
+Metronome → During recording enables the click for standalone audio and MIDI takes,
+independently of playback click. Its persisted/undoable command field is
+`metronomeRecordEnabled`. The click uses the take's starting playhead, BPM, meter
+and click level. It stops on finish, discard, disconnect or navigation, including
+when device/audio initialization resolves after leaving. Microphone capture and
+click share a scheduled audio frame; the click is routed only to the output, not
+the capture worklet. Use headphones to avoid acoustic bleed into the microphone.
+Count-in, monitoring, overdub and calibrated hardware latency remain pending.
+The existing microphone and MIDI input browser checks now verify click lifecycle;
+the microphone check also records silence with click enabled and verifies the
+saved file remains silent. Tests use simulated devices, not physical hardware.
