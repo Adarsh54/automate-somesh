@@ -880,3 +880,17 @@ Run `test/experimental-sampler.test.js` and
 references, archive bytes, server mappings, pitched render, live voice cleanup,
 mock cloud save/restore and reload. Multi-sample zones, looping/envelope controls,
 velocity layers, slicing and pitch-independent time stretching remain pending.
+
+Sampler tracks now offer Loop while note is held with source-second start/end
+points. Blank end uses the source duration. Shared track.add/set fields are
+`sampleLoop` (default false), `sampleLoopStart` (default 0), and `sampleLoopEnd`
+(nullable, default null). Point order is validated in the document; enabled loops
+are validated against decoded source duration and a one-sample minimum span before
+assignment/playback. Uploaded replacement samples reset loop settings; selecting
+a different cached sample resets the loop form. Loops sustain until note/region
+end and work in playback, bounce, accompaniment and live MIDI monitoring. Seek
+positions include pitch-bend history and wrap into the loop after its first pass.
+These are hard boundaries, without crossfades or zero-crossing assistance. Run
+`test/experimental-sampler-loop.test.js` and
+`scripts/browser-experimental-sampler-loop-check.cjs` for bounds/history, sustained
+rendering, unlooped comparison, seek, note-end silence and live note-off cleanup.

@@ -1117,3 +1117,18 @@ and pitch-bend seek offsets. Real cloud deployment, hardware latency and real-mo
 execution were not verified in this change. This is one sample per track; looping,
 multisample zones, layers, slicing, envelope controls and independent time stretching
 remain pending. Pitch currently changes playback speed and sample duration.
+
+### Sampler sustain loops
+
+Sampler tracks now store optional source loop points. Manual assignment and shared
+track commands use the same settings; decoded source validation rejects out-of-file
+or sub-sample loops. Scheduled and live voices loop until the MIDI note ends, and
+seeking wraps the integrated source position into the loop. Uploading a replacement
+sample clears prior loop points. Existing unlooped behavior stays available.
+
+234 tests and build pass. Browser checks compare real looped/unlooped rendering
+beyond source duration, verify seek output and silence after note end, and exercise
+live held/released voices, inspector controls, undo and bad source bounds. Unit
+checks cover first-pass offsets, wrap math, sample bounds and atomic document
+validation. Crossfade loops, graphical loop-point selection, zero-crossing helpers,
+multisample zones and editable envelopes remain pending.
