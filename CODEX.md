@@ -1694,3 +1694,33 @@ failure, manual seek during verification, canceled playback startup preserving
 the edit, actual conversation attribution, and edit-then-seek. Existing
 standalone transport and analysis regressions also run. Local model credentials
 remain unconfigured; these are harness/execution checks, not live inference.
+
+### Agent WAV and stem exports
+
+The browser now advertises an opt-in export_audio tool. Explicit requests can
+bounce the full mix, aligned track/output-group stems (ZIP), one audio/MIDI
+region, or a time range. It uses the existing manual bounce plan and renderer;
+there is no alternate DSP path. Strict settings support 44.1/48/96 kHz,
+16/24-bit PCM or 32-bit float, dither, stem grouping and master bypass modes.
+Null settings inherit the settings captured when the instruction was submitted;
+explicit settings supply all fields without changing the UI preferences. A null
+region ID uses the captured selected region. Null range boundaries use the
+captured cycle range; explicit boundaries must be supplied together.
+
+The server validates capability, context, target and render limits before
+returning an action. The browser validates again, rejects mixed edit/transport/
+export responses, and guards document identity/revision before download. A
+prerequisite analysis may precede export, but edit-then-export is not implemented.
+Export adds no document revision or undo entry. It stops playback to render.
+Cancel/navigation stops waiting for decoding/rendering/ZIP generation and
+prevents late results from downloading; underlying browser work may finish.
+Success reports “Download started” rather than claiming a filesystem save.
+The existing ten-minute render limit and shared nonlinear stem-processing
+limitations apply. Export does not require a fresh live meter reading.
+
+307 unit tests and build pass. Browser checks use mocked model replies with real
+Web Audio/downloads: mix, stems, range and region, WAV rate/depth/range length,
+ZIP contents, unchanged session/undo behavior, cancellation during delayed render
+and stale-model response rejection. Existing manual bounce checks pass, including
+dither, master bypass, grouped stem alignment and mix reconstruction. Live model
+inference remains unverified without local provider credentials.

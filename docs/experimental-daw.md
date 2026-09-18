@@ -1935,3 +1935,18 @@ failure, manual seek during verification, canceled playback startup preserving
 the edit, actual conversation attribution, and edit-then-seek. Existing
 standalone transport and analysis regressions also run. Local model credentials
 remain unconfigured; these are harness/execution checks, not live inference.
+
+### Agent audio export
+
+Ask the agent to bounce a mix, stems, a selected region, or a time range. Exports
+use the same engine and settings as the manual controls. The agent may explicitly
+choose sample rate, WAV depth, dither, master processing and stem grouping without
+changing your saved project or current export preferences. Stems download as a
+ZIP of aligned WAVs. The maximum render duration is ten minutes.
+
+The request captures the current selection, cycle range and export settings.
+Changing the project before completion invalidates the download. Cancel request
+prevents a late render from downloading. Export stops playback and creates no
+undo step. The completion report means the browser started the download; browser
+download permissions still apply. Edits and exports currently require separate
+requests. Model-tool tests are mocked until live provider configuration is set.
