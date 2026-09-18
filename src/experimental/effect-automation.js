@@ -1,6 +1,7 @@
 import {z} from 'zod';
 const field=(label,min,max,step)=>({label,min,max,step});
 export const effectParameters={
+ gain:{gainDb:field('Gain · dB',-96,24,.5),width:field('Width · 0 mono / 1 stereo',0,2,.01)},
  eq:{frequency:field('Frequency · Hz',20,20000,10),q:field('Q',.1,20,.1),gainDb:field('Gain · dB',-24,24,.5)},
  compressor:{threshold:field('Threshold · dB',-80,0,.5),ratio:field('Ratio',1,20,.1),attack:field('Attack · seconds',0,1,.001),release:field('Release · seconds',.001,1,.01),knee:field('Knee · dB',0,40,.5)},
  delay:{time:field('Delay · seconds',.01,2,.01),feedback:field('Feedback',0,.9,.01),mix:field('Wet mix',0,1,.01)},

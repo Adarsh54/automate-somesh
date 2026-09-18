@@ -1202,3 +1202,31 @@ DAW parity remain unverified or ongoing.
 Reference: Apple's MIDI Transform documentation describes reversing selected
 positions around a pivot. This implementation explicitly mirrors note intervals:
 https://support.apple.com/en-sg/guide/logicpro/lgcp21584fd3/10.7/mac/11.0
+
+### Gain and stereo utility insert
+
+The mixer effect selector now includes Gain / Stereo utility for tracks, buses
+and the master. Gain spans -96 to +24 dB; width spans 0 to 2 (1 preserves stereo,
+0 averages L/R into both outputs, 2 doubles the side component). Independent
+left/right polarity switches apply before width; Swap left/right applies after
+width. Mono inputs are speaker-upmixed to both channels before this matrix.
+The insert adds no tail and follows normal chain order, bypass and export rules.
+Source media stays unchanged. Polarity inversion may improve or worsen summed
+recordings; it is not a timing correction or frequency-dependent phase rotation.
+
+Shared effect.add/set kind gain supports gainDb, width, invertLeft, invertRight
+and swap, in addition to enabled. Defaults are 0 dB, width 1 and false switches.
+Gain and width support the existing effect automation commands and graphical
+editor. Gain ramps interpolate in dB using exponential amplitude ramps; width
+coefficients interpolate linearly. Seeking initializes the interpolated values.
+Polarity and swap remain static. The agent prompt documents these settings.
+
+268 tests and build pass. Unit checks cover validation, automated values, tail
+behavior and atomic rollback/undo. Browser audio checks verify stereo identity,
+mono averaging, widening, each-channel sign behavior, swap, cancellation,
+operation order, mono upmix, gain, bypass, automation and seek. UI checks verify
+checkbox/numeric editing, undo/redo and persistence; the panel was visually
+inspected. Broader DAW parity and live model verification remain ongoing.
+
+Reference: Apple's Gain utility provides gain, polarity, swap and mono controls:
+https://support.apple.com/en-ie/guide/logicpro/lgcef2d8c650/mac
