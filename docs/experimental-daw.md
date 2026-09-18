@@ -26,7 +26,7 @@ separate compatible implementations or licensed integrations.
 | Group | Required outcomes | Status / verification |
 | --- | --- | --- |
 | Experimental workspace | Separate route/sidebar tab, arrangement, inspectors, right-side agent | Initial implementation; browser check passes |
-| Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
+| Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document, portable archives and account save/reopen with revision checks implemented |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; cycle playback implemented; drop-frame timecode pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
@@ -37,7 +37,7 @@ separate compatible implementations or licensed integrations.
 | Advanced arrangement | Time stretching, pitch correction, tempo maps, grouping/stacks, loops/scenes | Pending |
 | Deliverables | Stereo and stem bounce, region export, video sound replacement, project interchange | Stereo WAV, aligned per-track WAV ZIP and MIDI export implemented; portable media archives implemented; grouped stems and region/movie export pending |
 | Agent | Typed instructions, real model adapter, schema-validated operations, atomic execution, undo, stale-state protection, trace | Adapter and command harness implemented; mocked tests pass; real model run unverified, local key/model absent |
-| Account/storage | Durable project/media save, restore, ownership, version conflicts | Pending |
+| Account/storage | Durable project/media save, restore, ownership, version conflicts | Existing Projects/Neon and private Blob integration added; ownership/revision and browser mock checks pass; live account smoke pending |
 | Reliability | Unit, audio-render, MIDI-fixture, browser, accessibility and load checks | Pending |
 
 ## Architecture
@@ -60,8 +60,8 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 124 tests passing; Vite production build passing.
-- Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
+- Entire repository: 126 tests passing; Vite production build passing.
+- Not verified: actual model inference, microphone/MIDI hardware, live cloud DAW round trip,
   heavy sessions, mobile editing.
 
 Current limitations are substantive: simple oscillator instruments, no automation recording,
@@ -69,9 +69,9 @@ overdub/comping, professional time stretching/pitch editing,
 notation, SysEx and full MIDI metadata preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
 Movie audio can be extracted to a separate track and mixed when the browser supports its codec. Session JSON references device-local assets. Export project bundles original media
-in a portable archive; cloud project storage is still pending. The full goal remains active.
+in a portable archive; account save/reopen now uses the existing project and media services. The full goal remains active.
 
-Next implementation priorities: cloud project storage; MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
+Next implementation priorities: live cloud verification; MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -250,3 +250,32 @@ full-session exports ignore Cycle. Microphone takes remain standalone recordings
 Unit tests check wrapping and atomic/undoable range updates. The cycle browser
 check verifies repeated wraps, pause, persistence, exact PCM range length without
 startup padding, and canceling a pending cycle render with Stop.
+
+## Account DAW project checkpoint
+
+DAW projects use `type: daw` in the existing Projects JSON record. Neon stores the
+validated arrangement and a local-source-ID to owned Blob-asset-ID map. The existing
+private reserve/upload/complete path stores original files. No migration or new
+service credential is required. All referenced assets must be ready, owned by the
+user, and audio/video; missing/extra mappings and invalid document invariants reject
+save. Project revisions prevent stale overwrites and project types cannot change.
+Document IDs are restricted to safe alphanumeric/underscore/hyphen identifiers.
+
+Save to account and Save a copy appear for signed-in users. Completed uploads are
+reused after finalization/save failures. Projects has an Experimental DAW filter
+and opens these records in Experimental. Restoration downloads originals, checks
+byte lengths, stores them in an IndexedDB transaction and assigns fresh local IDs.
+The current session is replaced only after downloads complete. Unsaved-session
+replacement asks through an app dialog and keeps a local JSON backup. New session
+starts a separate arrangement. Media remains shared when saving a copy.
+
+The API's existing 1 MB JSON body limit applies; portable export remains available
+for larger documents. Uploads currently use original files rather than the audio
+library's lossless upload preprocessing. Cloud save is explicit, not automatic.
+Version history beyond optimistic revision checks, cloud media cleanup, and a
+user-facing local-backup recovery browser remain pending.
+
+PGlite tests cover source ownership/readiness, map validation, stale revisions and
+read isolation. The browser account check mocks API/Blob interactions and verifies
+save/copy/conflict, Projects opening, and retry without duplicate uploads. A live
+Neon/Blob round trip is still required before claiming production verification.

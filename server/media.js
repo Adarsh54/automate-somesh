@@ -9,7 +9,7 @@ export function parseMedia(input) {
   if(!result.success || (!pdf&&!mediaType(result.data.filename))) throw fail('INVALID_MEDIA');
   return {...result.data,contentType:pdf?'application/pdf':mediaType(result.data.filename)};
 }
-export function mediaIds(data) {return [...new Set([...(data.type==='reel'?[...data.audioIds,...(data.resumeId?[data.resumeId]:[])]:[]),...Object.values(data.media?.tracks || {}),...(data.media?.movie?[data.media.movie]:[])])];}
+export function mediaIds(data) {return [...new Set([...Object.values(data.type==='daw'?data.assets:{}),...(data.type==='reel'?[...data.audioIds,...(data.resumeId?[data.resumeId]:[])]:[]),...Object.values(data.media?.tracks || {}),...(data.media?.movie?[data.media.movie]:[])])];}
 export function createMediaRepository(query) {
   return {
     async listAudio(userId) {
@@ -51,6 +51,7 @@ export function createMediaRepository(query) {
       if(!ids.length)return;
       const rows=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND id=ANY(${ids}::uuid[])`;
       if(rows.length!==ids.length)throw fail('MEDIA_NOT_READY');
+      if(data.type==='daw'){const media=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND (content_type LIKE 'audio/%' OR content_type LIKE 'video/%') AND id=ANY(${ids}::uuid[])`;if(media.length!==ids.length)throw fail('INVALID_DAW_MEDIA');}
       if(data.type==='reel'){
         if(data.resumeId){const resume=await this.get(userId,data.resumeId);if(resume.content_type!=='application/pdf'||Number(resume.size)>10*1024*1024)throw fail('INVALID_RESUME');}
         const audio=await query`SELECT id FROM media_assets WHERE user_id=${userId} AND ready=true AND content_type LIKE 'audio/%' AND id=ANY(${data.audioIds}::uuid[])`;

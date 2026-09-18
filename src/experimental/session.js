@@ -4,7 +4,7 @@ import {validateRouting} from './routing.js';
 import {trimmedRegion} from './region-edit.js';
 import {effectSchema,automationSchema} from './effects.js';
 import {z} from 'zod';
-const ident=z.string().min(1).max(100),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
+const ident=z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
 const note=z.object({id:ident,channel:z.number().int().min(0).max(15).default(0),pitch:z.number().int().min(0).max(127),start:time,duration:z.number().positive().max(3600),velocity:z.number().min(0).max(1)});
 const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(),start:time,offset:time,duration:z.number().positive().max(86400),gainDb:db,fadeIn:time,fadeOut:time,reverse:z.boolean(),notes:z.array(note).max(20000),events:z.array(midiEventSchema).max(20000).default([])});
 const track=z.object({id:ident,name:z.string().max(200),kind:z.enum(['audio','midi','video','bus']),gainDb:db,pan:z.number().min(-1).max(1),mute:z.boolean(),solo:z.boolean(),instrument:z.enum(['sine','triangle','square','sawtooth','drumKit']),regions:z.array(region).max(1000),output:ident.nullable().default(null),sends:z.array(z.object({busId:ident,gainDb:db})).max(16).default([]),effects:z.array(effectSchema).max(16).default([]),automation:z.array(automationSchema).max(2000).default([])});

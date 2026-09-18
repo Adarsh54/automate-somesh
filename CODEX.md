@@ -264,7 +264,8 @@ Share without changing the currently edited reel. Drafts do not expose share URL
 ### Experimental DAW (in development)
 
 `#/experimental` is a separate composer workspace. It currently stores its session
-in account-scoped localStorage and original imported files in IndexedDB, not Neon.
+in account-scoped localStorage and original imported files in IndexedDB. Signed-in
+users can explicitly Save to account using the existing Neon/Blob services.
 Audio/video/MIDI import, arrangement, basic note editing, mixer gain/pan/mute/solo,
 undo/redo, local playback and WAV/MIDI export are initial implementations. See
 [the full scope ledger](docs/experimental-daw.md) for missing features and evidence;
@@ -343,3 +344,11 @@ minutes). Use selected region sets the range. Effects restart each cycle; edits
 stop playback. Full-session export ignores Cycle. Run
 `scripts/browser-experimental-cycle-check.cjs` for wrapping, pause, persistence,
 PCM boundaries and cancellation of a pending render.
+
+Experimental account saves use the existing `/api/projects` and private `/api/media`
+flows. No new migration or credentials are required. Ensure the development Blob
+token, WorkOS and Neon are configured as above. Projects lists these as Experimental
+DAW. The existing 1 MB JSON limit applies; media uploads are separate.
+`scripts/browser-experimental-cloud-check.cjs` mocks services to test account UI and
+retry behavior; `test/experimental-cloud-projects.test.js` verifies ownership and
+revision rules in PGlite. Neither replaces a live Neon/Blob smoke test.

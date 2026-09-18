@@ -1,3 +1,4 @@
+import {sessionSchema,applyCommands} from '../src/experimental/session.js';
 import {neon} from "@neondatabase/serverless";
 import {z} from "zod";
 import {createMediaRepository} from "./media.js";
@@ -27,10 +28,11 @@ const stateSchema=z.object({
   status:z.enum(["draft","completed"]).optional(),
   media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
-const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional(),trackColors:z.record(z.uuid(),z.string().regex(/^#[0-9a-f]{6}$/i)).optional(),appearance:z.object({accent:z.string().regex(/^#[0-9a-f]{6}$/i),theme:z.enum(['dark','light']),description:z.string().max(1000)}).optional(),profile:z.object({name:z.string().max(120),email:z.union([z.email(),z.literal('')]),occupation:z.string().max(120),bio:z.string().max(2000)}).optional(),resumeId:z.uuid().optional(),resumeName:z.string().max(255).optional()})])});
+const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([z.object({type:z.literal('daw'),status:z.literal('draft'),session:sessionSchema,assets:z.record(z.string().min(1).max(100),z.uuid())}),stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional(),trackColors:z.record(z.uuid(),z.string().regex(/^#[0-9a-f]{6}$/i)).optional(),appearance:z.object({accent:z.string().regex(/^#[0-9a-f]{6}$/i),theme:z.enum(['dark','light']),description:z.string().max(1000)}).optional(),profile:z.object({name:z.string().max(120),email:z.union([z.email(),z.literal('')]),occupation:z.string().max(120),bio:z.string().max(2000)}).optional(),resumeId:z.uuid().optional(),resumeName:z.string().max(255).optional()})])});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+  if(result.data.data.type==='daw'){const data=result.data.data;try{if(!data.session.title.trim())throw Error();applyCommands(data.session,[{op:'session.set',values:{}}]);const ids=[...new Set(data.session.tracks.flatMap(t=>t.regions.map(r=>r.assetId).filter(Boolean)))];if(ids.length!==Object.keys(data.assets).length||ids.some(id=>!Object.hasOwn(data.assets,id)))throw Error();}catch{throw Object.assign(new Error('INVALID_DAW_PROJECT'),{status:400});}return result.data;}
   if(result.data.data.type==="reel"){if(new Set(result.data.data.audioIds).size!==result.data.data.audioIds.length)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});return result.data;}
   const ids=result.data.data.tracks.map(t=>t.id);
   if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)) || Object.keys(result.data.data.media?.tracks || {}).some(id=>!ids.includes(id)))
@@ -71,7 +73,7 @@ export function createProjectRepository(query) {
       return rows[0];
     },
     async save(userId,input) {
-      const {id,revision,data}=parseProject(input), title=data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
+      const {id,revision,data}=parseProject(input), title=data.type==='daw'?data.session.title.trim():data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
       await createMediaRepository(query).validate(userId,data);
       const rows=revision===0
         ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`
