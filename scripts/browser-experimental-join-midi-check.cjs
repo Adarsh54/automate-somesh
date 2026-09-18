@@ -1,0 +1,26 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE,headless:true,args:['--disable-audio-output']});
+ try{
+  const page=await browser.newPage({viewport:{width:1600,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/api/auth?*',r=>r.fulfill({json:{configured:true,user:{id:'join-midi',email:'test@example.com'},profile:{name:'Test',occupation:'Composer',complete:true}}}));
+  await page.route('**/api/projects*',r=>r.fulfill({json:{projects:[]}}));await page.route('**/api/daw',r=>r.fulfill({json:{configured:false}}));
+  await page.goto((process.env.CUESTAMP_URL||'http://127.0.0.1:5190/')+'#/experimental');await page.getByText('Session restored on this device.',{exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('[data-audio-input-refresh]')?.disabled);await page.evaluate(()=>document.fonts.ready);
+  const command=async batch=>{if(!await page.locator('#daw-json').isVisible())await page.getByText('Command harness',{exact:true}).click();await page.locator('#daw-json').fill(JSON.stringify(batch));await page.getByRole('button',{name:'Execute commands',exact:true}).click();};
+  await command([{op:'track.add',values:{id:'t',name:'Piano',kind:'midi',instrument:'sine'}},...['first','second','third'].flatMap((id,i)=>[{op:'region.add',target:'t',values:{id,name:id,start:1+i*3,duration:2}},{op:'note.add',target:id,values:{id:id+'n',start:.25,duration:.5,pitch:60+i,velocity:.7}}])]);
+  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cuestamp-experimental:join-midi'))),regions=async()=>(await read()).tracks[0].regions;
+  await page.locator('[data-region=first]').click();await page.locator('.daw-join-midi summary').click();const form=page.locator('[data-join-midi]'),apply=form.getByRole('button',{name:'Join regions',exact:true});
+  assert.equal(await apply.isDisabled(),true);await form.locator('[value=second]').check();assert.match(await form.locator('[data-join-preview]').textContent(),/2 regions → 5.00 s · 2 notes/);
+  const before=await read();await apply.click();const after=await read();assert.equal((await regions()).length,2);assert.equal(after.tracks[0].regions[0].id,'first');assert.equal(after.tracks[0].regions[0].duration,5);assert.deepEqual(after.tracks[0].regions[0].notes.map(n=>[n.id,n.start]),[['firstn',.25],['secondn',3.25]]);
+  const renderComparison=async(before,after)=>page.evaluate(async({before,after})=>{const {scheduleSession}=await import('/src/experimental/audio-engine.js');const render=async s=>{const ctx=new OfflineAudioContext(2,48000*10,48000);scheduleSession(ctx,s,new Map(),0,{baseTime:0});return (await ctx.startRendering()).getChannelData(0);};const a=await render(before),b=await render(after);let error=0,oldEnergy=0,newEnergy=0;for(let i=0;i<a.length;i++)error=Math.max(error,Math.abs(a[i]-b[i]));for(let i=4.3*48000;i<4.6*48000;i++){oldEnergy+=a[i]**2;newEnergy+=b[i]**2;}return {error,oldEnergy,newEnergy};},{before,after});
+  const unchanged=await renderComparison(before,after);assert.ok(unchanged.error<1e-7);assert.ok(unchanged.oldEnergy>1);
+  await page.getByRole('button',{name:'Undo',exact:true}).click();assert.deepEqual((await read()).tracks,before.tracks);await page.getByRole('button',{name:'Redo',exact:true}).click();assert.deepEqual((await read()).tracks,after.tracks);await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await command([{op:'event.add',target:'first',values:{id:'expression',type:'controlChange',parameter:11,start:0,channel:0,value:20}}]);
+  await form.locator('[value=second]').check();assert.match(await form.locator('[data-join-preview]').textContent(),/controllers now share channel state/);const controllerBefore=await read();await apply.click();const controllerAfter=await read();const shared=await renderComparison(controllerBefore,controllerAfter);assert.ok(Math.abs(shared.newEnergy/shared.oldEnergy-(20/127)**2)<1e-5);
+  await page.getByRole('button',{name:'Undo',exact:true}).click();await command([{op:'region.set',target:'second',values:{gainDb:-6}}]);await form.locator('[data-join-all]').click();assert.equal(await form.locator('input:checked').count(),2);assert.match(await form.locator('[data-join-preview]').textContent(),/Different region gain/);await form.locator('[data-join-clear]').click();assert.equal(await apply.isDisabled(),true);await form.locator('[data-join-all]').click();
+  await page.locator('.daw-join-midi').screenshot({path:'/tmp/cuestamp-join-midi.png'});await apply.click();assert.equal((await regions()).length,1);assert.equal((await regions())[0].duration,8);assert.equal((await regions())[0].gainDb,0);assert.equal(await apply.isDisabled(),true);
+  const saved=(await read()).tracks;await page.reload();await page.getByText('Session restored on this device.',{exact:true}).waitFor();assert.deepEqual((await read()).tracks,saved);assert.deepEqual(errors,[]);
+  console.log('PASS MIDI region joining, selection/all/clear, preview/settings/controller warnings, unchanged plain rendered notes, shared controller stream render, undo/redo and persistence.');
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exit(1);});

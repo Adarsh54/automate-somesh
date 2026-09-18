@@ -1746,3 +1746,43 @@ checking the wrapped layout.
 Reference workflow: Apple's transposer combines pitch shifting with key/scale
 controls; the implementation above operates on selected stored notes:
 https://support.apple.com/en-bn/guide/logicpro/lgceee5a5e6f/10.7/mac/11.0
+
+
+### Join MIDI regions
+
+The MIDI region inspector now has Join MIDI regions. Choose other regions on the
+same track individually, or Select all; Clear empties that selection. The
+selected region remains the target and retains its ID and name. The preview
+shows the combined duration, note/event counts, and flags differing source
+region settings and controller state. The resulting span includes gaps and
+overlaps. Other chosen regions are removed in the same undoable operation.
+
+Shared region.joinMidi targets the retained region and accepts regionIds as a
+comma-separated list of distinct ADDITIONAL IDs (exclude the target). Notes and
+events retain IDs, pitch/value/channel, duration and absolute timeline position;
+only their region-relative starts change. Source regions sort by timeline start,
+stably in existing track order for ties; merged events then sort stably by time.
+Thus later-starting source regions win equal-time controller ties. Target gain,
+mute and fade settings apply across the combined span; other source region
+settings are not baked into note velocities. MIDI source offset is reset to zero.
+
+Joining combines region-local controller streams into one stream per channel.
+Sustain, expression, pan or pitch bend can therefore affect notes that used to
+belong to another region. This is editable MIDI consolidation, not guaranteed
+sound-identical rendering. The UI and agent prompt make both controller and
+region-setting behavior explicit. Undo restores every source region and its
+settings. Audio/video and cross-track joining remain outside this operation.
+Limits (20,000 notes and 20,000 events, 86,400-second region length), missing IDs,
+duplicates and wrong tracks reject the entire command batch before committing.
+
+295 tests and production build pass. Unit checks cover target identity, note and
+event timing/IDs, overlapping and tied events, metadata, limits/atomic rollback,
+undo/redo and MIDI roundtrip. Browser checks cover individual/all/clear selection,
+preview warnings, persistence and undo/redo. Real offline audio renders verify
+unchanged playback for ordinary note-only joins and the expected expression
+change when two formerly separate regions share controller state after joining.
+The inspector layout was visually inspected. Live model access remains
+unconfigured locally; the validated shared command is available to that harness.
+
+Reference: Apple's region-join workflow:
+https://support.apple.com/en-om/guide/logicpro/lgcpaa45acde/mac
