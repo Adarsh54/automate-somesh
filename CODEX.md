@@ -553,3 +553,17 @@ notes sound but are excluded from the take. Idle monitoring and physical device
 latency calibration remain pending. Run
 `scripts/browser-experimental-midi-monitor-check.cjs` for synthetic-device UI and
 real Web Audio signal/lifecycle checks. No physical keyboard was tested.
+
+Microphone monitoring: enable Hear microphone while recording and choose a monitor
+level (-60..0 dB; default -18), then Apply microphone monitoring. This is off by
+default and uses validated, undoable `session.set` fields `audioMonitorEnabled` and
+`audioMonitorDb`. Monitoring starts with the microphone, including count-in, on a
+separate output branch. It bypasses track/master effects and never changes captured
+PCM, saved WAV levels or export settings. Use headphones to prevent feedback.
+Mute monitor / Unmute monitor remains available during a take and changes only
+that take; the saved preference applies again on the next recording. Finish,
+cancel, initialization failure and navigation disconnect the monitor. Hardware
+direct monitoring should be disabled if using browser monitoring to avoid hearing
+two copies. Browser/device latency is not calibrated or compensated.
+Run `scripts/browser-experimental-input-monitor-check.cjs` for fake-microphone
+capture, live mute controls, gain/isolation PCM, saved preferences and cleanup.

@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {newSession,SessionHistory} from '../src/experimental/session.js';
+test('microphone monitoring is off by default with validated independent level',()=>{const h=new SessionHistory(newSession());assert.equal(h.session.audioMonitorEnabled,false);assert.equal(h.session.audioMonitorDb,-18);h.execute([{op:'session.set',values:{audioMonitorEnabled:true,audioMonitorDb:-12}}]);assert.equal(h.session.audioMonitorDb,-12);h.undo();assert.equal(h.session.audioMonitorEnabled,false);h.redo();assert.equal(h.session.audioMonitorEnabled,true);for(const values of [{audioMonitorDb:1},{audioMonitorDb:-61},{audioMonitorEnabled:'yes'}])assert.throws(()=>h.execute([{op:'session.set',values}]));});

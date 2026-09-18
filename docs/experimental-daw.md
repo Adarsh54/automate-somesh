@@ -749,3 +749,20 @@ Web Audio output, pitch bend, sustain, volume, voice limits and cleanup alongsid
 simulated Web MIDI capture/count-in/save. Existing MIDI lifecycle and overdub browser
 checks pass. Hardware input/latency, idle keyboard audition, instrument selection,
 track-routed monitoring and microphone monitoring remain pending.
+
+### Microphone monitoring
+
+Added opt-in microphone audition with independent -60..0 dB output level, default
+-18 dB. A dedicated gain branch bypasses capture and the mixer; monitoring starts
+during count-in. A live Mute/Unmute monitor control affects the current take without
+changing its saved preference. Session fields `audioMonitorEnabled` and
+`audioMonitorDb` are validated and undoable for both manual and agent changes.
+Stopping, canceling, leaving or failing initialization disconnects the monitor.
+Headphones are required to avoid acoustic feedback; no input latency compensation
+or hardware direct-monitor integration is claimed.
+
+175 tests and build pass. Browser verification uses a fake microphone and real Web
+Audio: capture/placement/save, live mute/unmute, persistence, cancel/navigation
+cleanup, and separate raw/monitored PCM channels showing monitor gain does not
+alter the capture branch. Physical interfaces, output selection, track-routed input
+FX, multiple simultaneous inputs and latency calibration remain pending.
