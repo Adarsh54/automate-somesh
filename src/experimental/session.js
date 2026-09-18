@@ -1,3 +1,4 @@
+import {trimmedRegion} from './region-edit.js';
 import {effectSchema,automationSchema} from './effects.js';
 import {z} from 'zod';
 const ident=z.string().min(1).max(100),time=z.number().finite().min(0).max(86400),db=z.number().finite().min(-96).max(12);
@@ -6,7 +7,7 @@ const region=z.object({id:ident,name:z.string().max(200),assetId:ident.nullable(
 const track=z.object({id:ident,name:z.string().max(200),kind:z.enum(['audio','midi','video']),gainDb:db,pan:z.number().min(-1).max(1),mute:z.boolean(),solo:z.boolean(),instrument:z.enum(['sine','triangle','square','sawtooth']),regions:z.array(region).max(1000),effects:z.array(effectSchema).max(16).default([]),automation:z.array(automationSchema).max(2000).default([])});
 export const sessionSchema=z.object({version:z.literal(1),id:ident,title:z.string().max(200),revision:z.number().int().nonnegative(),tempo:z.number().min(20).max(300),meter:z.number().int().min(1).max(16),masterDb:db,tracks:z.array(track).max(128),markers:z.array(z.object({id:ident,name:z.string().max(200),time})).max(1000)});
 export const newSession=()=>({version:1,id:crypto.randomUUID(),title:'Untitled session',revision:0,tempo:120,meter:4,masterDb:0,tracks:[],markers:[]});
-export const operations=['session.set','track.add','track.set','track.delete','region.add','region.set','region.delete','region.split','region.duplicate','note.add','note.set','note.delete','notes.quantize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
+export const operations=['session.set','track.add','track.set','track.delete','region.add','region.trim','region.set','region.delete','region.split','region.duplicate','note.add','note.set','note.delete','notes.quantize','notes.transpose','marker.add','marker.delete','effect.add','effect.set','effect.delete','effect.move','automation.point','automation.delete','automation.clear'];
 export const commandSchema=z.object({op:z.enum(operations),target:z.string().max(100).optional(),values:z.record(z.string(),z.union([z.string(),z.number(),z.boolean(),z.null()])).default({})}).strict();
 export const batchSchema=z.array(commandSchema).min(1).max(100);
 const pick=(values,allowed)=>{for(const key of Object.keys(values))if(!allowed.includes(key))throw Error(`Unsupported field: ${key}`);return values;};
@@ -24,6 +25,7 @@ export function applyCommands(input,commands,expectedRevision=input.revision){
    case 'region.add':need(t,'Track').regions.push(region.parse({id:crypto.randomUUID(),name:'Region',assetId:null,start:0,offset:0,duration:4,gainDb:0,fadeIn:0,fadeOut:0,reverse:false,notes:[],...pick(v,['id','name','assetId','start','offset','duration'])}));break;
    case 'region.set':Object.assign(need(r,'Region'),pick(v,['name','start','offset','duration','gainDb','fadeIn','fadeOut','reverse']));break;
    case 'region.delete':need(r,'Region');owner.regions=owner.regions.filter(x=>x!==r);break;
+   case 'region.trim':need(r,'Region');if(owner.kind==='midi')throw Error('Trim audio or video regions; use the note editor for MIDI.');pick(v,['start','end']);Object.assign(r,trimmedRegion(r,v.start,v.end));break;
    case 'region.duplicate':need(r,'Region');pick(v,['start']);owner.regions.push({...structuredClone(r),id:crypto.randomUUID(),start:v.start??r.start+r.duration,notes:r.notes.map(n=>({...n,id:crypto.randomUUID()}))});break;
    case 'region.split':{
     need(r,'Region');pick(v,['time']);const at=Number(v.time)-r.start;if(!Number.isFinite(at)||at<=0||at>=r.duration)throw Error('Split must be inside the region.');

@@ -27,7 +27,7 @@ separate compatible implementations or licensed integrations.
 | --- | --- | --- |
 | Experimental workspace | Separate route/sidebar tab, arrangement, inspectors, right-side agent | Initial implementation; browser check passes |
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
-| Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations implemented; graphical trim/fade handles and dedicated crossfades pending |
+| Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
 | Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Initial Web Audio transport/video monitor; seek, offsets and markers; loop/timecode and real video regression pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; CC/device/humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
@@ -60,7 +60,7 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 107 tests passing; Vite production build passing.
+- Entire repository: 110 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
   real-video synchronization, heavy sessions, mobile editing.
 
@@ -71,8 +71,7 @@ decoding currently caps individual audio at 250 MB; offline bounce caps ten minu
 Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; cloud project storage is still pending. The full goal remains active.
 
-Next implementation priorities: cloud project storage; MIDI event/device tools; recording; bus/send routing; graphical
-region trim/fades; movie-audio treatment and timecode; connected model validation.
+Next implementation priorities: cloud project storage; MIDI event/device tools; recording; bus/send routing; crossfades; movie-audio treatment and timecode; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -114,3 +113,19 @@ note ID is passed to the agent. Invalid edits leave the prior document unchanged
 The browser piano regression covers drag pitch/time, resize, selection without
 deletion, duplicate/delete/undo, edit rejection, region inspector and reload.
 Multiple-note selection, variable snap grids and MIDI CC lanes remain pending.
+
+## Region editing checkpoint
+
+Audio/video edge handles trim the timeline and original-source offset together.
+Reverse audio trimming adjusts the opposite source boundary. Trim adjusts fades
+to fit the resulting duration and never changes original media. Audio/MIDI fade
+handles display an envelope and prevent overlapping fades. Movement snaps to
+sixteenth-note increments; holding Shift during dragging allows unsnapped edits.
+The numeric inspector remains available for exact values. Source extension through
+handles is bounded by decoded source duration; without decoded metadata it stays
+within the known source range. The shared `region.trim` command is agent-accessible.
+
+Unit tests cover forward/reverse source alignment, undo, fade limits and invalid
+boundaries. The browser region check exercises both trim edges and fade handles,
+undo/redo, playback and persisted restoration. Dedicated crossfades, MIDI-region
+trimming and keyboard-accessible handles remain pending.

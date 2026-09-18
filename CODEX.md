@@ -302,3 +302,8 @@ export, import into cleared storage, restored playback and reload.
 The Experimental piano roll has a beat-based note inspector, pitch/time dragging,
 right-edge resizing, velocity, duplicate and explicit delete controls. Run
 `scripts/browser-experimental-piano-check.cjs` for editing and persistence checks.
+
+Timeline audio/video regions have edge trim handles; audio/MIDI regions have fade
+handles and envelope overlays. Hold Shift while dragging for unsnapped movement.
+The inspector remains available for exact numeric editing. Run
+`scripts/browser-experimental-region-check.cjs` to check trim/fades and restoration.
