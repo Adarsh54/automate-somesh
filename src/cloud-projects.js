@@ -70,7 +70,8 @@ export function createCloudWorkspace(account,{state,storageKey,esc,workflow,down
     if(!dirty){state.status=snapshot.status;localStorage.setItem(storageKey,JSON.stringify(state));}
     status=dirty?"Earlier edits saved. Save again for your latest changes.":"Saved to your account.";
     if(complete && !dirty){status="Cue sheet completed and saved.";onComplete?.();}
-    projects=(await request("/api/projects")).projects;
+    // Navigation must depend on the save, not a second request to refresh the list.
+    projects=[project,...projects.filter(item=>item.id!==project.id)];
   }
   function view() {
     if(!account.user) return `<section class="panel account-panel"><div><strong>You’re working as a guest</strong><p>${account.configured ? "Sign up to save your projects and media." : esc(account.error || "Account access is not connected in this environment. You can keep working as a guest.")}</p></div><div class="button-row">${authActions(account)}</div></section>`;
