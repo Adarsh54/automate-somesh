@@ -31,7 +31,10 @@ export function createReelHandler({auth=authenticate,repository=reelRepository,a
    const session=await auth(req,res);if(!session)return reply(res,401,{error:'SIGN_IN_REQUIRED'});
    if(req.method==='GET'&&action==='resume-preview'){const asset=await mediaRepository().get(session.user.id,url.searchParams.get('id'));if(!asset.ready||asset.content_type!=='application/pdf')return reply(res,404,{error:'Resume not found.'});res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(asset.pathname));res.status(302);return res.end();}
    if(req.method==='GET'&&action==='preview'){res.setHeader('Cache-Control','no-store');res.setHeader('Location',await sign(await repo.preview(session.user.id,url.searchParams.get('id'))));res.status(302);return res.end();}
-   if(req.method==='GET'&&action==='analytics')return reply(res,200,{analytics:await stats().sessions(session.user.id,url.searchParams.get('id'))});
+   if(req.method==='GET'&&action==='analytics'){
+    if(!url.searchParams.get('id'))return reply(res,200,{analytics:await stats().accountSummary(session.user.id)});
+    return reply(res,200,{analytics:await stats().sessions(session.user.id,url.searchParams.get('id'))});
+   }
    if(req.method==='GET'&&action==='links')return reply(res,200,{links:await repo.listLinks(session.user.id,url.searchParams.get('id'))});
    if(req.method==='GET')return reply(res,200,{publication:await repo.owner(session.user.id,url.searchParams.get('id'))});
    requireOrigin(req);const body=await readJson(req);

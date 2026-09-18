@@ -115,6 +115,23 @@ export function createReelAnalyticsRepository(query){
    }
    return {title:owns[0].title,opens:sessions.length,totalReelSeconds,avgSessionSeconds,avgCompletedRatio,tracks,daily:[...byDay.values()],sessions};
   },
+  async accountSummary(userId){
+   const reels=await query`SELECT p.id,p.title FROM projects p JOIN reel_publications rp ON rp.project_id=p.id WHERE p.user_id=${userId} ORDER BY p.updated_at DESC`;
+   const ids=reels.map(r=>r.id);
+   const counts=ids.length?await query`SELECT project_id AS "projectId", count(*)::int AS opens, max(opened_at) AS "lastOpenedAt"
+    FROM reel_listens WHERE project_id=ANY(${ids}::uuid[]) GROUP BY project_id`:[];
+   const byProject=new Map(counts.map(c=>[c.projectId,c]));
+   const list=reels.map(r=>({id:r.id,title:r.title,opens:byProject.get(r.id)?.opens||0,lastOpenedAt:byProject.get(r.id)?.lastOpenedAt||null}))
+    .sort((a,b)=>b.opens-a.opens || new Date(b.lastOpenedAt||0)-new Date(a.lastOpenedAt||0));
+   const daily=ids.length?await query`SELECT date_trunc('day',opened_at) AS day, count(*)::int AS count
+    FROM reel_listens WHERE project_id=ANY(${ids}::uuid[]) AND opened_at>=now()-interval '90 days' GROUP BY day ORDER BY day ASC`:[];
+   return {
+    totalReels:list.length,
+    totalOpens:list.reduce((sum,r)=>sum+r.opens,0),
+    reels:list,
+    daily:daily.map(row=>({date:new Date(row.day).toISOString().slice(0,10),opens:row.count})),
+   };
+  },
  };
 }
 export const reelAnalyticsRepository=()=>createReelAnalyticsRepository(neon(process.env.DATABASE_URL));

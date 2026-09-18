@@ -13,7 +13,7 @@ test('reel drafts validate separately and cannot masquerade as completed cues',(
 test('reels and shared audio preserve ownership, media readiness, project types and revisions',async()=>{
  const db=new PGlite();
  try{
-  for(const f of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
+  for(const f of ['001_users_projects.sql','002_media_assets.sql','007_audio_edits.sql','010_folders.sql'])await db.exec(await readFile(new URL('../migrations/'+f,import.meta.url),'utf8'));
   await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','a@test'),('bob','b@test')");
   const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values)).rows;
   const media=createMediaRepository(query),projects=createProjectRepository(query);

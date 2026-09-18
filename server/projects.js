@@ -1,3 +1,4 @@
+import {sessionSchema,applyCommands} from '../src/experimental/session.js';
 import {neon} from "@neondatabase/serverless";
 import {z} from "zod";
 import {createMediaRepository} from "./media.js";
@@ -29,10 +30,11 @@ const stateSchema=z.object({
   status:z.enum(["draft","completed"]).optional(),
   media:z.object({tracks:z.record(identifier,z.uuid()),movie:z.uuid().optional()}).optional(),
 });
-const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional(),trackColors:z.record(z.uuid(),z.string().regex(/^#[0-9a-f]{6}$/i)).optional(),appearance:z.object({accent:z.string().regex(/^#[0-9a-f]{6}$/i),theme:z.enum(['dark','light']),description:z.string().max(1000)}).optional(),profile:z.object({name:z.string().max(120),email:z.union([z.email(),z.literal('')]),occupation:z.string().max(120),bio:z.string().max(2000)}).optional(),resumeId:z.uuid().optional(),resumeName:z.string().max(255).optional()})])});
+const requestSchema=z.object({id:z.uuid(),revision:z.number().int().nonnegative(),data:z.union([z.object({type:z.literal('daw'),status:z.literal('draft'),session:sessionSchema,assets:z.record(z.string().min(1).max(100),z.uuid())}),stateSchema,z.object({type:z.literal("reel"),title:z.string().trim().min(1).max(300),status:z.literal("draft"),audioIds:z.array(z.uuid()).max(500),trackTitles:z.record(z.uuid(),z.string().max(300)).optional(),trackColors:z.record(z.uuid(),z.string().regex(/^#[0-9a-f]{6}$/i)).optional(),appearance:z.object({accent:z.string().regex(/^#[0-9a-f]{6}$/i),theme:z.enum(['dark','light']),description:z.string().max(1000)}).optional(),profile:z.object({name:z.string().max(120),email:z.union([z.email(),z.literal('')]),occupation:z.string().max(120),bio:z.string().max(2000)}).optional(),resumeId:z.uuid().optional(),resumeName:z.string().max(255).optional()})])});
 export function parseProject(input) {
   const result=requestSchema.safeParse(input);
   if(!result.success) throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+  if(result.data.data.type==='daw'){const data=result.data.data;try{if(!data.session.title.trim())throw Error();applyCommands(data.session,[{op:'session.set',values:{}}]);const ids=[...new Set(data.session.tracks.flatMap(t=>t.regions.map(r=>r.assetId).filter(Boolean)))];if(ids.length!==Object.keys(data.assets).length||ids.some(id=>!Object.hasOwn(data.assets,id)))throw Error();}catch{throw Object.assign(new Error('INVALID_DAW_PROJECT'),{status:400});}return result.data;}
   if(result.data.data.type==="reel"){if(new Set(result.data.data.audioIds).size!==result.data.data.audioIds.length)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});return result.data;}
   const ids=result.data.data.tracks.map(t=>t.id);
   if(new Set(ids).size!==ids.length || result.data.data.cues.some(c=>!ids.includes(c.trackId)) || Object.keys(result.data.data.media?.tracks || {}).some(id=>!ids.includes(id)))
@@ -44,24 +46,36 @@ export function parseProject(input) {
 export function createProjectRepository(query) {
   return {
     async list(userId) {
-      return query`SELECT id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC`;
+      return query`SELECT id,title,revision,created_at,updated_at,folder_id AS "folderId",COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type FROM projects WHERE user_id=${userId} ORDER BY updated_at DESC`;
     },
     async get(userId,id) {
       if(!z.uuid().safeParse(id).success) throw Object.assign(new Error("NOT_FOUND"),{status:404});
-      const rows=await query`SELECT id,title,data,revision,created_at,updated_at FROM projects WHERE id=${id} AND user_id=${userId}`;
+      const rows=await query`SELECT id,title,data,revision,created_at,updated_at,folder_id AS "folderId" FROM projects WHERE id=${id} AND user_id=${userId}`;
       if(!rows[0]) throw Object.assign(new Error("NOT_FOUND"),{status:404});
       return rows[0];
     },
-    async deleteReel(userId,input) {
+    async moveProject(userId,input) {
+      const parsed=z.object({id:z.uuid(),folderId:z.uuid().nullable()}).safeParse(input);
+      if(!parsed.success)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
+      const {id,folderId}=parsed.data;
+      const rows=await query`UPDATE projects SET folder_id=${folderId} WHERE id=${id} AND user_id=${userId}
+        AND (${folderId}::uuid IS NULL OR EXISTS(SELECT 1 FROM folders f WHERE f.id=${folderId} AND f.user_id=${userId}))
+        RETURNING id,folder_id AS "folderId"`;
+      if(!rows[0])throw Object.assign(new Error("NOT_FOUND"),{status:404});
+      return rows[0];
+    },
+    async deleteProject(userId,input) {
       const parsed=z.object({id:z.uuid(),revision:z.number().int().positive()}).safeParse(input);
       if(!parsed.success)throw Object.assign(new Error("INVALID_PROJECT"),{status:400});
       const {id,revision}=parsed.data;
-      const rows=await query`DELETE FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} AND data->>'type'='reel' RETURNING id`;
+      // No type filter: a cue sheet has no dependent tables to clean up, and every reel-specific
+      // table (reel_publications, reel_share_links, reel_listens, ...) cascades via its own FK.
+      const rows=await query`DELETE FROM projects WHERE id=${id} AND user_id=${userId} AND revision=${revision} RETURNING id`;
       if(!rows[0])throw Object.assign(new Error("PROJECT_CONFLICT"),{status:409});
       return rows[0];
     },
     async save(userId,input) {
-      const {id,revision,data}=parseProject(input), title=data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
+      const {id,revision,data}=parseProject(input), title=data.type==='daw'?data.session.title.trim():data.type==="reel"?data.title:data.production.title.trim() || "Untitled production";
       await createMediaRepository(query).validate(userId,data);
       const rows=revision===0
         ? await query`INSERT INTO projects(id,user_id,title,data) VALUES(${id},${userId},${title},${JSON.stringify(data)}::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,title,revision,created_at,updated_at,COALESCE(data->>'status','draft') AS status,COALESCE(data->>'type','cue') AS type`
@@ -75,4 +89,5 @@ export const listProjects = userId => createProjectRepository(sql()).list(userId
 export const getProject = (userId,id) => createProjectRepository(sql()).get(userId,id);
 export const saveProject = (userId,input) => createProjectRepository(sql()).save(userId,input);
 
-export const deleteReel = (userId,input) => createProjectRepository(sql()).deleteReel(userId,input);
+export const deleteProject = (userId,input) => createProjectRepository(sql()).deleteProject(userId,input);
+export const moveProject = (userId,input) => createProjectRepository(sql()).moveProject(userId,input);

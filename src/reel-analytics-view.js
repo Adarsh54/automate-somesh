@@ -30,7 +30,7 @@ export function createReelAnalyticsView({esc,onChange,onBack}){
   catch(e){error=e.message;}
   finally{loading=false;onChange?.();}
  }
- function header(subtitle){return `<div class="heading"><div><div class="eyebrow">REEL ANALYTICS</div><h1>${esc(data?.title || 'Reel analytics')}</h1><p>${subtitle}</p></div><button id="analytics-back">Back to reel</button></div>`;}
+ function header(subtitle){return `<div class="heading"><div><div class="eyebrow">REEL ANALYTICS</div><h1>${esc(data?.title || 'Reel analytics')}</h1><p>${subtitle}</p></div><div class="button-row"><a href="#/reels/analytics">All reels</a><button id="analytics-back">Back to reel</button></div></div>`;}
  function trendPoints(range){
   const days=Number(range),end=new Date();end.setHours(0,0,0,0);
   const points=[];

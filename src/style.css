@@ -580,6 +580,19 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 .audio-picker .audio-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
 .project-filters { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .project-filters label { display: grid; gap: 7px; min-width: 180px; font-size: 12px; color: var(--muted); }
+.project-search-field input { min-width: 180px; }
+.project-folders { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.folder-chip { padding: 6px 14px; border: 1px solid var(--strong-line); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; }
+.folder-chip:hover { border-color: var(--accent); }
+.folder-chip.active { background: var(--action); border-color: var(--action); color: var(--action-text); }
+.folder-chip-new { border-style: dashed; color: var(--muted); }
+.folder-chip-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.folder-chip-delete { width: 20px; height: 20px; display: grid; place-content: center; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; }
+.folder-chip-delete:hover { background: var(--line); color: var(--text); }
+.folder-create { display: inline-flex; align-items: center; gap: 8px; }
+.folder-create input { padding: 6px 12px; border: 1px solid var(--strong-line); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12px; min-width: 160px; }
+.bulk-move-folder { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.row-folder-select { font-size: 12px; padding: 4px 30px 4px 10px; }
 .project-title-link { padding: 0; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; }
 /* Shared, aligned date metadata for project and reel collections. */
 .project-dates { display: grid; grid-template-columns: repeat(2, minmax(112px, 1fr)); gap: 24px; margin: 0 12px; flex-shrink: 0; }
@@ -595,6 +608,12 @@ audio { width: 100%; height: 36px; margin-bottom: 12px; }
 }
 .saved-reels { margin-top: 40px; }
 .saved-reels h2 { margin-bottom: 16px; }
+.collection-bulk-actions { display: flex; align-items: center; gap: 16px; margin: -6px 0 16px; }
+.collection-bulk-actions .checkbox-control { padding: 0; min-height: 0; }
+.row-select { display: inline-flex; align-items: center; margin-right: 8px; cursor: pointer; vertical-align: middle; }
+.row-select input[type="checkbox"] { appearance: none; display: grid; place-content: center; width: 17px; height: 17px; margin: 0; border: 1px solid var(--strong-line); border-radius: 4px; background: var(--surface); cursor: pointer; flex-shrink: 0; }
+.row-select input[type="checkbox"]:checked { background: var(--action); border-color: var(--action); }
+.row-select input[type="checkbox"]:checked::after { content: ""; width: 8px; height: 5px; border-left: 2px solid var(--action-text); border-bottom: 2px solid var(--action-text); transform: translateY(-1px) rotate(-45deg); }
 .reel-analytics-page { max-width: 760px; margin: 0 auto; }
 .reel-analytics-stats { margin-top: 8px; }
 .reel-session-card { display: grid; gap: 14px; }

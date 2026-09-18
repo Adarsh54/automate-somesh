@@ -23,7 +23,7 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  const preferencesKey=`cuestamp-audio-library:${scope}:preferences`;
  let preferences={};try{preferences=JSON.parse(localStorage.getItem(preferencesKey)) || {};}catch{}
  let previewFile=null;
- let selected=null,previewUrl='',previewLoading=false,previewVersion=0,previewError='';
+ let selected=null,previewUrl='',previewLoading=false,previewVersion=0,previewError='',libraryQuery='';
  const labelFor=a=>preferences[a.id]?.title || a.filename.replace(/\.[^.]+$/,'');
  function remember(id,patch){
   const next={...preferences,[id]:{...preferences[id],...patch}};
@@ -115,10 +115,14 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
   onChange();return item?.id;
  }
  function view(){
-  const items=visibleEntries(),active=items.find(a=>a.id===selected);
+  const all=visibleEntries(),q=libraryQuery.trim().toLowerCase();
+  const items=q?all.filter(a=>labelFor(a).toLowerCase().includes(q) || a.filename.toLowerCase().includes(q)):all;
+  const active=items.find(a=>a.id===selected);
+  const librarySearch=all.length?`<label class="project-search-field library-search">Search<input type="search" id="library-search" placeholder="Search audio files" value="${esc(libraryQuery)}"></label>`:'';
   const rows=items.map(a=>`<div class="track-row collection-row ${account.user&&!a.saved?'library-track-unsaved':''}"><div class="library-track-main"><button class="track ${a.id===selected?'selected':''}" data-library-preview="${esc(a.id)}" draggable="true" aria-pressed="${a.id===selected}" title="Select to preview, or drag onto Add Cue Sheet"><span class="track-icon" aria-hidden="true">♪</span><span><strong>${esc(labelFor(a))}</strong><small>${esc(a.filename)} · ${a.size<1024*1024?`${Math.ceil(a.size/1024)} KB`:`${(a.size/1024/1024).toFixed(1)} MB`} · ${a.sourceId?'Reel · Linked to original':a.saved?'Saved to your account':'On this device'}</small></span></button>${account.user&&!a.saved?`<button type="button" class="library-upload-status" data-library-sync="${esc(a.id)}" aria-label="Retry upload for ${esc(labelFor(a))}" ${uploading?'disabled':''}><span aria-hidden="true">⚠</span><span class="upload-status-label">Not uploaded</span><span class="upload-retry-label">Retry upload</span></button>`:''}</div><div class="track-actions">${a.saved?`<button data-library-edit="${esc(a.id)}">Edit</button>`:''}<button type="button" class="danger library-remove" data-library-remove="${esc(a.id)}" aria-label="Remove ${esc(labelFor(a))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div></div>`).join('');
   const preview=active?`<section class="panel editor"><div class="section-title"><h2>Audio preview</h2><button type="button" class="danger library-remove" data-library-remove="${esc(active.id)}" aria-label="Remove ${esc(labelFor(active))} from library" title="Remove from library"><span aria-hidden="true">−</span></button></div><input id="library-source-label" aria-label="Audio title" maxlength="300" value="${esc(labelFor(active))}">${previewLoading?'<p role="status">Loading audio…</p>':previewUrl?`${libraryPreviewMarkup()}<audio id="track-preview" hidden preload="metadata" aria-label="Preview ${esc(labelFor(active))}" src="${previewUrl}"></audio>`:''}<p id="preview-status" class="muted" role="status">${esc(previewError)}</p>${previewError?'<button data-library-preview-retry>Retry preview</button>':''}<button data-library-use="${esc(active.id)}">Add to cue sheet</button></section>`:'<div class="panel empty"><p>Select audio to preview it. Press Play on the timeline to listen.</p></div>';
-  return collectionPage({title:'Audio Library',description:'Keep your audio here for later. Select a file to preview it, or drag it onto Add Cue Sheet.',action:audioUploadButton({id:'library-upload',disabled:uploading,attributes:'data-library-upload'}),summary:`${items.length} audio file${items.length===1?'':'s'}`,body:`${!account.user?'<p class="muted">Audio is saved in this browser for your next visit. Clearing site data removes it.</p>':''}${error?`<div class="project-error" role="alert"><span>${esc(error)}</span><button data-library-retry>Try again</button></div>`:''}${notice?`<p class="notice" role="status">${esc(notice)}</p>`:''}${progressView('data-cancel-audio-upload')}${loading?'<p class="muted" role="status">Loading audio…</p>':''}${rows?`<div class="library-grid"><div class="track-list">${rows}</div>${preview}</div>`:'<div class="empty"><span>♫</span><h3>No audio files yet</h3><p>Upload multiple audio files to build your library.</p></div>'}<details class="disclosure"><summary>File support & storage</summary><p class="muted">WAV, MP3, M4A, AAC, AIFF, FLAC, OGG, and Opus. Files must be under 2 GB. Cue detection supports up to 60 minutes per file. Signed-in uploads are saved privately to your account; guest audio stays in this browser. Removing a library entry keeps audio already used in cue sheets and reels.</p></details>`});
+  const libraryEmpty=q?'<div class="empty"><h3>No matching audio</h3><p>Try a different filename or label.</p></div>':'<div class="empty"><span>♫</span><h3>No audio files yet</h3><p>Upload multiple audio files to build your library.</p></div>';
+  return collectionPage({title:'Audio Library',description:'Keep your audio here for later. Select a file to preview it, or drag it onto Add Cue Sheet.',action:audioUploadButton({id:'library-upload',disabled:uploading,attributes:'data-library-upload'}),summary:`${items.length} of ${all.length} audio file${all.length===1?'':'s'}`,body:`${!account.user?'<p class="muted">Audio is saved in this browser for your next visit. Clearing site data removes it.</p>':''}${error?`<div class="project-error" role="alert"><span>${esc(error)}</span><button data-library-retry>Try again</button></div>`:''}${notice?`<p class="notice" role="status">${esc(notice)}</p>`:''}${progressView('data-cancel-audio-upload')}${loading?'<p class="muted" role="status">Loading audio…</p>':''}${librarySearch}${rows?`<div class="library-grid"><div class="track-list">${rows}</div>${preview}</div>`:libraryEmpty}<details class="disclosure"><summary>File support & storage</summary><p class="muted">WAV, MP3, M4A, AAC, AIFF, FLAC, OGG, and Opus. Files must be under 2 GB. Cue detection supports up to 60 minutes per file. Signed-in uploads are saved privately to your account; guest audio stays in this browser. Removing a library entry keeps audio already used in cue sheets and reels.</p></details>`});
  }
  async function edit(id,{reel=false}={}){
   if(!account.user)throw Error('Sign in to save audio edits while preserving the original.');
@@ -129,6 +133,13 @@ export function createAudioLibrary({account,esc,onChange,onUseInCue,request=libr
  }
  function bind(){
   bindLibraryPreview(document.querySelector('#track-preview'),previewFile);
+  const librarySearchInput=document.querySelector('#library-search');
+  if(librarySearchInput)librarySearchInput.oninput=()=>{
+   const pos=librarySearchInput.selectionStart;
+   libraryQuery=librarySearchInput.value;onChange();
+   const el=document.querySelector('#library-search');
+   if(el){el.focus();el.setSelectionRange(pos,pos);}
+  };
   document.querySelectorAll('[data-library-edit]').forEach(button=>button.onclick=async()=>{try{await edit(button.dataset.libraryEdit);}catch(e){error=e.message;onChange();}});
 
   document.querySelector('[data-cancel-audio-upload]')?.addEventListener('click',cancelUpload);

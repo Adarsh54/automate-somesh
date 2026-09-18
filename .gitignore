@@ -4,3 +4,4 @@ dist/
 .env*
 test-results/
 .vercel
+skills-lock.json

@@ -13,3 +13,9 @@ test('reel copy keeps playlist and presentation but does not copy publication me
  const copy=duplicateProject(source);
  assert.equal(copy.data.title.length,300);assert(copy.data.title.endsWith(' (copy)'));assert.deepEqual(copy.data.audioIds,['asset']);assert.deepEqual(copy.data.profile,source.data.profile);assert.equal(copy.token,undefined);assert.equal(copy.published,undefined);
 });
+test('DAW project copies retain the session and assets with a new title',()=>{
+ const source={data:{type:'daw',status:'draft',session:{title:'Session',tracks:[{id:'track'}]},assets:{audio:'asset'}}};
+ const copy=duplicateProject(source);
+ assert.equal(copy.data.session.title,'Session (copy)');assert.deepEqual(copy.data.assets,source.data.assets);
+ copy.data.session.tracks[0].id='other';assert.equal(source.data.session.tracks[0].id,'track');
+});

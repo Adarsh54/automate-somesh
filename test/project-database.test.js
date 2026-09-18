@@ -7,6 +7,7 @@ test("Postgres enforces ownership, atomic revisions and full JSON cue detail rou
   const db=new PGlite();
   try {
     await db.exec(await readFile(new URL("../migrations/001_users_projects.sql",import.meta.url),"utf8"));
+    await db.exec(await readFile(new URL("../migrations/010_folders.sql",import.meta.url),"utf8"));
     await db.exec("INSERT INTO app_users(id,email) VALUES ('alice','alice@example.test'),('bob','bob@example.test')");
     const query=async(strings,...values)=>(await db.query(strings.reduce((s,p,i)=>s+(i?"$"+i:"")+p,""),values)).rows;
     const repo=createProjectRepository(query);

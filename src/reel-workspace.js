@@ -14,7 +14,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
  let data=blank(),active=null,dirty=false,busy=false,error='',notice='',preview=null,player=null,publication=null,publicationLoaded=null,progress='',uploading=false;
  let localUrls=[],publicationEpoch=0,pendingUploads=[],savedReels=[],reelsLoaded=false,reelsLoading=false,autosaveTimer=null;
  let autoTimer=null,autoKey='',autoLoading=false,autoError='',previewEpoch=0;const trackCache=new Map();
- let links=[],linksLoadedFor=null;
+ let links=[],linksLoadedFor=null;const selectedReels=new Set();
  try{const saved=JSON.parse(localStorage.getItem(key));if(saved?.data?.type==='reel'){data=saved.data;active=saved.active;dirty=Boolean(saved.dirty);}}catch{}
  const persist=()=>localStorage.setItem(key,JSON.stringify({data,active,dirty}));
  const dispose=()=>{player?.destroy();player=null;};
@@ -187,7 +187,7 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
  async function attach(ids){data.audioIds=[...new Set([...data.audioIds,...ids])];changed();onChange();}
  const run=fn=>async()=>{try{error='';await fn();}catch(e){error=e.message;onChange();}};
 
- async function loadReels(){if(reelsLoading||!account.user)return;reelsLoading=true;try{savedReels=(await libraryRequest('/api/projects')).projects.filter(p=>p.type==='reel');reelsLoaded=true;}catch(e){error=e.message;reelsLoaded=true;}finally{reelsLoading=false;onChange();}}
+ async function loadReels(){if(reelsLoading||!account.user)return;reelsLoading=true;try{savedReels=(await libraryRequest('/api/projects')).projects.filter(p=>p.type==='reel');for(const id of [...selectedReels])if(!savedReels.some(p=>p.id===id))selectedReels.delete(id);reelsLoaded=true;}catch(e){error=e.message;reelsLoaded=true;}finally{reelsLoading=false;onChange();}}
  async function removeReel(id){
   if(busy||uploading||audioLibrary.isBusy())throw Error('Wait for the current operation to finish.');
   busy=true;clearTimeout(autosaveTimer);onChange();
@@ -202,9 +202,45 @@ export function createReelWorkspace({account,audioLibrary,esc,onChange,onEdit,on
    }});
   }finally{busy=false;if(dirty)scheduleAutosave();onChange();}
  }
- function reelsView(){return account.user?`<section class="saved-reels"><div class="section-title"><h2>Your reels</h2>${collectionCreateButton({label:"Create reel",attributes:"id=\"new-saved-reel\"",disabled:busy})}</div><div class="collection-list">${savedReels.map(p=>collectionRow({title:`<button class="project-title-link" data-edit-reel="${esc(p.id)}">${esc(p.title)}</button>`,detail:`${p.published?'Published':'Draft'}`,icon:'▷',metadata:projectDates(p,esc),actions:`<button data-delete-reel="${esc(p.id)}" ${busy||uploading?'disabled':''}>Delete reel</button><button data-edit-reel="${esc(p.id)}" ${busy?'disabled':''}>Edit</button>${p.published?`<button data-share-saved-reel="${esc(p.id)}" ${busy?'disabled':''}>Share</button><button data-view-analytics="${esc(p.id)}" ${busy?'disabled':''}>Analytics</button><button data-stop-reel="${esc(p.id)}" ${busy?'disabled':''}>Stop sharing</button>`:''}`})).join('')||'<p class="muted">Saved reels appear here. Use Create project to start another reel.</p>'}</div></section>`:'';}
+ async function removeReels(ids){
+  if(busy||uploading||audioLibrary.isBusy())throw Error('Wait for the current operation to finish.');
+  const targets=ids.map(id=>savedReels.find(p=>p.id===id)).filter(Boolean);
+  if(!targets.length)return;
+  busy=true;clearTimeout(autosaveTimer);onChange();
+  try{
+   const multiple=targets.length>1;
+   await confirmDialog({title:multiple?`Delete ${targets.length} reels?`:`Delete “${targets[0].title}”?`,message:`This permanently deletes the selected reel${multiple?'s':''} and their analytics. Their share links and embeds will stop working. Audio Library files will remain.`,confirmLabel:multiple?`Delete ${targets.length} reels`:'Delete reel',onConfirm:async()=>{
+    const failed=[];
+    for(const target of targets){
+     try{
+      await libraryRequest('/api/projects',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:target.id,revision:target.revision})});
+      savedReels=savedReels.filter(p=>p.id!==target.id);selectedReels.delete(target.id);
+      if(active?.id===target.id){reset();data=blank();active=null;dirty=false;persist();onDeleted?.(target.id);}
+     }catch(e){failed.push(target.title||'Untitled reel');}
+    }
+    notice=failed.length?`Deleted ${targets.length-failed.length} of ${targets.length} reels. Couldn't delete: ${failed.join(', ')}. Reload and try again.`:`Deleted ${targets.length} reel${multiple?'s':''}.`;
+   }});
+  }finally{busy=false;if(dirty)scheduleAutosave();onChange();}
+ }
+ function reelsView(){
+  if(!account.user)return '';
+  const selectedCount=[...selectedReels].filter(id=>savedReels.some(p=>p.id===id)).length;
+  const allSelected=savedReels.length>0&&selectedCount===savedReels.length;
+  const bulkBar=savedReels.length?`<div class="collection-bulk-actions"><label class="checkbox-control"><input type="checkbox" id="select-all-reels" ${allSelected?'checked':''}>Select all</label>${selectedCount?`<button data-delete-selected-reels ${busy||uploading?'disabled':''}>Delete selected (${selectedCount})</button>`:''}</div>`:'';
+  return `<section class="saved-reels"><div class="section-title"><h2>Your reels</h2><div class="button-row">${savedReels.some(p=>p.published)?'<a href="#/reels/analytics">All reels analytics</a>':''}${collectionCreateButton({label:"Create reel",attributes:"id=\"new-saved-reel\"",disabled:busy})}</div></div>${bulkBar}<div class="collection-list">${savedReels.map(p=>collectionRow({title:`<label class="row-select"><input type="checkbox" data-select-reel="${esc(p.id)}" aria-label="Select ${esc(p.title||'Untitled reel')}" ${selectedReels.has(p.id)?'checked':''}></label><button class="project-title-link" data-edit-reel="${esc(p.id)}">${esc(p.title)}</button>`,detail:`${p.published?'Published':'Draft'}`,icon:'▷',metadata:projectDates(p,esc),actions:`<button data-delete-reel="${esc(p.id)}" ${busy||uploading?'disabled':''}>Delete reel</button><button data-edit-reel="${esc(p.id)}" ${busy?'disabled':''}>Edit</button>${p.published?`<button data-share-saved-reel="${esc(p.id)}" ${busy?'disabled':''}>Share</button><button data-view-analytics="${esc(p.id)}" ${busy?'disabled':''}>Analytics</button><button data-stop-reel="${esc(p.id)}" ${busy?'disabled':''}>Stop sharing</button>`:''}`})).join('')||'<p class="muted">Saved reels appear here. Use Create project to start another reel.</p>'}</div></section>`;
+ }
  function bind(){
   document.querySelectorAll("[data-delete-reel]").forEach(button=>button.onclick=run(()=>removeReel(button.dataset.deleteReel)));
+  document.querySelector('[data-delete-selected-reels]')?.addEventListener('click',run(()=>removeReels([...selectedReels])));
+  document.querySelector('#select-all-reels')?.addEventListener('change',event=>{
+   if(event.target.checked)savedReels.forEach(p=>selectedReels.add(p.id));else selectedReels.clear();
+   onChange();
+  });
+  document.querySelectorAll('[data-select-reel]').forEach(input=>input.onchange=()=>{
+   const id=input.dataset.selectReel;
+   if(input.checked)selectedReels.add(id);else selectedReels.delete(id);
+   onChange();
+  });
   document.querySelector('#published-reel-link')?.addEventListener('click',event=>event.target.select());
   document.querySelector('#copy-published-reel-link')?.addEventListener('click',async()=>{const input=document.querySelector('#published-reel-link'),status=document.querySelector('#reel-copy-status');try{await navigator.clipboard.writeText(input.value);status.textContent='Link copied';}catch{input.focus();input.select();status.textContent='Select the link and copy it.';}});
   document.querySelectorAll('[data-share-saved-reel]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const id=button.dataset.shareSavedReel,{project}=await libraryRequest('/api/projects?id='+encodeURIComponent(id));showLinks({id,title:savedReels.find(p=>p.id===id)?.title||'Reel',trackCount:project?.data?.audioIds?.length||0});}catch(e){error=e.message;onChange();}finally{button.disabled=false;}});
