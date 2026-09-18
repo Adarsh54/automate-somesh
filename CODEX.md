@@ -894,3 +894,19 @@ These are hard boundaries, without crossfades or zero-crossing assistance. Run
 `test/experimental-sampler-loop.test.js` and
 `scripts/browser-experimental-sampler-loop-check.cjs` for bounds/history, sustained
 rendering, unlooped comparison, seek, note-end silence and live note-off cleanup.
+
+The sampler inspector displays a cached waveform overview after sample decoding.
+Load waveform decodes the selected source after reload without committing edits.
+Drag across it to choose a loop range, drag handles to adjust boundaries, or focus
+a handle and use arrows for one source sample (Shift: 10 ms; Home/End: boundary).
+Gestures snap to source frames and keep a minimum one-frame span. Changes update
+only the form and enable looping; Use sampler commits them as one undoable edit.
+Pointer cancellation restores the previous draft. Numeric loop fields update the
+band too. The overview is peak-sampled and normalized for visibility; it is not a
+sample-level zoom or zero-crossing editor. Run
+`test/experimental-sampler-waveform.test.js` and
+`scripts/browser-experimental-sampler-waveform-check.cjs`. The browser script can
+save an inspector screenshot when CUESTAMP_SCREENSHOT is set to an output path.
+Audio-device enumeration has a five-second timeout. A failed discovery leaves the
+current choice intact and enables Refresh inputs to retry; recording remains a
+separate permission request. This handles browser APIs that never settle.

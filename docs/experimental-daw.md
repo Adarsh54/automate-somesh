@@ -1132,3 +1132,23 @@ live held/released voices, inspector controls, undo and bad source bounds. Unit
 checks cover first-pass offsets, wrap math, sample bounds and atomic document
 validation. Crossfade loops, graphical loop-point selection, zero-crossing helpers,
 multisample zones and editable envelopes remain pending.
+
+### Graphical sampler loop selection
+
+Sampler sources now have a waveform overview with a selected loop band and keyboard-
+accessible edge handles. Drawing a range and moving edges update draft form values,
+snap to source frames, and commit only through Use sampler. Cancel restores the
+prior draft. Numeric fields redraw the band; cached sources appear immediately,
+and Load waveform decodes a selected source after reload without changing the
+project. One-frame loop validation now tolerates floating-point roundoff.
+
+237 tests and build pass. Browser checks cover drag selection, keyboard changes,
+cancellation, draft isolation, apply/undo/redo and reload. Unit checks cover range
+ordering/clamping, one-frame spans, stereo/silent/short-buffer waveform generation
+and source-data preservation. Waveform zoom, zero-crossing snapping and crossfade
+loops remain pending; the overview samples peaks and normalizes display amplitude.
+
+Audio input enumeration now times out after five seconds with a retryable message,
+preventing a stalled browser device API from leaving Refresh inputs disabled. A
+unit test verifies timeout and successful retry. The sampler inspector screenshot
+was visually checked after the browser regression passed.

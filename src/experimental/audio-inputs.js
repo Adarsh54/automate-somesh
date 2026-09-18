@@ -1,18 +1,18 @@
 import {recordingChannelModes,validateRecordingChannels} from './recording-channels.js';
 // Hardware selection stays local to this workspace, never in a project document.
-export function createAudioInputs({mediaDevices=globalThis.navigator?.mediaDevices,onChange=()=>{}}={}){
+export function createAudioInputs({mediaDevices=globalThis.navigator?.mediaDevices,onChange=()=>{},timeoutMs=5000}={}){
  let inputChannels='stereo';
  let devices=[],selected='',active=false,generation=0,loading=false,error='';
  async function refresh(){
   if(!active)return;
-  const request=++generation;loading=true;error='';onChange();
+  const request=++generation;let timeout;loading=true;error='';onChange();
   try{
    if(!mediaDevices?.enumerateDevices)throw Error('Audio device selection is unavailable in this browser.');
-   const list=await mediaDevices.enumerateDevices();
+   const list=await Promise.race([mediaDevices.enumerateDevices(),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Audio device discovery timed out. Refresh inputs to retry.')),timeoutMs);})]);
    if(!active||request!==generation)return;
    const seen=new Set();devices=list.filter(d=>d.kind==='audioinput'&&d.deviceId&&d.deviceId!=='default'&&!seen.has(d.deviceId)&&seen.add(d.deviceId)).map((d,i)=>({id:d.deviceId,label:d.label||`Audio input ${i+1}`}));
   }catch(e){if(active&&request===generation)error=e.message;}
-  finally{if(active&&request===generation){loading=false;onChange();}}
+  finally{clearTimeout(timeout);if(active&&request===generation){loading=false;onChange();}}
  }
  return {
   get inputChannels(){return inputChannels;},

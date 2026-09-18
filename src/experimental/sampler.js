@@ -8,7 +8,7 @@ export function samplerOffset(note,root,events,at){
 export function samplerLoop(buffer,{sampleLoop=false,sampleLoopStart=0,sampleLoopEnd=null}={}){
  if(!sampleLoop)return {loop:false};
  const end=sampleLoopEnd??buffer.duration;
- if(!Number.isFinite(sampleLoopStart)||!Number.isFinite(end)||sampleLoopStart<0||end>buffer.duration||end-sampleLoopStart<1/buffer.sampleRate)throw Error('Sampler loop points must span at least one sample and stay inside the source file.');
+ if(!Number.isFinite(sampleLoopStart)||!Number.isFinite(end)||sampleLoopStart<0||end>buffer.duration||end-sampleLoopStart+Number.EPSILON*Math.max(1,buffer.duration)<1/buffer.sampleRate)throw Error('Sampler loop points must span at least one sample and stay inside the source file.');
  return {loop:true,loopStart:sampleLoopStart,loopEnd:end};
 }
 export function loopedSampleOffset(offset,loop){return loop.loop&&offset>=loop.loopEnd?loop.loopStart+(offset-loop.loopStart)%(loop.loopEnd-loop.loopStart):offset;}
