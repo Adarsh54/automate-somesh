@@ -113,10 +113,10 @@ export function createExperimentalWorkspace({account,esc}){
   agentRequest?.signal.throwIfAborted();
   const original=history,plan=createBouncePlan(session()),snapshot=plan.entries[0].document,sampleRate=bounceSettings.sampleRate;
   busy=true;stop();status='Rendering the full mix for analysis…';paint();
-  try{for(const id of plan.assets){await decode(id);agentRequest?.signal.throwIfAborted();}const frames=Math.max(1,Math.ceil(plan.duration*sampleRate)),offline=new OfflineAudioContext(2,frames,sampleRate);scheduleSession(offline,snapshot,buffers,0,{baseTime:0});const rendered=await offline.startRendering();agentRequest?.signal.throwIfAborted();status='Measuring every audio sample…';paint();const channels=await analyzeRender(rendered,{signal:agentRequest?.signal});
+  try{for(const id of plan.assets){await decode(id);agentRequest?.signal.throwIfAborted();}const frames=Math.max(1,Math.ceil(plan.duration*sampleRate)),offline=new OfflineAudioContext(2,frames,sampleRate);scheduleSession(offline,snapshot,buffers,0,{baseTime:0});const rendered=await offline.startRendering();agentRequest?.signal.throwIfAborted();status='Measuring every audio sample…';paint();const {channels,stereo}=await analyzeRender(rendered,{signal:agentRequest?.signal});
    agentRequest?.signal.throwIfAborted();
    if(!root?.isConnected||history!==original||session().revision!==snapshot.revision)throw Error('The session changed during analysis. Analyze the mix again.');
-   mixAnalysis=validateMixAnalysis({sessionId:snapshot.id,revision:snapshot.revision,measuredAt:Date.now(),sampleRate,frames,channels},session());status='Full mix analysis ready.';
+   mixAnalysis=validateMixAnalysis({sessionId:snapshot.id,revision:snapshot.revision,measuredAt:Date.now(),sampleRate,frames,channels,stereo},session());status='Full mix analysis ready.';
   }finally{busy=false;paint();}
  }
  async function bounce(mode='mix'){

@@ -1374,3 +1374,35 @@ DAW parity work remain ongoing.
 Reference workflows: Apple's MIDI Double/Half Speed and piano-roll time handles:
 https://support.apple.com/en-gb/guide/logicpro/lgcp215831be/mac
 https://support.apple.com/en-ie/guide/logicpro/lgcp4a739b4b/10.7/mac/11.0
+
+### Full-mix stereo compatibility measurements
+
+Mix analysis now also reports stereo correlation, mono-average RMS and stereo-
+difference RMS. A worker computes normalized cross-product sum(L*R) / sqrt(sum(L²)
+* sum(R²)) over every rendered sample, without mean subtraction. Correlation is
+null when either channel has zero energy. Mono average is (L+R)/2 and stereo
+difference is (L-R)/2; their RMS includes the entire render, silence and tails.
+Zero energy displays Silence. +1 means matching shapes, not necessarily equal
+levels. Negative correlation indicates possible mono cancellation; complete
+cancellation also requires matched amplitudes. These full-render values can hide
+brief problems and are not a windowed correlation meter, LUFS or true-peak check.
+
+Optional mixAnalysis.stereo is validated against channel RMS power and forwarded
+to the agent with interpretation limits. Validation uses absolute error relative
+to total energy to avoid unstable division with an extremely quiet nonzero channel.
+Older measurement payloads without stereo data remain accepted; absent data is
+never inferred. Revision checks and stale UI handling apply to all measurements.
+The render-worker helper now returns {channels,stereo}; it still transfers copies
+and terminates on completion, error or cancellation.
+
+282 tests and build pass. Unit cases cover identical, opposite-polarity, unequal-
+level, uncorrelated and silent channels, invalid inputs, power consistency,
+extreme level imbalance and agent forwarding. Browser renders verify a centered
+mono signal and an inverted-right master utility producing -1 correlation with
+silent mono fold-down, plus worker errors/cancellation and existing normalization.
+Agent-requested analysis and post-edit verification also pass. That browser check
+now waits for fonts before asserting scroll geometry. The panel was visually
+inspected. Live inference, momentary correlation and broader DAW parity remain open.
+
+Reference: Apple's correlation meter and mono compatibility guidance:
+https://support.apple.com/en-ca/guide/logicpro/lgcef24f430f/mac
