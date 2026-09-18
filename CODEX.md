@@ -845,3 +845,17 @@ Routine document edits still render committed form values. View state is transie
 and is not serialized into project files. Run
 `scripts/browser-experimental-view-state-check.cjs` for delayed initialization,
 device-change events, drafts, expanded panels, scroll, and undo behavior.
+
+Key & scale in the piano roll previews how many pitches will change, supports all
+notes or the current selection, and optionally highlights scale tones. Choose a
+root pitch class, scale, nearest/up/down movement, and lower/higher tie resolution.
+Existing in-scale pitches stay unchanged. Applying changes pitch only and is one
+undo step; notes that converge are kept separately. Highlighting is only a guide
+and does not constrain drawing. Options remain local to the workspace, not a
+persisted key-signature/tempo map. Shared `notes.scale` values are `root` (C=0 to
+B=11), `scale` (major, minor, harmonicMinor, dorian, phrygian, lydian, mixolydian,
+locrian, majorPentatonic, minorPentatonic, chromatic), optional `direction`
+(nearest/up/down), `tie` (down/up), and `noteId` or comma-separated `noteIds`.
+Omitting selection targets all notes in the region. Directional requests with no
+valid pitch inside MIDI 0–127 reject atomically. Run
+`test/experimental-scales.test.js` and `scripts/browser-experimental-scales-check.cjs`.

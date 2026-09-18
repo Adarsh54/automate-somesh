@@ -1081,3 +1081,20 @@ text is entered, emits device changes while a chord form is unfinished, and chec
 text/focus/selection, form preservation, expanded panels, editor scroll and undo.
 Chord, controller-ramp and selected-input recording browser regressions also pass.
 A broader incremental-rendering architecture and persistent layouts remain pending.
+
+### Key/scale pitch editing and piano guides
+
+The piano roll now provides scale-based pitch mapping for a selection or whole
+region, with root, named scale/mode, direction, tie resolution, change-count preview
+and optional in-scale row highlighting. Shared `notes.scale` commands change only
+pitch, preserving IDs, timing, velocity and channels, and commit in one undo step.
+In-scale notes stay in place; converging notes are not merged. Highlighting does
+not restrict note drawing. The agent prompt exposes the same command and requires
+an explicit intended key rather than guessing one.
+
+221 tests and build pass. Unit coverage exercises all MIDI pitches for each scale
+and root, selection validation, ties, directions, boundary rejection and atomic
+history. Browser coverage checks previews, selected/all scope, key highlighting,
+nonmutation before Apply, preserved non-pitch fields, settings and undo. Persisted
+key-signature maps, score notation and diatonic transposition remain pending; real
+model execution is unverified.
