@@ -28,7 +28,7 @@ separate compatible implementations or licensed integrations.
 | Experimental workspace | Separate route/sidebar tab, arrangement, inspectors, right-side agent | Initial implementation; browser check passes |
 | Session document | Tracks, regions, assets, tempo, meter, markers, persistence, undo/redo | Local document + IndexedDB assets and command history implemented; cloud/versioning pending |
 | Audio arrangement | Import, waveform, move/trim/split/copy/delete, fades, gain, reverse, crossfades | Basic operations and graphical audio/video trim plus audio/MIDI fade handles implemented; dedicated crossfades pending |
-| Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Initial Web Audio transport/video monitor; seek, offsets and markers; loop/timecode and real video regression pending |
+| Transport and video | Synchronized multitrack playback, seek/loop, movie offset/timecode, scoring markers | Web Audio/video transport, source offsets, markers, frame stepping and non-drop timecode implemented; real MP4 regression added; loop/drop-frame timecode pending |
 | MIDI | SMF import/export, piano roll, note/velocity/CC editing, quantize/transpose/humanize, device input/output | SMF note import/export, note placement/removal, note inspector, drag/resize, velocity, quantize and transpose implemented; channel-event import/export/editing and core controller playback implemented; device input/output and humanize pending |
 | Composition tools | Instruments/sampler, step sequencer, chord/key/meter tools, notation/event editors | Pending |
 | Recording | Audio/MIDI capture, monitoring, takes, punch, comping, latency compensation | Standalone microphone WAV takes and input meter implemented; overdub, monitoring, MIDI capture, punch/comping and latency compensation pending |
@@ -60,18 +60,18 @@ until all capability groups have authoritative implementation and verification.
 - `scripts/browser-experimental-check.cjs`: Experimental route, note placement,
   undo/redo, mock-model edit, playback clock, actual OfflineAudioContext PCM render,
   WAV download and local reload.
-- Entire repository: 117 tests passing; Vite production build passing.
+- Entire repository: 120 tests passing; Vite production build passing.
 - Not verified: actual model inference, microphone/MIDI hardware, cloud DAW saves,
-  real-video synchronization, heavy sessions, mobile editing.
+  heavy sessions, mobile editing.
 
 Current limitations are substantive: simple oscillator instruments, no automation recording,
 overdub/comping, professional time stretching/pitch editing,
 notation, SysEx and full MIDI metadata preservation, Live Loops, or spatial audio. Browser source
 decoding currently caps individual audio at 250 MB; offline bounce caps ten minutes.
-Imported movie sound is not mixed yet. Session JSON references device-local assets. Export project bundles original media
+Movie audio can be extracted to a separate track and mixed when the browser supports its codec. Session JSON references device-local assets. Export project bundles original media
 in a portable archive; cloud project storage is still pending. The full goal remains active.
 
-Next implementation priorities: cloud project storage; MIDI event/device tools; recording; master processing; crossfades; movie-audio treatment and timecode; connected model validation.
+Next implementation priorities: cloud project storage; MIDI event/device tools; recording; master processing; crossfades; movie render/export; connected model validation.
 
 ## Mixer and rendering checkpoint
 
@@ -192,3 +192,24 @@ Unit tests verify typed event round trips, channel identity, controller-only tra
 validation, tempo scaling and split state. The browser MIDI-event check exercises
 the event form, export and undo, plus actual PCM volume, sustained notes and pitch
 bend. Note-edit and effects regressions cover the shared renderer and editor.
+
+## Scoring-to-picture checkpoint
+
+Video monitor controls support 23.976/24/25/29.97/30/50/59.94/60 fps, non-drop
+HH:MM:SS:FF, direct timecode seeking and one-frame stepping. Fractional rates use
+exact 1000/1001 timing. Non-drop labels intentionally drift from wall-clock time
+at fractional rates; drop-frame numbering and embedded source timecode are pending.
+Frame stepping seeks the HTML video element, not a frame-indexed native decoder.
+
+Extract movie audio creates a separate audio track referencing the same original
+asset and preserving its start, offset and duration. The browser must decode the
+movie's audio codec and the existing 250 MB decode limit applies. Subsequent edits
+to the extracted track are independent from picture. Agent commands can extract
+audio and set the project frame rate. Rendering a movie with replacement audio
+and automatic linked edits between picture and extracted sound remain pending.
+
+Unit tests cover integer/fractional timecode, bounds and extraction/undo. The
+browser video check generates a real MP4 with AAC audio and checks offset seeking,
+frame navigation, shared source identity, audible WAV bounce and picture/transport
+synchronization. This does not establish frame-accurate sync across every codec
+or long movies.

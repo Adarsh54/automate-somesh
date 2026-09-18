@@ -13,3 +13,5 @@
 .daw-routing{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0;margin-bottom:20px}.daw-routing>label{display:grid;gap:5px;max-width:300px}.daw-routing form,.daw-send{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-top:10px}.daw-routing label{font-size:12px;display:grid;gap:5px}.daw-send>span{min-width:100px;padding-bottom:10px}.daw-routing input{width:110px}
 
 .daw-midi-events{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}.daw-midi-events>label{display:grid;gap:6px}.daw-midi-events form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.daw-midi-events label{display:grid;font-size:12px;gap:5px}.daw-midi-events input,.daw-midi-events select{min-width:0;width:100%}@media(max-width:700px){.daw-midi-events form{grid-template-columns:1fr 1fr}}
+
+.daw-scoring{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:12px 0}.daw-scoring label{display:grid;gap:5px;font-size:12px}.daw-scoring input{width:145px;font-variant-numeric:tabular-nums}.daw-scoring select{width:130px}

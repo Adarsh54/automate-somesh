@@ -326,3 +326,9 @@ The MIDI event editor supports controller, pitch-bend, program and pressure even
 Import/export retains note channels and channel events. Synth audition supports
 CC7/11/10/64 and fixed ±2-semitone pitch bend; program/pressure events are export-only.
 Run `scripts/browser-experimental-midi-events-check.cjs` for editor and PCM checks.
+
+Experimental video scoring has non-drop timecode, frame-rate selection and frame
+stepping. Extract movie audio creates an independently editable track using the
+same original asset. Codec support and the 250 MB browser decode limit apply.
+`scripts/browser-experimental-video-check.cjs` generates an MP4 fixture using the
+installed FFmpeg binary and checks picture sync, offsets and audible extraction.
