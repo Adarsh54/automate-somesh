@@ -312,7 +312,7 @@ The inspector remains available for exact numeric editing. Run
 Record audio in Experimental captures standalone microphone takes as 16-bit PCM
 WAV at the browser sample rate (up to stereo, ten minutes). Stop recording places
 the take at the starting playhead position. Cancel or leaving the page discards
-the active take and releases the microphone. Overdub/monitoring are not implemented.
+the active take and releases the microphone. Optional arrangement playback is available; microphone monitoring is not implemented.
 `scripts/browser-experimental-recording-check.cjs` uses Chromium's fake microphone;
 it does not access physical recording hardware. Microphone access requires HTTPS
 or a trusted loopback origin.
@@ -434,8 +434,8 @@ a separate operation for aligning starts exactly. Run
 checks and `test/experimental-piano-grid.test.js` for timing and boundary rules.
 
 Experimental MIDI input: click Connect MIDI, choose a device, then Record MIDI.
-Stop & save MIDI creates one editable track at the captured playhead. This is
-standalone capture without instrument monitoring or overdub. Browser Web MIDI
+Stop & save MIDI creates one editable track at the captured playhead. Optional live triangle-synth audition and arrangement playback are available
+with the recording controls below. Browser Web MIDI
 support and permission are required; the app requests no SysEx access. Disconnect
 or the ten-minute limit saves recorded data; cancellation/navigation discards an
 unsaved take. Failed storage saves can be retried without duplicate tracks.
@@ -471,7 +471,7 @@ click level. It follows BPM, accents the bar start and works with Cycle. Setting
 persist in the project and use undoable `session.set` fields `metronomeEnabled`,
 `metronomeDb` (-60..0) and existing `meter` (1..16). Applying settings stops playback,
 like other edits. Click output bypasses mixer gain/effects and is never included in
-WAV or stem exports. Recording click and count-in are not implemented yet.
+WAV or stem exports. Recording click and count-in are configured separately below.
 Run `scripts/browser-experimental-metronome-check.cjs` for controls, persisted state,
 actual click timing/seek/cycle audio and export exclusion; unit coverage is in
 `test/experimental-metronome.test.js`.
@@ -483,7 +483,7 @@ and click level. It stops on finish, discard, disconnect or navigation, includin
 when device/audio initialization resolves after leaving. Microphone capture and
 click share a scheduled audio frame; the click is routed only to the output, not
 the capture worklet. Use headphones to avoid acoustic bleed into the microphone.
-Count-in, monitoring, overdub and calibrated hardware latency remain pending.
+Count-in and arrangement playback are available below; microphone monitoring and calibrated hardware latency remain pending.
 The existing microphone and MIDI input browser checks now verify click lifecycle;
 the microphone check also records silence with click enabled and verifies the
 saved file remains silent. Tests use simulated devices, not physical hardware.
@@ -538,8 +538,18 @@ The persisted/undoable field is `recordWithPlayback` (default false). Audible au
 is decoded before recording starts; playback uses a fixed session snapshot with
 mixer routing, effects and automation, beginning at the take's post-count-in start.
 The recording clock, playhead and movie monitor advance during the take. Cycle is
-ignored for recording: playback runs linearly from the selected position. New
-notes are not auditioned live, and microphone monitoring/latency calibration remain
-pending. Headphones prevent accompaniment bleeding acoustically into the input.
+ignored for recording: playback runs linearly from the selected position. Optional live MIDI audition is available below; microphone monitoring/latency calibration remain pending. Headphones prevent accompaniment bleeding acoustically into the input.
 Run `scripts/browser-experimental-overdub-check.cjs` for audio/MIDI take placement,
 backing cleanup, scheduled/seek PCM and digital isolation of microphone recordings.
+
+Hear MIDI while recording enables triangle-synth audition during MIDI takes and
+count-in. It is opt-in, persisted and undoable through `session.set` field
+`midiMonitorEnabled`. Audition bypasses the mixer; it is not an audio recording.
+Saved takes retain editable notes/controller events and use the triangle instrument.
+CC7/11/10/64 and ±2-semitone pitch bend work live. CC120/123 and reset controllers
+release voices appropriately; stop, discard, disconnect and navigation silence them.
+Polyphony is limited to 64 voices, stealing the oldest voice when needed. Count-in
+notes sound but are excluded from the take. Idle monitoring and physical device
+latency calibration remain pending. Run
+`scripts/browser-experimental-midi-monitor-check.cjs` for synthetic-device UI and
+real Web Audio signal/lifecycle checks. No physical keyboard was tested.

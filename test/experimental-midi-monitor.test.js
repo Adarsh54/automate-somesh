@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {newSession,SessionHistory} from '../src/experimental/session.js';
+test('MIDI monitoring is opt-in and uses validated undoable document state',()=>{const h=new SessionHistory(newSession());assert.equal(h.session.midiMonitorEnabled,false);h.execute([{op:'session.set',values:{midiMonitorEnabled:true}}]);assert.equal(h.session.midiMonitorEnabled,true);h.undo();assert.equal(h.session.midiMonitorEnabled,false);h.redo();assert.equal(h.session.midiMonitorEnabled,true);assert.throws(()=>h.execute([{op:'session.set',values:{midiMonitorEnabled:'yes'}}]));});

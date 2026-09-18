@@ -731,3 +731,21 @@ monitor but synchronized recording against a real movie/hardware setup still nee
 verification. Recording is linear even when Cycle is enabled. Live input audition,
 recording into existing tracks, take lanes, loop recording, punch/comping and
 calibrated latency remain pending.
+
+### Live MIDI audition during recording
+
+Hear MIDI while recording adds opt-in triangle synthesis during capture and count-in.
+The persisted `midiMonitorEnabled` flag uses the shared validated `session.set`
+command, so manual and agent edits support undo. Voices implement note release,
+repeated-note FIFO pairing, channel-specific sustain, volume/expression/pan and
+fixed ±2-semitone pitch bend. All sound off, all notes off and reset controllers
+handle live voices. Audition is bounded to 64 simultaneous voices and bypasses the
+mixer; stop, cancel, disconnect and navigation dispose the monitor. Count-in notes
+are heard but are excluded from the saved take. Saved controller playback retains
+the existing renderer's supported subset; this is not a full General MIDI synth.
+
+174 unit tests and build pass. The new browser MIDI-monitor check exercises actual
+Web Audio output, pitch bend, sustain, volume, voice limits and cleanup alongside
+simulated Web MIDI capture/count-in/save. Existing MIDI lifecycle and overdub browser
+checks pass. Hardware input/latency, idle keyboard audition, instrument selection,
+track-routed monitoring and microphone monitoring remain pending.
