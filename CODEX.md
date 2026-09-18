@@ -823,3 +823,16 @@ and optional `curve` (`linear`, `easeIn`, `easeOut`). Run
 `test/experimental-controller-ramp.test.js` and
 `scripts/browser-experimental-controller-ramp-check.cjs`; checks include rendered
 expression dynamics and MIDI export/re-import as well as selection and undo.
+
+Insert a chord in the piano roll provides root/octave, chord quality, inversion,
+start/length in beats, velocity and channel, with an exact note-name preview.
+Supported qualities are major/minor/diminished/augmented triads, sus2/sus4, major7,
+minor7, dominant7, halfDiminished7, diminished7 and power fifths. C4 means MIDI 60.
+Inversions raise the lowest chord tones one octave. Each insertion appends ordinary
+editable notes without replacing existing material and is one undo step. The
+shared `notes.chord` command accepts `root` (MIDI pitch), `quality`, `inversion`,
+`start`, `duration` (seconds), `velocity` (0–1) and `channel` (0–15). It rejects
+out-of-range pitches, invalid inversions, region overflow and the note limit.
+The agent is instructed to insert only explicitly requested chords, not invent
+progressions. This is deterministic note entry, not generated audio. Run
+`test/experimental-chords.test.js` and `scripts/browser-experimental-chords-check.cjs`.

@@ -1051,3 +1051,19 @@ the audio amplitude. Unit tests check endpoint values, nonmutation, preservation
 limits and atomic rollback. Ramps remain sampled MIDI steps; freehand drawing and
 continuous controller automation recording remain pending. Live agent inference
 has not been verified for this command.
+
+### Explicit chord entry
+
+The piano roll now offers root/octave, named chord quality, inversion, timing,
+velocity and channel controls with an exact pitch preview. Common triads, sevenths,
+suspended chords and power fifths insert ordinary editable notes, retaining existing
+material. Shared `notes.chord` commands validate pitch/inversion, region bounds and
+note capacity, and use one undo step. The agent prompt permits these only for
+explicit chord requests, without inventing progressions or generating audio.
+
+218 tests and build pass. Browser checks verify previews, inversion choices,
+resulting note pitch/timing/channel, preservation, undo/redo, invalid register
+rejection and MIDI export/re-import. Unit checks cover chord intervals, inversion
+ranges, IDs, capacity and atomic rollback. Live model execution remains unverified;
+scale/key maps, chord tracks, notation, custom voicings and extended harmony tools
+remain pending.
