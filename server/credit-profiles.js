@@ -1,7 +1,7 @@
 import {neon} from '@neondatabase/serverless';
 import {z} from 'zod';
 const text=z.string().max(200),identifier=z.string().min(1).max(100).regex(/^[\w-]+$/);
-const schema=z.object({id:identifier,name:z.string().trim().min(1).max(120),category:z.enum(['unknown','original','sourced']),credits:z.array(z.object({id:identifier.optional(),role:z.enum(['Composer','Publisher']),first:text.optional(),last:text.optional(),name:text.optional(),pro:text.optional(),ipi:text.optional(),share:z.union([z.string().max(30),z.number().finite().min(0).max(100)])})).max(100),revision:z.number().int().nonnegative().default(0)});
+const schema=z.object({id:identifier,name:z.string().trim().min(1).max(120),category:z.enum(['unknown','original','sourced']),address:z.string().max(1000).optional(),preparedBy:z.string().max(200).optional(),email:z.union([z.email().max(254),z.literal('')]).optional(),credits:z.array(z.object({id:identifier.optional(),role:z.enum(['Composer','Publisher']),first:text.optional(),last:text.optional(),name:text.optional(),pro:text.optional(),ipi:text.optional(),share:z.union([z.string().max(30),z.number().finite().min(0).max(100)])})).max(100),revision:z.number().int().nonnegative().default(0)});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const unpack=row=>({...row.data,id:row.id,name:row.name,revision:row.revision});
 export function createCreditProfilesRepository(sql){return {

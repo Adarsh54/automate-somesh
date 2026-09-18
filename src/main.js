@@ -1,3 +1,6 @@
+import {libraryPreviewMarkup,bindLibraryPreview} from './library-preview-player.js';
+import {applyProfileContact,applyProfileToAllCues} from './profile-contact.js';
+import {detectionReady} from './detection-gate.js';
 import {cueSheetCsv} from "./export-csv.js";
 import {createExperimentalWorkspace} from './experimental/workspace.js';
 import {applyScoreOffset} from "./score-offset.js";
@@ -163,11 +166,12 @@ async function storeCreditProfile(profile){
 }
 function applyCreditProfile(profileId){
   const profile=creditProfiles.find(p=>p.id===profileId);if(!profile)return;
+  applyProfileContact(state,profile);
   activeCreditProfileId=profile.id;state.activeCreditProfileId=profile.id;
   state.sharedCueDetails={category:profile.category,credits:structuredClone(profile.credits)};
   save();navigate('library');
 }
-async function pickCueProfile(cueIds, trackId = null) {
+async function pickCueProfile(cueIds, trackId = null, allCues = false) {
   const dialog = document.createElement('dialog');
   dialog.className = 'resume-workspace';
   dialog.setAttribute('aria-label', 'Add credit profile');
@@ -183,11 +187,22 @@ async function pickCueProfile(cueIds, trackId = null) {
     content.innerHTML = profiles.length ? profiles.map(profile => `<button type="button" data-pick-profile="${esc(profile.id)}">${esc(profile.name)}</button>`).join(' ') : '<p>No saved profiles yet. Create one in Credit Profiles.</p>';
     content.querySelectorAll('[data-pick-profile]').forEach(button => button.onclick = () => {
       const profile = profiles.find(p => p.id === button.dataset.pickProfile);
+      applyProfileContact(state,profile);
+      if (allCues) {
+        state.activeCreditProfileId=profile.id;
+        activeCreditProfileId=profile.id;
+        state.cueCreditProfileName=profile.name;
+        applyProfileToAllCues(state,profile);
+      }
       const track = state.tracks.find(t => t.id === trackId);
-      if (track) track.cueProfile = {category: profile.category, credits: structuredClone(profile.credits)};
-      state.cues.filter(c => cueIds.includes(c.id)).forEach(c => {
+      if (track) {
+        track.cueProfile = {category: profile.category, credits: structuredClone(profile.credits)};
+        track.cueProfileName = profile.name;
+      }
+      state.cues.filter(c => allCues || cueIds.includes(c.id)).forEach(c => {
         c.credits = structuredClone(profile.credits);
         c.category = profile.category;
+        c.creditProfileName = profile.name;
       });
       save();dialog.close();render();
     });
@@ -219,7 +234,7 @@ function faq() {
 }
 function answerFAQ(question) {
   const text = question.toLowerCase();
-  if(text.includes('types of projects'))return 'Projects contains Cues and Reels. Use the green plus or Create project, then choose a type. Cues follow the four-step cue sheet workflow; Reels turn your audio into a shareable playlist with an interactive waveform.';
+  if(text.includes('types of projects'))return 'Projects contains cue sheets and reels. Use the green plus or Create project, then choose a type. Cue sheets follow the four-step workflow; Reels turn your audio into a shareable playlist with an interactive waveform.';
   if(text.includes('audio files go'))return 'Audio Library is your shared library. Audio uploaded there, in a cue workspace, or in a reel is collected there. Signed-in uploads are saved privately to your account; guest files stay on this device.';
   if(text.includes('share or embed'))return 'Yes. Add tracks in New Reel, give them titles, and preview the player. Sign in and select Publish reel, then Share & embed to copy a link or iframe. Every published reel includes MP3 downloads. Stop sharing revokes the link; saved draft edits stay private until you publish again.';
   if(text.includes('reuse audio'))return 'Choose Add from audio library in a cue workspace or Choose from audio library in a reel draft. Removing audio from a reel only removes that attachment; the file remains in your library.';
@@ -269,7 +284,7 @@ function render() {
   );
   const issues = review();
   $("#app").innerHTML =
-    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#/projects" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div></aside><main><header>${pageBreadcrumb()}<div class="header-account"><div id="account-actions">${cloudWorkspace?.header() || ""}</div>${themeToggle()}</div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><input id="workspace-project-title" aria-label="Cue sheet title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name cue sheet" autocomplete="off"><span>Required to save your cue sheet.</span></div>` : ""}${tab === "library" ? "" : `<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Full Score to Cue Sheet", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div>`}<nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}</div></main>`;
+    `<aside aria-label="Workspace sidebar"><div class="sidebar-header"><a class="brand" href="#/projects" aria-label="Cuestamp"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">cuestamp</span></a>${sidebarToggle}</div><nav id="sidebar-nav" class="app-navigation" aria-label="Workspace navigation"><a class="nav ${tab === "projects" ? "active" : ""}" href="#/projects" aria-label="Projects" title="Projects" ${tab === "projects" ? 'aria-current="page"' : ""}>${sidebarIcon("projects")}<span class="nav-label">Projects</span></a></nav><div id="sidebar-profile">${cloudWorkspace?.profile() || ""}</div></aside><main><header>${pageBreadcrumb()}<div class="header-account"><div id="account-actions">${cloudWorkspace?.header() || ""}</div>${themeToggle()}</div></header><div class="content"><div id="cloud-workspace">${cloudWorkspace?.view() || ""}</div>${tab === "library" ? `<div class="project-title-editor"><input id="workspace-project-title" aria-label="Cue sheet title" maxlength="300" value="${esc(effectiveProduction(state).title || "")}" placeholder="Name cue sheet" autocomplete="off"><span>Required to save your cue sheet.</span></div>` : ""}${tab === "library" ? "" : `<div class="heading"><div><div class="eyebrow">YOUR MUSIC WORKSPACE</div><h1>${{ library: "Full Score to Cue Sheet", production: "Production details", cues: "Timings & usage", review: "Review & export" }[tab]}</h1><p>${{ library: "A place for every cue. Credit for every creator.", production: "Add the production information that travels with your cue sheet.", cues: "Review detected placements or enter timings on the film timeline.", review: "Review credits and placements before downloading your spreadsheet." }[tab]}</p></div></div>`}<nav class="workflow-tabs" aria-label="Cue sheet steps">${steps.map(([key,label],index)=>`<button data-tab="${key}" ${detectionStepLocked(key)?'disabled title="Run detection before continuing"':''} class="${tab===key?"active":""}" ${tab===key?'aria-current="step"':""}><span>${index+1}</span>${label}</button>`).join("")}</nav>${clearedResults ? `<div class="notice" role="status">Placements cleared. Audio and credits are kept. <button id="undo-clear">Undo clear</button></div>` : ""}${message ? `<div class="notice" role="status">${esc(message)}</div>` : ""}${tab === "library" ? library() : tab === "production" ? production() : tab === "cues" ? cues() : reviewPage(issues)}${stepNavigation()}</div></main>`;
   document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${steps.some(([key])=>key===tab)?'active':''}" href="#/workspace" aria-label="Add Cue Sheet" title="Add Cue Sheet" ${steps.some(([key])=>key===tab)?'aria-current="page"':''}>${sidebarIcon('library')}<span class="nav-label">Add Cue Sheet</span></a><a class="nav ${tab==='reel'&&location.hash==='#/reels/new'?'active':''}" href="#/reels/new" aria-label="New Reel" title="New Reel" ${tab==='reel'&&location.hash==='#/reels/new'?'aria-current="page"':''}>${sidebarIcon('reel')}<span class="nav-label">New Reel</span></a><a class="nav ${tab==='audio'?'active':''}" href="#/audio" aria-label="Audio Library" title="Audio Library" ${tab==='audio'?'aria-current="page"':''}>${sidebarIcon('audio')}<span class="nav-label">Audio Library</span></a>`);
   document.querySelector("#sidebar-nav")?.insertAdjacentHTML("beforeend", `<a class="nav ${tab === "settings" ? "active" : ""}" href="#/credit-profiles" ${tab === "settings" ? 'aria-current="page"' : ""} aria-label="Credit Profiles" title="Credit Profiles">${sidebarIcon("settings")}<span class="nav-label">Credit Profiles</span></a>`);
   document.querySelector('#sidebar-nav')?.insertAdjacentHTML('beforeend',`<a class="nav ${tab==='experimental'?'active':''}" href="#/experimental" aria-label="Experimental" ${tab==='experimental'?'aria-current="page"':''}>${sidebarIcon('reel')}<span class="nav-label">Experimental</span></a>`);
@@ -314,10 +329,13 @@ const steps = [
   ["library", "Find your cues"],
   ["cues", "Timings & usage"], ["production", "Production details"], ["review", "Review & export"],
 ];
+function detectionStepLocked(page) {
+  return ["cues", "production", "review"].includes(page) && (workflow.busy || !detectionReady(state));
+}
 function stepNavigation() {
   const index = steps.findIndex(([key]) => key === tab);
   if (index < 0) return "";
-  const button = (direction, target) => `<button class="${direction === "next" ? "primary" : ""}" data-step="${direction}" data-tab="${steps[target][0]}">${direction === "next" ? "Next" : "Back"}: ${steps[target][1]} ${direction === "next" ? "→" : "←"}</button>`;
+  const button = (direction, target) => `<button class="${direction === "next" ? "primary" : ""}" data-step="${direction}" data-tab="${steps[target][0]}" ${detectionStepLocked(steps[target][0])?'disabled title="Run detection before continuing"':''}>${direction === "next" ? "Next" : "Back"}: ${steps[target][1]} ${direction === "next" ? "→" : "←"}</button>`;
   return `<div class="button-row step-navigation" aria-label="Step navigation">${index > 0 ? button("back", index - 1) : ""}${index < steps.length - 1 ? button("next", index + 1) : ""}</div>`;
 }
 function library() {
@@ -350,9 +368,6 @@ function settingsPage() {
  return `<section class="settings-page">${collectionPage({...options,summary:creditProfilesLoading?'Loading profiles…':`${creditProfiles.length} saved profile${creditProfiles.length===1?'':'s'}`,body})}</section>`;
 }
 
-function provenanceField(value) {
-  return select("Cue provenance", "category", value, [["unknown", "Unspecified"], ["original", "Original work"], ["sourced", "Sourced music"]]);
-}
 function cueCreditEditor(cue, shared = false) {
   return `<div class="cue-credit-form">${shared ? '<p class="muted">Shared credits update all inheriting cues. Confirm every contributor and enter each role’s shares out of 100%.</p>' : ""}${["Composer", "Publisher"].map(role => `<section class="contributor-section" aria-label="${role}s"><div class="section-title"><h3>${role === "Composer" ? "Composers / writers" : "Publishers"}</h3><button data-add-credit="${role}">＋ Add ${role === "Composer" ? "writer" : "publisher"}</button></div>${cue.credits.map((c, i) => c.role !== role ? "" : `<div class="credit" data-credit="${i}" data-credit-id="${c.id}"><div class="credit-top"><strong>${role === "Composer" ? "Writer" : "Publisher"} ${cue.credits.slice(0, i + 1).filter(p => p.role === role).length}</strong><button class="text danger" data-remove-credit="${i}" aria-label="Remove ${role} ${i + 1}">Remove</button></div><div class="form-grid contributor-fields">${role === "Composer" ? field("First / middle name", "first", c.first) + field("Last name", "last", c.last) : field("Publisher name", "name", c.name)}${field("PRO affiliation", "pro", c.pro, 'placeholder="BMI, ASCAP, PRS…"')}${field("Share (%)", "share", c.share, 'type="number" min="0" max="100" step="0.01"')}${field("IPI (optional)", "ipi", c.ipi)}</div></div>`).join("") || '<p class="muted">Add a contributor for this cue.</p>'}</section>`).join("")}</div>`;
 }
@@ -383,25 +398,17 @@ function production() {
        k === "airdate" ? 'type="date"' : k === "email" ? 'type="email"' : "",
      ),
    )
-   .join("")}${select(
-   "Cue sheet classification",
-   "classification",
-   p.classification,
-   [
-     ["Original", "Original"],
-     ["Revision", "Revision"],
-   ],
- )}</div></details></section>`;
+   .join("")}</div></details></section>`;
 }
 function cues() {
   const cueNav = state.cues.length ? `<nav class="cue-navigation" aria-label="Jump to cue">${state.cues.map((c, i) => `<a href="#cue-${c.id}"><span>Cue ${i + 1}</span><strong>${esc(c.title || state.tracks.find(t => t.id === c.trackId)?.title || "Untitled cue")}</strong></a>`).join("")}</nav>` : "";
-  return `${cueNav}<div class="section-title"><h2>Cue placements</h2><div class="button-row"><button class="primary" id="new-cue" ${!state.tracks.length ? "disabled" : ""}>＋ Manual cue</button></div></div>${
+  return `${cueNav}<div class="section-title"><h2>Cue placements</h2><div class="button-row"><button type="button" id="cue-placements-profile" title="Apply a credit profile to all cues">${esc(state.cueCreditProfileName || '+ Profile')}</button><button class="primary" id="new-cue" ${!state.tracks.length ? "disabled" : ""}>＋ Manual cue</button></div></div>${
     state.cues.length
       ? state.cues
           .map((c, i) => {
             const t = state.tracks.find((t) => t.id === c.trackId),
               d = duration(c, state.production.rate);
-            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span><input class="cue-heading-title" data-cue-title data-field="title" aria-label="Cue ${i + 1} title" value="${esc(c.title || t.title)}" placeholder="Cue title"></h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><div class="form-grid cue-fields">${field("Film in", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<audio data-cue-audio="${c.id}" controls preload="metadata" src="${urls.get(t.id)}"></audio>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div>${c.credits != null ? `${cueCreditEditor(c)}` : `<div class="panel inherited-credits"><div class="button-row"><button data-override-credits>+ Writers/publishers</button></div></div>`}</section>`;
+            return `<section class="panel cue" id="cue-${c.id}" tabindex="-1" data-cue="${c.id}" aria-label="Cue ${i + 1}: ${esc(c.title || t.title)}"><div class="section-title"><h3><span class="cue-number">${String(i + 1).padStart(2, "0")}</span><input class="cue-heading-title" data-cue-title data-field="title" aria-label="Cue ${i + 1} title" value="${esc(c.title || t.title)}" placeholder="Cue title"></h3><button class="text danger" data-remove-cue="${c.id}">Remove</button></div><div class="form-grid cue-fields">${field("Film in", "start", c.start, 'placeholder="01:00:00:00"')}${field("Film out", "end", c.end, 'placeholder="01:00:00:00"')}${select("Usage", "usage", c.usage, [["", "Choose usage"], ...Object.entries(usages).map(([k, v]) => [k, `${k} · ${v}`])])}<div class="duration"><span>Cue duration</span><strong>${d === null ? "Missing placement" : d.toFixed(3) + " s"}</strong></div></div><div class="button-row timing-actions">${c.method === "movie" && workflow.movie ? `<button data-listen="${c.id}">Preview in movie</button>` : urls.has(t.id) ? `<div class="cue-wave-preview">${libraryPreviewMarkup()}<audio data-cue-audio="${c.id}" hidden preload="metadata" src="${urls.get(t.id)}"></audio></div>` : ""}${c.method && c.method !== "manual" ? `<label class="check"><input type="checkbox" data-reviewed="${c.id}" ${c.reviewed ? "checked" : ""}> Timing reviewed</label>` : ""}</div><div class="button-row cue-profile-actions">${c.credits == null ? '<button type="button" data-override-credits>+ New Writers/Publishers</button>' : ''}</div>${c.credits != null ? cueCreditEditor(c) : ''}</section>`;
           })
           .join("")
       : '<div class="empty"><h3>No placements yet</h3><p>Run an automatic workflow or add a manual cue above.</p></div>'
@@ -444,6 +451,8 @@ function playPreview(player) {
   });
 }
 function bind() {
+  document.querySelector("#cue-placements-profile")?.addEventListener("click",()=>pickCueProfile([],null,true));
+  document.querySelectorAll("[data-tab]").forEach(button=>{if(detectionStepLocked(button.dataset.tab)){button.disabled=true;button.title="Run detection before continuing";}});
   document.querySelectorAll('[data-track-profile]').forEach(button => button.onclick = () => pickCueProfile(state.cues.filter(c => c.trackId === button.dataset.trackProfile).map(c => c.id), button.dataset.trackProfile));
 
   document.querySelectorAll(".cue-navigation a").forEach(link => {
@@ -459,7 +468,7 @@ function bind() {
   const libraryButton = $("#cue-audio-library");
   if (libraryButton) libraryButton.onclick = async () => {
     try {
-      for (const audioId of await audioLibrary.pick()) await addLibraryExport(audioId);
+      for (const audioId of await audioLibrary.pick({single:true})) await addLibraryExport(audioId);
     } catch (error) { message = error.message; render(); }
   };
 
@@ -699,6 +708,7 @@ async function downloadCompletedProject(snapshot,format='xlsx') {
 }
 
 function updateIndicators() {
+  document.querySelectorAll("[data-tab]").forEach(button=>{if(["cues","production","review"].includes(button.dataset.tab)){button.disabled=detectionStepLocked(button.dataset.tab);button.title=button.disabled?"Run detection before continuing":"";}});
   const sharedStatus = $("#shared-credit-status");
   if (sharedStatus) sharedStatus.textContent = creditIssues(state.sharedCueDetails).join(" · ") || "Shared credits complete.";
   const analyze = $("#analyze"), help = $("#detection-help");
@@ -743,6 +753,24 @@ async function useLibraryInCue(id) {
   await navigate('library');
   if(tab==='library')await addLibraryExport(id);
 }
+function replaceFullScore(track) {
+  const previous = state.tracks.filter(t => t.purpose !== "library" && t.id !== track.id);
+  if (!previous.length) return;
+  const removed = new Set(previous.map(t => t.id));
+  for (const old of previous) {
+    if (urls.has(old.id)) URL.revokeObjectURL(urls.get(old.id));
+    urls.delete(old.id); workflow.audio.delete(old.id); workflow.files.delete(old.id);
+    if (state.media) delete state.media.tracks[old.id];
+    localAudio.remove(old.id).catch(() => {});
+  }
+  state.tracks = state.tracks.filter(t => !removed.has(t.id));
+  state.cues = state.cues.filter(c => !removed.has(c.trackId));
+  state.cueDetailsArchive = (state.cueDetailsArchive ?? []).filter(c => !removed.has(c.trackId));
+  selected = track.id;
+  forgetClearUndo();
+  delete state.analysisReport;
+  save();
+}
 async function addLibraryExport(id) {
   if (workflow.busy || workflow.restoring) return;
   if (state.tracks.some(track => track.purpose !== "library" && (track.librarySourceId === id || track.audioLibraryId === id))) {
@@ -752,6 +780,7 @@ async function addLibraryExport(id) {
   const file=await audioLibrary.fileFor(id);
   const track = await workflow.load(file, null, false, false, "export");
   if (track) {
+    replaceFullScore(track);
     track.librarySourceId = id;
     if(source)track.title = audioLibrary.labelFor(source);
     save();
@@ -762,8 +791,12 @@ async function addLibraryExport(id) {
 
 async function upload(files, destination) {
   if (workflow.busy || workflow.restoring) return;
+  if (destination !== "library" && files.length > 1) {
+    message = "Choose one full score to add or replace the current score."; render(); return;
+  }
   for (const file of Array.from(files)) {
     const track = await workflow.load(file, null, false, false, destination === "library" ? "library" : "export");
+    if (track?.purpose === "export") replaceFullScore(track);
     if (track?.purpose === "library") selected = track.id;
     if (workflow.controller?.signal.aborted) break;
   }
@@ -944,10 +977,13 @@ function bindWorkflows() {
     );
   document.querySelectorAll("[data-cue-audio]").forEach((audio) => {
     const c = state.cues.find((c) => c.id === audio.dataset.cueAudio);
-    if (c.method === "offset")
-      audio.onloadedmetadata = () => {
-        audio.currentTime = c.relativeStart;
-      };
+    bindLibraryPreview(audio,workflow.files.get(c.trackId));
+    if (c.method === "offset") {
+      const seekStart=()=>{audio.currentTime=Math.max(0,c.relativeStart || 0);audio.ontimeupdate?.();};
+      if(audio.readyState>=1)seekStart();else audio.addEventListener('loadedmetadata',seekStart,{once:true});
+    }
+    const updatePlay=audio.onplay;
+    audio.onplay=()=>{document.querySelectorAll('[data-cue-audio]').forEach(other=>{if(other!==audio)other.pause();});updatePlay?.();};
   });
 }
 cloudWorkspace = createCloudWorkspace(account, {state, storageKey, esc, workflow, download:openDownloads,saveAudio:file=>audioLibrary.add(file),isProjectBusy:()=>workflow.busy || reelWorkspace.isBusy() || audioLibrary.isBusy(),chooseType:chooseProjectType,beforeNewProject:()=>hasOpenEdits()?askToLeave():Promise.resolve(true),onNewReel:()=>{reelWorkspace.newProject();history.pushState(null,'','#/reels/new');showPage('reel');},onOpenDaw:async project=>{if(await experimental.openProject(project)){history.pushState(null,'','#/experimental');showPage('experimental');}},onOpenReel:project=>{reelWorkspace.open(project);const route=`#/reels/${project.id}/edit`;history.pushState(null,'',route);showPage('reel',route);},onComplete:()=>{render();openDownloads(state);}});
@@ -977,6 +1013,7 @@ async function routePage(){
  const accountAnalytics=hash==='#/reels/analytics';
  let page=edit?'reel':analyticsMatch?'reel-analytics':accountAnalytics?'reel-account-analytics':Object.keys(pageRoutes).find(key=>pageRoutes[key]===hash);
  if(!page){page=account.user?'projects':'library';hash=pageRoutes[page];}
+ if(detectionStepLocked(page)){page="library";hash=pageRoutes.library;history.replaceState(null,"",hash);}
  if(pendingRoute===hash)return;
  const changing=!routeInitialized||hash!==currentRoute;
  if(!changing){routeVersion++;pendingRoute='';showPage(page,hash);return;}
@@ -1004,6 +1041,7 @@ async function routePage(){
  }finally{if(version===routeVersion)pendingRoute='';}
 }
 function showPage(page,route=pageRoutes[page]){
+ if(detectionStepLocked(page)){page="library";route=pageRoutes.library;}
  routeInitialized=true;currentRoute=route;
  if(location.hash!==route)history.replaceState(null,'',route);
  message="";

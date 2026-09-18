@@ -1,3 +1,4 @@
+import {detectionKey} from './detection-gate.js';
 import {scoreOffset} from "./score-offset.js";
 import {cueDetails, matchingCue, archiveCueDetails} from "./cue-details.js";
 import { decodeMedia } from "./media.js";
@@ -150,6 +151,8 @@ export class Workflow {
     const reason = this.analysisUnavailable();
     if (reason) return this.notify(reason);
     const s = this.state, mode = s.mode, rate = s.production.rate, key = mode;
+    const completedKey = detectionKey(s);
+    if(s.analysisReport)delete s.analysisReport.detectionKey;
     // Replace an active worker before starting; late events cannot restore old results.
     this.worker?.terminate();
     this.busy = true;
@@ -226,6 +229,7 @@ export class Workflow {
           (toFrames(b.start, rate) ?? Infinity),
       );
       s.analysisReport = {
+        detectionKey: completedKey,
         mode,
         seconds: data.elapsed,
         counts: data.results.map((r) => ({

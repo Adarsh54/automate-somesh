@@ -21,6 +21,8 @@ const stateSchema=z.object({
   sharedCueDetails:z.object({category:z.enum(["original","sourced","unknown"]),credits:z.array(credit).max(100)}),
   mode:z.enum(["movie","offset","manual"]),movieOffset:text,scoreOffset:text.optional(),
   silenceGap:z.number().min(0).max(10),thresholdDb:z.number().min(-100).max(-10),matchThreshold:z.number().min(0).max(1),
+  cueCreditProfileName:z.string().max(120).optional(),
+  activeCreditProfileId:identifier.optional(),
   cueDetailsVersion:z.number().optional(),cueDetailsArchive:z.array(cue).max(2000).optional(),
   movieMetadata:z.json().optional(),movieOverrides:z.json().optional(),movieProfiles:z.json().optional(),
   movieOriginEdited:z.boolean().optional(),movieRateEdited:z.boolean().optional(),rateEdited:z.boolean().optional(),
