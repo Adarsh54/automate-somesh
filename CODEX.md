@@ -728,3 +728,18 @@ exact preview of the processed track. Run
 limits, preservation/history, instrument choice and real drum/voice output cleanup.
 The device is simulated; physical latency, take lanes and MIDI merge/replace/punch
 recording modes remain pending.
+
+Audio destination beside Record audio selects New audio track (default) or an
+existing audio track. The choice is locked while recording and saving; the take
+uses the starting playhead even if other UI positions change during save. An
+existing destination gets one additional region without replacing earlier takes,
+changing mixer settings or creating another track. Overlapping regions play
+together. New/existing destinations are validated before microphone access, with
+128-track/1,000-region limits. An existing track remains usable at the track cap.
+The shared media-import planner validates ordinary track/region commands before
+storing new media; the completed take commits as one undo step. Destination choice
+is temporary and defaults to a new track after reload. Failed take saves retain the
+existing WAV-download fallback. Run `test/experimental-audio-destination.test.js`
+and `scripts/browser-experimental-audio-destination-check.cjs` for limits, track
+preservation, placement, history, synthetic PCM and cancellation/navigation cleanup.
+These are separate regions, not take lanes or automatic comping/replace recording.

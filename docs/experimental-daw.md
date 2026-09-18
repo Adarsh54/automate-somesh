@@ -939,3 +939,18 @@ prior region preservation, undo/redo, count-in behavior, square-wave selection,
 drum one-shot output and cleanup. Unit checks cover limits and atomic invalid
 imports. Hardware latency, audio takes into existing tracks, MIDI merge/replace,
 take lanes, punch and track-routed monitoring remain pending.
+
+### Audio takes into existing tracks
+
+Audio capture now offers explicit new/existing audio destinations. The destination
+and starting position are fixed for the take; appending preserves existing regions,
+track controls and routing. Completed media is validated before storage and uses
+one shared command batch for undo. Existing tracks can receive takes at the session
+track limit, with their own region cap checked before microphone access. New-track
+capture remains the default and destination selection is transient.
+
+200 tests and build pass. Fake-microphone browser checks inspect saved PCM, chosen
+track/start, prior-region preservation, mixer settings, undo/redo and cancel/leave
+cleanup. Unit checks exercise planning without mutation, limits and incompatible
+or missing targets. Take lanes, replace/punch modes, comping and hardware latency
+calibration remain pending; overlapping takes currently play together.
